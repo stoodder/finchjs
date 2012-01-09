@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<script src="./scripts/jquery.1.7.1.min.js" type="text/javascript" language="javascript"></script>
+		<script src="./scripts/finch.js" type="text/javascript" language="javascript"></script>
+		<script>
+			Finch.route("home", function(params)
+			{
+				console.log("Called home");
+				console.log(params);
+			});
+
+			Finch.route("[home]/news", function(params)
+			{
+				console.log("Called home/news");
+				console.log(params);
+			});
+
+			Finch.route("[home/news]/:id", function(params)
+			{
+				console.log("Called home/news/:id");
+				console.log(params);
+			});
+
+			Finch.route("[home/news/:id]/:name", function(params){
+				console.log("Called [home/news/:id]/:name");
+				console.log(params);
+			});
+
+			Finch.call("/home/news/66/Rick")
+			console.log("-----------------")
+			Finch.call("/home/news/33/Allen")
+			console.log("-----------------")
+			Finch.call("/home/news/66")
+			console.log("-----------------")
+			Finch.call("/home/news")
+			console.log("-----------------")
+			Finch.call("/home")
+		</script>
+	</head>
+	<body>
+		<header>
+		</header>
+		<section>
+		</section>
+		<footer>
+		</footer>
+	</body>
+</html>
