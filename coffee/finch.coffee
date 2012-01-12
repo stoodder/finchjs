@@ -50,28 +50,48 @@ standardizeRoute = (route) ->
 	return route
 
 ###
-# Method used to extract the parent route out of a 
+# Method: getParentPattern
+# 	Used to extract the parent pattern out of a given pattern
+#	- A parent pattern is specified within brackets, ex: [/home]/news
+#		'/home' would be the parent pattern
+#	- Useful for identifying and calling the parent pattern's callback
+#
+# Arguments:
+#	pattern - The pattern to dig into and find a parent pattern, if one exisst
+#
+# Returns
+#	string - The idenfitfied parent pattern
 ###
-getParentRoute = (route) ->
+getParentPattern = (pattern) ->
 
 	#Initialzie the parameters
-	route = if isString(route) then trim(route) else ""
-	parentRoute = null
+	pattern = if isString(pattern) then trim(pattern) else ""
+	parentPattern = null
 
-	#Check if we're starting with a bracket
-	if startsWith(route, "[")
+	#Check if we're starting with a bracket if startsWith(pattern, "[")
 
 		#find the closing bracket
-		closingBracketIndex = route.indexOf("]")
+		closingBracketIndex = pattern.indexOf("]")
 
-		#If we found one with a route inside, get the parentRoute
+		#If we found one with a route inside, get the parentPattern
 		if closingBracketIndex > 1
-			parentRoute = route.slice(1, closingBracketIndex)
+			parentPattern = pattern.slice(1, closingBracketIndex)
 	
-	return parentRoute
+	return parentPattern
 
 ###
-# Method used to extract the parameters out of a route
+# Method: getParameters
+# 	Used to extract the parameters out of a route (from within the route's path, not query string)
+#
+# Arguments:
+#	pattern - The pattern to use as a reference for finding parameters
+#	route - The given route to extract parameters from
+#
+# Returns:
+#	object - An object of the route's parameters
+#
+# See Also:
+#	parseQuryString
 ###
 getParameters = (pattern, route) ->
 	route = "" unless isString(route)
@@ -93,6 +113,64 @@ getParameters = (pattern, route) ->
 
 	return parameters
 
+#END getParameters
+
+###
+# Method: parseQueryString
+#	Used to parse and objectize a query string
+#
+# Arguments: 
+#	queryString - The query string to split up into an object
+#
+# Returns:
+#	object - An object of the split apart query string
+###
+parseQueryString = (queryString) ->
+
+	#Make sure the query string is valid
+	queryString = if isString(queryString) then trim(queryString) else ""
+
+	#setup the return params
+	queryParams = {}
+
+	#iterate through the pieces of the query string
+	for piece in queryString.split("&")
+		[key, value] = piece.split("=", 2)
+		queryParams[key] = value
+	
+	#return the result
+	return queryParams
+
+#END parseQueryString
+
+###
+# Method: matchPattern
+#	Method used to determine if a route matches a pattern
+#
+# Arguments:
+#	route - The route to check
+#	pattern - The pattern to compare the route against
+#
+# Returns:
+#	boolean - Did the route match the pattern?
+###
+matchPattern = (route, pattern) ->
+	route = standardizeRoute(route)
+	pattern = standardizeRoute(pattern)
+
+	routeSplit = route.split("/")
+	patternSplit = pattern.split("/")
+
+	#if the lengths aren't the same, this isn't valid
+	return false if routeSplit.length isnt patternSplit.length
+
+	for index, patternPiece of patternSplit
+		return false unless patternPiece is routeSplit[index] or startsWith(patternPiece, ":")
+
+	return true
+
+#END matchPattern
+
 ###
 # Method: runCallStack
 #	Used to execute a callstack from a route starting at it's top most parent
@@ -113,31 +191,34 @@ runCallStack = (pattern, parameters) ->
 		route = assignedRoutes[route]
 
 		if isObject(route)
-			stack.unshift(route.setup) if isFunction(route.setup)
-			stackAdd(route.parentRoute) if route.parentRoute? and route.parentRoute isnt ""
+			stack.push(route) if isFunction(route.setup)
+			stackAdd(route.parentPattern) if route.parentPattern? and route.parentPattern isnt ""
 	)(pattern)
 
-	#TODO: Eliminate steps in the call stack that have already been run
+	#TODO: Eliminate steps in the call stack that have already been run, optimization
 
 	#Lastly execute the callstack, taking into account methods that request for the child callback
 	(callItem = (stack, parameters) ->
 		return if stack.length <= 0
 
-		item = stack.shift()
-		item = (->) unless isFunction(item)
+		item = stack.pop()
+		item = {} unless isObject(item)
+		setup = (->) unless isFunction(item.setup)
 
-		if item.length == 2
-			item( parameters, (p) -> 
+		if item.setup.length == 2
+			item.setup( parameters, (p) -> 
 				p = {} unless isObject(p)
 				extend(parameters, p)
 				callItem.call( callItem, stack, parameters )
 			)
 		else
-			item(parameters)
+			item.setup(parameters)
 			callItem(stack, parameters)
 	)(stack, parameters)
 
 	return
+
+#END runCallStack
 
 
 ###
@@ -160,15 +241,17 @@ Finch = {
 		callback = (->) unless isFunction(callback)
 
 		#initialize the parent route to call
-		parentRoute = getParentRoute(pattern)
+		parentPattern = getParentPattern(pattern)
 
 		#Standardize the rotues
 		pattern = standardizeRoute(pattern)
-		parentRoute = standardizeRoute(parentRoute)
+		parentPattern = standardizeRoute(parentPattern)
 
 		#Store the action for later
 		assignedRoutes[pattern] = {
-			parentRoute: parentRoute
+			context: {}
+			pattern: pattern
+			parentPattern: parentPattern
 			setup: callback
 			teardown: (->)
 		}
@@ -184,11 +267,20 @@ Finch = {
 	#	route - The route to try and call
 	#	parameters (optional) - The initial prameters to send
 	###
-	call: (route, parameters) ->
+	call: (uri, parameters) ->
+
 
 		#Make sure we have valid arguments
-		route = standardizeRoute(route)
+		uri = "" unless isString(uri)
 		parameters = {} unless isObject(parameters)
+
+		#Extract the route and query string from the uri
+		[route, queryString] = uri.split("?", 2)
+		route = standardizeRoute(route)
+		queryParams = parseQueryString(queryString)
+
+		#Extend the parameters with those found in the query string
+		extend(parameters, queryParams)
 
 		# Check if the user is just trying to call on a pattern
 		# If so just call it's callback and return
@@ -198,8 +290,8 @@ Finch = {
 		for pattern, config of assignedRoutes
 			
 			#Check if this route matches the input routpatterne
-			if Finch.match(route, pattern)
-				
+			if matchPattern(route, pattern)
+
 				#Get the parameters of the route
 				extend(parameters, getParameters(pattern, route))
 
@@ -217,38 +309,6 @@ Finch = {
 		return false
 	
 	#END Finch.call()
-	
-	###
-	# Method: Finch.match
-	#	Method used to determine if a route matches a pattern
-	#
-	# Arguments:
-	#	route - The route to check
-	#	pattern - The pattern to compare the route against
-	#
-	# Returns:
-	#	boolean - Did the route match the pattern?
-	###
-	match: (route, pattern) ->
-		route = standardizeRoute(route)
-		pattern = standardizeRoute(pattern)
-
-		routeSplit = route.split("/")
-		patternSplit = pattern.split("/")
-
-		#if the lengths aren't the same, this isn't valid
-		return false if routeSplit.length isnt patternSplit.length
-
-		for index, patternPiece of patternSplit
-			return false unless patternPiece is routeSplit[index] or startsWith(patternPiece, ":")
-
-		return true
-	
-	#END Finch.match()
-
-	log: () ->
-		console.log(assignedRoutes)
-
 }
 
 #Expose Finch to the window

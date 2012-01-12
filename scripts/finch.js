@@ -1,5 +1,5 @@
 (function() {
-  var Finch, assignedRoutes, endsWith, extend, getParameters, getParentRoute, isArray, isFunction, isObject, isString, leftTrim, rightTrim, runCallStack, standardizeRoute, startsWith, trim;
+  var Finch, assignedRoutes, endsWith, extend, getParameters, getParentRoute, isArray, isFunction, isObject, isString, leftTrim, matchPattern, parseQueryString, rightTrim, runCallStack, standardizeRoute, startsWith, trim;
 
   isObject = function(object) {
     return typeof object === typeof {};
@@ -71,24 +71,36 @@
   };
 
   /*
-  # Method used to extract the parent route out of a
+  # Method: getParentRoute
+  # 	Used to extract the parent route out of a
   */
 
-  getParentRoute = function(route) {
+  getParentRoute = function(pattern) {
     var closingBracketIndex, parentRoute;
-    route = isString(route) ? trim(route) : "";
+    pattern = isString(pattern) ? trim(pattern) : "";
     parentRoute = null;
-    if (startsWith(route, "[")) {
-      closingBracketIndex = route.indexOf("]");
+    if (startsWith(pattern, "[")) {
+      closingBracketIndex = pattern.indexOf("]");
       if (closingBracketIndex > 1) {
-        parentRoute = route.slice(1, closingBracketIndex);
+        parentRoute = pattern.slice(1, closingBracketIndex);
       }
     }
     return parentRoute;
   };
 
   /*
-  # Method used to extract the parameters out of a route
+  # Method: getParameters
+  # 	Used to extract the parameters out of a route (from within the route's path, not query string)
+  #
+  # Arguments:
+  #	pattern - The pattern to use as a reference for finding parameters
+  #	route - The given route to extract parameters from
+  #
+  # Returns:
+  #	object - An object of the route's parameters
+  #
+  # See Also:
+  #	parseQuryString
   */
 
   getParameters = function(pattern, route) {
@@ -111,6 +123,58 @@
   };
 
   /*
+  # Method: parseQueryString
+  #	Used to parse and objectize a query string
+  #
+  # Arguments: 
+  #	queryString - The query string to split up into an object
+  #
+  # Returns:
+  #	object - An object of the split apart query string
+  */
+
+  parseQueryString = function(queryString) {
+    var key, piece, queryParams, value, _i, _len, _ref, _ref2;
+    queryString = isString(queryString) ? trim(queryString) : "";
+    queryParams = {};
+    _ref = queryString.split("&");
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      piece = _ref[_i];
+      _ref2 = piece.split("=", 2), key = _ref2[0], value = _ref2[1];
+      queryParams[key] = value;
+    }
+    return queryParams;
+  };
+
+  /*
+  # Method: matchPattern
+  #	Method used to determine if a route matches a pattern
+  #
+  # Arguments:
+  #	route - The route to check
+  #	pattern - The pattern to compare the route against
+  #
+  # Returns:
+  #	boolean - Did the route match the pattern?
+  */
+
+  matchPattern = function(route, pattern) {
+    var index, patternPiece, patternSplit, routeSplit;
+    route = standardizeRoute(route);
+    pattern = standardizeRoute(pattern);
+    routeSplit = route.split("/");
+    patternSplit = pattern.split("/");
+    if (routeSplit.length !== patternSplit.length) return false;
+    for (index in patternSplit) {
+      patternPiece = patternSplit[index];
+      if (!(patternPiece === routeSplit[index] || startsWith(patternPiece, ":"))) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  /*
   # Method: runCallStack
   #	Used to execute a callstack from a route starting at it's top most parent
   #
@@ -127,25 +191,26 @@
     (stackAdd = function(route) {
       route = assignedRoutes[route];
       if (isObject(route)) {
-        if (isFunction(route.setup)) stack.unshift(route.setup);
+        if (isFunction(route.setup)) stack.push(route);
         if ((route.parentRoute != null) && route.parentRoute !== "") {
           return stackAdd(route.parentRoute);
         }
       }
     })(pattern);
     (callItem = function(stack, parameters) {
-      var item;
+      var item, setup;
       if (stack.length <= 0) return;
-      item = stack.shift();
-      if (!isFunction(item)) item = (function() {});
-      if (item.length === 2) {
-        return item(parameters, function(p) {
+      item = stack.pop();
+      if (!isObject(item)) item = {};
+      if (!isFunction(item.setup)) setup = (function() {});
+      if (item.setup.length === 2) {
+        return item.setup(parameters, function(p) {
           if (!isObject(p)) p = {};
           extend(parameters, p);
           return callItem.call(callItem, stack, parameters);
         });
       } else {
-        item(parameters);
+        item.setup(parameters);
         return callItem(stack, parameters);
       }
     })(stack, parameters);
@@ -172,6 +237,8 @@
       pattern = standardizeRoute(pattern);
       parentRoute = standardizeRoute(parentRoute);
       return assignedRoutes[pattern] = {
+        context: {},
+        pattern: pattern,
         parentRoute: parentRoute,
         setup: callback,
         teardown: (function() {})
@@ -184,51 +251,26 @@
     	#	route - The route to try and call
     	#	parameters (optional) - The initial prameters to send
     */
-    call: function(route, parameters) {
-      var config, pattern;
-      route = standardizeRoute(route);
+    call: function(uri, parameters) {
+      var config, pattern, queryParams, queryString, route, _ref;
+      if (!isString(uri)) uri = "";
       if (!isObject(parameters)) parameters = {};
+      _ref = uri.split("?", 2), route = _ref[0], queryString = _ref[1];
+      route = standardizeRoute(route);
+      queryParams = parseQueryString(queryString);
+      extend(parameters, queryParams);
       if (isFunction(assignedRoutes[route])) {
         return assignedRoutes[route](parameters);
       }
       for (pattern in assignedRoutes) {
         config = assignedRoutes[pattern];
-        if (Finch.match(route, pattern)) {
+        if (matchPattern(route, pattern)) {
           extend(parameters, getParameters(pattern, route));
           runCallStack(pattern, parameters);
           return true;
         }
       }
       return false;
-    },
-    /*
-    	# Method: Finch.match
-    	#	Method used to determine if a route matches a pattern
-    	#
-    	# Arguments:
-    	#	route - The route to check
-    	#	pattern - The pattern to compare the route against
-    	#
-    	# Returns:
-    	#	boolean - Did the route match the pattern?
-    */
-    match: function(route, pattern) {
-      var index, patternPiece, patternSplit, routeSplit;
-      route = standardizeRoute(route);
-      pattern = standardizeRoute(pattern);
-      routeSplit = route.split("/");
-      patternSplit = pattern.split("/");
-      if (routeSplit.length !== patternSplit.length) return false;
-      for (index in patternSplit) {
-        patternPiece = patternSplit[index];
-        if (!(patternPiece === routeSplit[index] || startsWith(patternPiece, ":"))) {
-          return false;
-        }
-      }
-      return true;
-    },
-    log: function() {
-      return console.log(assignedRoutes);
     }
   };
 
