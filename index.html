@@ -4,38 +4,34 @@
 		<script src="./scripts/jquery.1.7.1.min.js" type="text/javascript" language="javascript"></script>
 		<script src="./scripts/finch.js" type="text/javascript" language="javascript"></script>
 		<script>
-			Finch.route("home", function(params)
+			Finch.route("home", function(params, childCallback)
 			{
-				console.log("Called home");
-				console.log(params);
+				console.log("Called home", JSON.stringify(params));
+				setTimeout(function() {childCallback({hello:'world'})}, 500);
 			});
 
-			Finch.route("[home]/news", function(params)
+			Finch.route("[home]/news", function(params, childCallback)
 			{
-				console.log("Called home/news");
-				console.log(params);
+				console.log("Called home/news", JSON.stringify(params));
+				setTimeout(function() {childCallback({foo: 'bar'})}, 1000);
 			});
 
 			Finch.route("[home/news]/:id", function(params)
 			{
-				console.log("Called home/news/:id");
-				console.log(params);
+				console.log("Called home/news/:id", JSON.stringify(params));
 			});
 
 			Finch.route("[home/news/:id]/:name", function(params){
-				console.log("Called [home/news/:id]/:name");
-				console.log(params);
+				console.log("Called [home/news/:id]/:name", JSON.stringify(params));
 			});
-
+			
 			Finch.call("/home/news/66/Rick")
-			console.log("-----------------")
 			Finch.call("/home/news/33/Allen")
-			console.log("-----------------")
-			Finch.call("/home/news/66")
-			console.log("-----------------")
+			Finch.call("/home/news/11")
 			Finch.call("/home/news")
-			console.log("-----------------")
 			Finch.call("/home")
+			
+			
 		</script>
 	</head>
 	<body>
