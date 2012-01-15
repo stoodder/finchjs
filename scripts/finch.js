@@ -1,5 +1,5 @@
 (function() {
-  var Finch, assignedPatterns, buildCallStack, endsWith, extend, extrapolateRouteStack, getParameters, getParentPattern, isArray, isFunction, isObject, isString, matchPattern, parseQueryString, runCallStack, standardizeRoute, startsWith, trim;
+  var Finch, assignedPatterns, buildCallStack, buildRouteStack, endsWith, extend, getParameters, getParentPattern, isArray, isFunction, isObject, isString, matchPattern, parseQueryString, runCallStack, standardizeRoute, startsWith, trim, trimSlashes;
 
   isObject = function(object) {
     return typeof object === typeof {};
@@ -18,7 +18,11 @@
   };
 
   trim = function(str) {
-    return str.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+    return str.replace(/^\s+/, '').replace(/\s+$/, '');
+  };
+
+  trimSlashes = function(str) {
+    return str.replace(/^\/+/, '').replace(/\/+$/, '');
   };
 
   startsWith = function(haystack, needle) {
@@ -57,8 +61,7 @@
         route = route.slice(Math.max(1, closingBracketIndex + 1));
       }
     }
-    if (startsWith(route, "/")) route = route.slice(1);
-    if (endsWith(route, "/")) route = route.slice(0, route.length - 1);
+    route = trimSlashes(route);
     return route;
   };
 
@@ -190,7 +193,7 @@
     (stackAdd = function(pattern) {
       pattern = assignedPatterns[pattern];
       if (isObject(pattern)) {
-        if (isFunction(pattern.setup)) callStack.push(pattern);
+        if (isFunction(pattern.setup)) callStack.unshift(pattern);
         if ((pattern.parentPattern != null) && pattern.parentPattern !== "") {
           return stackAdd(pattern.parentPattern);
         }
@@ -215,7 +218,7 @@
     (callItem = function(stack, parameters) {
       var item, setup;
       if (stack.length <= 0) return;
-      item = stack.pop();
+      item = stack.shift();
       if (!isObject(item)) item = {};
       if (!isFunction(item.setup)) setup = (function() {});
       if (item.setup.length === 2) {
@@ -232,8 +235,8 @@
   };
 
   /*
-  # Method: extrapolateRouteStack
-  #	Used to extrpolate a stack of routes that will
+  # Method: buildRouteStack
+  #	Used to build a stack of routes that will
   #	be called with the given route (full routes, not patterns)
   #
   # Arguments:
@@ -241,37 +244,35 @@
   #	route - The route to extrpolate from
   */
 
-  extrapolateRouteStack = function(pattern, route) {
-    var extrapolate, routeSplit, routeStack;
+  buildRouteStack = function(pattern, route) {
+    var buildRoute, routeSplit, routeStack;
     pattern = standardizeRoute(pattern);
     route = standardizeRoute(route);
     routeSplit = route.split("/");
     routeStack = [];
     if (routeSplit.length <= 0) return routeStack;
-    (extrapolate = function(pattern) {
-      var assignedPattern, extrapolatedRoute, matches, patternPiece, patternSplit, routePiece, splitIndex;
+    (buildRoute = function(pattern) {
+      var assignedPattern, builtRoute, matches, patternPiece, patternSplit, routePiece, splitIndex;
       patternSplit = pattern.split("/");
-      extrapolatedRoute = "";
+      builtRoute = "";
       matches = true;
       splitIndex = 0;
       while (matches && patternSplit.length > splitIndex && routeSplit.length > splitIndex) {
         patternPiece = patternSplit[splitIndex];
         routePiece = routeSplit[splitIndex];
         if (startsWith(patternPiece, ":") || patternPiece === routePiece) {
-          extrapolatedRoute += "" + routePiece + "/";
+          builtRoute += "" + routePiece + "/";
         } else {
           matches = false;
         }
         splitIndex++;
       }
-      if (endsWith(extrapolatedRoute, "/")) {
-        extrapolatedRoute = extrapolatedRoute.slice(0, -1);
-      }
+      if (endsWith(builtRoute, "/")) builtRoute = builtRoute.slice(0, -1);
       assignedPattern = assignedPatterns[pattern];
-      if (extrapolatedRoute !== "") {
-        routeStack.push(extrapolatedRoute);
+      if (builtRoute !== "") {
+        routeStack.unshift(builtRoute);
         if ((assignedPattern.parentPattern != null) && assignedPattern.parentPattern !== "") {
-          return extrapolate(assignedPattern.parentPattern, route);
+          return buildRoute(assignedPattern.parentPattern, route);
         }
       }
     })(pattern);
@@ -329,6 +330,7 @@
         if (matchPattern(route, pattern)) {
           extend(parameters, getParameters(pattern, route));
           callStack = buildCallStack(pattern);
+          console.log(buildRouteStack(pattern, route));
           runCallStack(callStack, parameters);
           return true;
         }

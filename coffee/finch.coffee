@@ -3,7 +3,8 @@ isFunction = (object) -> Object::toString.call( object ) is "[object Function]"
 isArray = (object) -> Object::toString.call( object ) is "[object Array]"
 isString = (object) -> Object::toString.call( object ) is "[object String]"
 
-trim = (str) -> str.replace(/^\s\s*/, '').replace(/\s\s*$/, '')
+trim = (str) -> str.replace(/^\s+/, '').replace(/\s+$/, '')
+trimSlashes = (str) -> str.replace(/^\/+/, '').replace(/\/+$/, '')
 startsWith = (haystack, needle) -> haystack.indexOf(needle) is 0
 endsWith = (haystack, needle) ->  haystack.indexOf(needle, haystack.length - needle.length) isnt -1
 
@@ -14,8 +15,11 @@ extend = (obj, extender) ->
 	obj[key] = value for key, value of extender
 		
 	return obj
-
+##################################################
 #
+# Declare some private, state variables for Finch
+#
+##################################################
 assignedPatterns = {}
 
 ###
@@ -42,8 +46,7 @@ standardizeRoute = (route) ->
 			route = route.slice( Math.max(1, closingBracketIndex+1) )
 
 	#Remove any leading or trailing '/'
-	route = route.slice(1) if startsWith(route, "/")
-	route = route.slice(0, route.length-1) if endsWith(route, "/")
+	route = trimSlashes(route)
 
 	return route
 
@@ -188,7 +191,7 @@ buildCallStack = (pattern) ->
 		pattern = assignedPatterns[pattern]
 
 		if isObject(pattern)
-			callStack.push(pattern) if isFunction(pattern.setup)
+			callStack.unshift(pattern) if isFunction(pattern.setup)
 			stackAdd(pattern.parentPattern) if pattern.parentPattern? and pattern.parentPattern isnt ""
 	)(pattern)
 
@@ -215,7 +218,7 @@ runCallStack = (callStack, parameters) ->
 	(callItem = (stack, parameters) ->
 		return if stack.length <= 0
 
-		item = stack.pop()
+		item = stack.shift()
 		item = {} unless isObject(item)
 		setup = (->) unless isFunction(item.setup)
 
@@ -235,15 +238,15 @@ runCallStack = (callStack, parameters) ->
 #END runCallStack
 
 ###
-# Method: extrapolateRouteStack
-#	Used to extrpolate a stack of routes that will
+# Method: buildRouteStack
+#	Used to build a stack of routes that will
 #	be called with the given route (full routes, not patterns)
 #
 # Arguments:
 #	pattern - The pattern to reference
 #	route - The route to extrpolate from
 ###
-extrapolateRouteStack = (pattern, route) ->
+buildRouteStack = (pattern, route) ->
 	#Setup the parameters
 	pattern = standardizeRoute(pattern)
 	route = standardizeRoute(route)
@@ -252,14 +255,13 @@ extrapolateRouteStack = (pattern, route) ->
 
 	return routeStack if routeSplit.length <= 0
 
-	(extrapolate = (pattern) ->
+	(buildRoute = (pattern) ->
 
 		#split up the pattern
 		patternSplit = pattern.split("/")
-		extrapolatedRoute = ""
+		builtRoute = ""
 		matches = true
 		splitIndex = 0
-
 
 		#Iterate over the pieces to build the extrpolated route
 		while matches and patternSplit.length > splitIndex and routeSplit.length > splitIndex
@@ -270,7 +272,7 @@ extrapolateRouteStack = (pattern, route) ->
 
 			#Should we add the route to the extrpolated route
 			if startsWith(patternPiece, ":") or patternPiece is routePiece
-				extrapolatedRoute += "#{routePiece}/"
+				builtRoute += "#{routePiece}/"
 			else
 				matches = false
 
@@ -279,20 +281,20 @@ extrapolateRouteStack = (pattern, route) ->
 		#END while
 		
 		#Remove the last '/'
-		extrapolatedRoute = extrapolatedRoute.slice(0,-1) if endsWith(extrapolatedRoute, "/")
+		builtRoute = builtRoute.slice(0,-1) if endsWith(builtRoute, "/")
 		
 		#Get the assigned pattern
 		assignedPattern = assignedPatterns[pattern]
 
 		#call to extrpolate the parent route, if we extrpolated something in he child route
-		if extrapolatedRoute isnt ""
-			routeStack.push(extrapolatedRoute)
-			extrapolate(assignedPattern.parentPattern, route) if assignedPattern.parentPattern? and assignedPattern.parentPattern isnt ""
+		if builtRoute isnt ""
+			routeStack.unshift(builtRoute)
+			buildRoute(assignedPattern.parentPattern, route) if assignedPattern.parentPattern? and assignedPattern.parentPattern isnt ""
 
 	)(pattern)
 
 	return routeStack
-#END extrapolateRouteStack
+#END buildRouteStack
 
 
 
@@ -372,6 +374,8 @@ Finch = {
 
 				#Create a callstack for this pattern
 				callStack = buildCallStack(pattern)
+
+				console.log(buildRouteStack(pattern, route))
 
 				#Execute the callstack
 				runCallStack(callStack, parameters)
