@@ -247,18 +247,21 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 
 		#If the length is 2, then this is an asynchronous call
 		if callItem.setup.length == 2
+			#Check if we aborted the call
+			return abortedCallback() if aborted
+			
+			#push the internal stacks
+			#TODO: consider pushing this prior to the actuall call
+			currentCallStack.push(callItem)
+			currentRouteStack.push(routeItem)
+
 			#Call the method asynchronously
 			callItem.setup( parameters, (p) -> 
-				#Check if we aborted the call
-				return abortedCallback() if aborted
 
 				#Extend the parameters if they gave us any aditional
 				p = {} unless isObject(p)
 				extend(parameters, p)
 
-				#push the internal stacks
-				currentCallStack.push(callItem)
-				currentRouteStack.push(routeItem)
 
 				#Call the next method in the chain
 				callSetup.call( callSetup, callStack, routeStack, parameters )
@@ -266,15 +269,15 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 
 		#Synchronous call
 		else
-			#Execute this item's setup method
-			callItem.setup(parameters)
-
 			#Check if we aborted the call
 			return abortedCallback() if aborted
 
 			#push the internal stacks
 			currentCallStack.push(callItem)
 			currentRouteStack.push(routeItem)
+
+			#Execute this item's setup method
+			callItem.setup(parameters)
 
 			#recurse to the next call
 			callSetup(callStack, routeStack, parameters)

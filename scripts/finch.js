@@ -244,19 +244,19 @@
       if (!isString(routeItem)) routeItem = "";
       if (!isFunction(callItem.setup)) callItem.setup = (function() {});
       if (callItem.setup.length === 2) {
-        return callItem.setup(parameters, function(p) {
-          if (aborted) return abortedCallback();
-          if (!isObject(p)) p = {};
-          extend(parameters, p);
-          currentCallStack.push(callItem);
-          currentRouteStack.push(routeItem);
-          return callSetup.call(callSetup, callStack, routeStack, parameters);
-        });
-      } else {
-        callItem.setup(parameters);
         if (aborted) return abortedCallback();
         currentCallStack.push(callItem);
         currentRouteStack.push(routeItem);
+        return callItem.setup(parameters, function(p) {
+          if (!isObject(p)) p = {};
+          extend(parameters, p);
+          return callSetup.call(callSetup, callStack, routeStack, parameters);
+        });
+      } else {
+        if (aborted) return abortedCallback();
+        currentCallStack.push(callItem);
+        currentRouteStack.push(routeItem);
+        callItem.setup(parameters);
         return callSetup(callStack, routeStack, parameters);
       }
     })(callStack, routeStack, parameters);

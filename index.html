@@ -3,7 +3,7 @@
 	<head>
 		<script src="./scripts/finch.js" type="text/javascript" language="javascript"></script>
 		<script type="text/javascript" language="javascript">
-			Finch.route("home", function(params)
+			Finch.route("home", function(params, cb)
 			{
 				console.log("Called ---- home -----", JSON.stringify(params));
 			});
@@ -13,10 +13,9 @@
 				console.log("Called ---- home/news -----", JSON.stringify(params));
 			});
 
-			Finch.route("[home/news]/:id", function(params, cb)
+			Finch.route("[home/news]/:id", function(params)
 			{
 				console.log("Called ---- home/news/:id -----", JSON.stringify(params));
-				setTimeout(cb, 100);
 			});
 
 			Finch.route("[home/news/:id]/:name", function(params){
@@ -28,6 +27,7 @@
 			Finch.call("/home/news/33/Allen");
 			Finch.call("/home/news/33/Rick");
 			Finch.call("/home/news/33/Allen");
+			//call back one route
 			Finch.call("/home/news/66/Rick");
 			Finch.call("/home/news/66/Allen");
 
