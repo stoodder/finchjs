@@ -1,5 +1,5 @@
 (function() {
-  var Finch, assignedPatterns, buildCallStack, buildRouteStack, currentCallStack, currentRouteStack, endsWith, extend, findStackDiffIndex, getParameters, getParentPattern, isArray, isFunction, isNumber, isObject, isString, matchPattern, parseQueryString, runSetupCallStack, standardizeRoute, startsWith, trim, trimSlashes;
+  var Finch, assignedPatterns, buildCallStack, buildRouteStack, currentCallStack, currentRouteStack, endsWith, extend, findStackDiffIndex, getParameters, getParentPattern, isArray, isFunction, isNumber, isObject, isString, matchPattern, parseQueryString, runSetupCallStack, runTeardownCallStack, standardizeRoute, startsWith, trim, trimSlashes;
 
   isObject = function(object) {
     return typeof object === typeof {};
@@ -228,15 +228,16 @@
     if (!isArray(routeStack)) routeStack = [];
     stackDiffIndex = isNumber(stackDiffIndex) && stackDiffIndex > 0 ? parseInt(stackDiffIndex) : 0;
     if (!isObject(parameters)) parameters = {};
+    if (callStack.length <= stackDiffIndex) return;
     callStack = callStack.slice(stackDiffIndex);
     (callSetup = function(callStack, routeStack, parameters) {
-      var callItem, routeItem, setup;
+      var callItem, routeItem;
       if (callStack.length <= 0) return;
       callItem = callStack.shift();
       routeItem = routeStack.shift();
       if (!isObject(callItem)) callItem = {};
       if (!isString(routeItem)) routeItem = "";
-      if (!isFunction(callItem.setup)) setup = (function() {});
+      if (!isFunction(callItem.setup)) callItem.setup = (function() {});
       if (callItem.setup.length === 2) {
         return callItem.setup(parameters, function(p) {
           if (!isObject(p)) p = {};
@@ -252,6 +253,30 @@
         return callSetup(callStack, routeStack, parameters);
       }
     })(callStack, routeStack, parameters);
+  };
+
+  /*
+  # Method: runTeardownCallStack
+  */
+
+  runTeardownCallStack = function(callStack, routeStack, stackDiffIndex) {
+    var callTeardown;
+    if (!isArray(callStack)) callStack = [];
+    if (!isArray(routeStack)) routeStack = [];
+    stackDiffIndex = isNumber(stackDiffIndex) && stackDiffIndex > 0 ? parseInt(stackDiffIndex) : 0;
+    if (callStack.length <= stackDiffIndex) return;
+    callStack = callStack.slice(stackDiffIndex);
+    (callTeardown = function(callStack, routeStack) {
+      var callItem, routeItem;
+      if (callStack.length <= 0) return;
+      callItem = callStack.pop();
+      routeItem = routeStack.pop();
+      if (!isObject(callItem)) callItem = {};
+      if (!isString(routeItem)) routeItem = "";
+      if (!isFunction(callItem.teardown)) callItem.teardown = (function() {});
+      callItem.teardown();
+      return callTeardown(callStack, routeStack);
+    })(callStack, routeStack);
   };
 
   /*
@@ -376,6 +401,7 @@
           callStack = buildCallStack(pattern);
           routeStack = buildRouteStack(pattern, route);
           stackDiffIndex = findStackDiffIndex(currentRouteStack, routeStack);
+          runTeardownCallStack(currentCallStack, currentRouteStack, stackDiffIndex);
           runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters);
           return true;
         }

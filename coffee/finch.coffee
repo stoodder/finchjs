@@ -222,7 +222,7 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 	parameters = {} unless isObject(parameters)
 
 	#Don't execute anything if the diff index is larger than any index in the callStack
-	#return if callStack.length <= stackDiffIndex
+	return if callStack.length <= stackDiffIndex
 
 	#Slice the stack to only call after the given stackDiffIndex
 	callStack = callStack.slice(stackDiffIndex)
@@ -237,7 +237,7 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 		callItem = {} unless isObject(callItem)
 		routeItem = "" unless isString(routeItem)
 
-		setup = (->) unless isFunction(callItem.setup)
+		callItem.setup = (->) unless isFunction(callItem.setup)
 
 		#If the length is 2, then this is an asynchronous call
 		if callItem.setup.length == 2
@@ -272,6 +272,52 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 
 	#Reutrn nothing
 	return
+#END runSetupCallStack
+
+
+
+###
+# Method: runTeardownCallStack
+###
+runTeardownCallStack = (callStack, routeStack, stackDiffIndex) ->
+	#First setup the variables
+	callStack = [] unless isArray(callStack)
+	routeStack = [] unless isArray(routeStack)
+	stackDiffIndex = if isNumber(stackDiffIndex) and stackDiffIndex > 0 then parseInt(stackDiffIndex) else 0
+
+	#Don't execute anything if the diff index is larger than any index in the callStack
+	return if callStack.length <= stackDiffIndex
+
+	#Slice the stack to only call after the given stackDiffIndex
+	callStack = callStack.slice(stackDiffIndex)
+
+	#Use a recursive loop (for now) to iterate over the teardown methods 
+	#in reverse order
+	(callTeardown = (callStack, routeStack) ->
+		return if callStack.length <= 0
+
+		#Get the last most piece off the stacks
+		callItem = callStack.pop()
+		routeItem = routeStack.pop()
+
+		#Make sure they're valid
+		callItem = {} unless isObject(callItem)
+		routeItem = "" unless isString(routeItem)
+
+		#get the associated tear down method
+		callItem.teardown = (->) unless isFunction(callItem.teardown)
+
+		#Call the teardown method
+		callItem.teardown()
+
+		#execute the next step
+		callTeardown(callStack, routeStack)
+
+	)(callStack, routeStack)
+
+	#Reutrn nothing
+	return
+	
 #END runSetupCallStack
 
 
@@ -452,6 +498,9 @@ Finch = {
 				#Get the differentiating index between the previous route stack
 				#and the new route stack
 				stackDiffIndex = findStackDiffIndex(currentRouteStack, routeStack)
+
+				#Execute the teardown callstack from the given index
+				runTeardownCallStack(currentCallStack, currentRouteStack, stackDiffIndex)
 
 				#Execute the setup callstack from the given index
 				runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters)

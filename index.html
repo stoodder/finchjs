@@ -3,16 +3,14 @@
 	<head>
 		<script src="./scripts/finch.js" type="text/javascript" language="javascript"></script>
 		<script type="text/javascript" language="javascript">
-			Finch.route("home", function(params, childCallback)
+			Finch.route("home", function(params)
 			{
 				console.log("Called ---- home -----", JSON.stringify(params));
-				setTimeout(function() {childCallback({hello:'world'})}, 500);
 			});
 
-			Finch.route("[home]/news", function(params, childCallback)
+			Finch.route("[home]/news", function(params)
 			{
 				console.log("Called ---- home/news -----", JSON.stringify(params));
-				setTimeout(function() {childCallback({foo: 'bar'})}, 1000);
 			});
 
 			Finch.route("[home/news]/:id", function(params)
@@ -24,16 +22,12 @@
 				console.log("Called ---- [home/news/:id]/:name -----", JSON.stringify(params));
 			});
 			
-			Finch.call("/home/news/33/Allen")
+			Finch.call("/home/news/33/Allen");
+			Finch.call("/home/news/33/Rick");
+			Finch.call("/home/news/33/Allen");
+			Finch.call("/home/news/33/Allen");
 
-			setTimeout(function()
-			{
-				Finch.call("/home/news/33/Rick")
-			}, 2000);
-			setTimeout(function()
-			{
-				Finch.call("/home/news/33/Allen")
-			}, 3000);
+
 			
 		</script>
 	</head>
