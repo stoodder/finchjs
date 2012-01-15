@@ -24,37 +24,17 @@
 				console.log("Called ---- [home/news/:id]/:name -----", JSON.stringify(params));
 			});
 			
-			Finch.call("/home")
-			Finch.call("/home/news")
-			Finch.call("/home/news/11")
-			Finch.call("/home/news/66/Rick")
-			Finch.call("/home/news/33/Allen?other=stuff")
-			
+			Finch.call("/home/news/33/Allen")
+
 			setTimeout(function()
 			{
-				console.log("-----------------------------------------------------------------------")
-				console.log("-----------------------------------------------------------------------")
-				console.log("-----------------------------------------------------------------------")
-					
-				Finch.call("home")
-				Finch.call("home/news")
-				Finch.call("home/news/11")
-				Finch.call("home/news/66/Rick")
-				Finch.call("home/news/33/Allen?other=stuff")
-
-				setTimeout(function()
-				{
-					console.log("-----------------------------------------------------------------------")
-					console.log("-----------------------------------------------------------------------")
-					console.log("-----------------------------------------------------------------------")
-						
-					Finch.call("home/")
-					Finch.call("home/news/")
-					Finch.call("home/news/11/")
-					Finch.call("home/news/66/Rick/")
-					Finch.call("home/news/33/Allen/?other=stuff")
-				}, 2000);
+				Finch.call("/home/news/33/Rick")
 			}, 2000);
+			setTimeout(function()
+			{
+				Finch.call("/home/news/33/Allen")
+			}, 3000);
+			
 		</script>
 	</head>
 	<body>

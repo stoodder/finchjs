@@ -1,5 +1,5 @@
 (function() {
-  var Finch, assignedPatterns, buildCallStack, buildRouteStack, endsWith, extend, getParameters, getParentPattern, isArray, isFunction, isObject, isString, matchPattern, parseQueryString, runCallStack, standardizeRoute, startsWith, trim, trimSlashes;
+  var Finch, assignedPatterns, buildCallStack, buildRouteStack, currentCallStack, currentRouteStack, endsWith, extend, findStackDiffIndex, getParameters, getParentPattern, isArray, isFunction, isNumber, isObject, isString, matchPattern, parseQueryString, runSetupCallStack, standardizeRoute, startsWith, trim, trimSlashes;
 
   isObject = function(object) {
     return typeof object === typeof {};
@@ -15,6 +15,10 @@
 
   isString = function(object) {
     return Object.prototype.toString.call(object) === "[object String]";
+  };
+
+  isNumber = function(object) {
+    return Object.prototype.toString.call(object) === "[object Number]";
   };
 
   trim = function(str) {
@@ -45,6 +49,10 @@
   };
 
   assignedPatterns = {};
+
+  currentRouteStack = [];
+
+  currentCallStack = [];
 
   /*
   # Method used to standardize a route so we can better parse through it
@@ -191,11 +199,12 @@
     pattern = standardizeRoute(pattern);
     callStack = [];
     (stackAdd = function(pattern) {
-      pattern = assignedPatterns[pattern];
-      if (isObject(pattern)) {
-        if (isFunction(pattern.setup)) callStack.unshift(pattern);
-        if ((pattern.parentPattern != null) && pattern.parentPattern !== "") {
-          return stackAdd(pattern.parentPattern);
+      var assignedPattern;
+      assignedPattern = assignedPatterns[pattern];
+      if (isObject(assignedPattern)) {
+        if (isFunction(assignedPattern.setup)) callStack.unshift(assignedPattern);
+        if ((assignedPattern.parentPattern != null) && assignedPattern.parentPattern !== "") {
+          return stackAdd(assignedPattern.parentPattern);
         }
       }
     })(pattern);
@@ -203,35 +212,70 @@
   };
 
   /*
-  # Method: runCallStack
+  # Method: runSetupCallStack
   #	Used to execute a callstack from a route starting at it's top most parent
   #
   # Arguments:
-  #	stack - The stack to iterate through
+  #	callStack - The stack to iterate through (calls each item's setup method)
+  #	routeStack - The route stack that is similar to the call stack
+  #	staffDiffIndex - The point where the stack should start calling from
   #	parameters - The parameters to extend onto the list of parameters to send onward
   */
 
-  runCallStack = function(callStack, parameters) {
-    var callItem;
+  runSetupCallStack = function(callStack, routeStack, stackDiffIndex, parameters) {
+    var callSetup;
     if (!isArray(callStack)) callStack = [];
+    if (!isArray(routeStack)) routeStack = [];
+    stackDiffIndex = isNumber(stackDiffIndex) && stackDiffIndex > 0 ? parseInt(stackDiffIndex) : 0;
     if (!isObject(parameters)) parameters = {};
-    (callItem = function(stack, parameters) {
-      var item, setup;
-      if (stack.length <= 0) return;
-      item = stack.shift();
-      if (!isObject(item)) item = {};
-      if (!isFunction(item.setup)) setup = (function() {});
-      if (item.setup.length === 2) {
-        return item.setup(parameters, function(p) {
+    callStack = callStack.slice(stackDiffIndex);
+    (callSetup = function(callStack, routeStack, parameters) {
+      var callItem, routeItem, setup;
+      if (callStack.length <= 0) return;
+      callItem = callStack.shift();
+      routeItem = routeStack.shift();
+      if (!isObject(callItem)) callItem = {};
+      if (!isString(routeItem)) routeItem = "";
+      if (!isFunction(callItem.setup)) setup = (function() {});
+      if (callItem.setup.length === 2) {
+        return callItem.setup(parameters, function(p) {
           if (!isObject(p)) p = {};
           extend(parameters, p);
-          return callItem.call(callItem, stack, parameters);
+          currentCallStack.push(callItem);
+          currentRouteStack.push(routeItem);
+          return callSetup.call(callSetup, callStack, routeStack, parameters);
         });
       } else {
-        item.setup(parameters);
-        return callItem(stack, parameters);
+        callItem.setup(parameters);
+        currentCallStack.push(callItem);
+        currentRouteStack.push(routeItem);
+        return callSetup(callStack, routeStack, parameters);
       }
-    })(callStack, parameters);
+    })(callStack, routeStack, parameters);
+  };
+
+  /*
+  # Method: findStackDiffIndex
+  #	Used to find the index between two stacks where they first differentiate
+  #
+  # Arguments:
+  #	oldRouteStack - The old route stack to compate against
+  #	newRouteStack - The new route stack to compare with
+  #
+  # Returns:
+  #	int - The first index where the two stacks aren't equal
+  */
+
+  findStackDiffIndex = function(oldRouteStack, newRouteStack) {
+    var stackIndex;
+    if (!isArray(oldRouteStack)) oldRouteStack = [];
+    if (!isArray(newRouteStack)) newRouteStack = [];
+    stackIndex = 0;
+    while (oldRouteStack.length > stackIndex && newRouteStack.length > stackIndex) {
+      if (oldRouteStack[stackIndex] !== newRouteStack[stackIndex]) break;
+      stackIndex++;
+    }
+    return stackIndex;
   };
 
   /*
@@ -315,7 +359,7 @@
     	#	parameters (optional) - The initial prameters to send
     */
     call: function(uri, parameters) {
-      var callStack, config, pattern, queryParams, queryString, route, _ref;
+      var callStack, config, pattern, queryParams, queryString, route, routeStack, stackDiffIndex, _ref;
       if (!isString(uri)) uri = "";
       if (!isObject(parameters)) parameters = {};
       _ref = uri.split("?", 2), route = _ref[0], queryString = _ref[1];
@@ -330,8 +374,9 @@
         if (matchPattern(route, pattern)) {
           extend(parameters, getParameters(pattern, route));
           callStack = buildCallStack(pattern);
-          console.log(buildRouteStack(pattern, route));
-          runCallStack(callStack, parameters);
+          routeStack = buildRouteStack(pattern, route);
+          stackDiffIndex = findStackDiffIndex(currentRouteStack, routeStack);
+          runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters);
           return true;
         }
       }

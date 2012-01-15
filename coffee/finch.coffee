@@ -2,6 +2,7 @@ isObject = (object) -> ( typeof object == typeof {} );
 isFunction = (object) -> Object::toString.call( object ) is "[object Function]"
 isArray = (object) -> Object::toString.call( object ) is "[object Array]"
 isString = (object) -> Object::toString.call( object ) is "[object String]"
+isNumber = (object) -> Object::toString.call( object ) is "[object Number]"
 
 trim = (str) -> str.replace(/^\s+/, '').replace(/\s+$/, '')
 trimSlashes = (str) -> str.replace(/^\/+/, '').replace(/\/+$/, '')
@@ -21,6 +22,8 @@ extend = (obj, extender) ->
 #
 ##################################################
 assignedPatterns = {}
+currentRouteStack = []
+currentCallStack = []
 
 ###
 # Method used to standardize a route so we can better parse through it
@@ -188,54 +191,122 @@ buildCallStack = (pattern) ->
 
 	#Next build the callstack
 	(stackAdd = (pattern) ->
-		pattern = assignedPatterns[pattern]
+		assignedPattern = assignedPatterns[pattern]
 
-		if isObject(pattern)
-			callStack.unshift(pattern) if isFunction(pattern.setup)
-			stackAdd(pattern.parentPattern) if pattern.parentPattern? and pattern.parentPattern isnt ""
+		if isObject(assignedPattern)
+			callStack.unshift(assignedPattern) if isFunction(assignedPattern.setup)
+			stackAdd(assignedPattern.parentPattern) if assignedPattern.parentPattern? and assignedPattern.parentPattern isnt ""
 	)(pattern)
 
 	return callStack
 #END buildCallStack
 
+
+
 ###
-# Method: runCallStack
+# Method: runSetupCallStack
 #	Used to execute a callstack from a route starting at it's top most parent
 #
 # Arguments:
-#	stack - The stack to iterate through
+#	callStack - The stack to iterate through (calls each item's setup method)
+#	routeStack - The route stack that is similar to the call stack
+#	staffDiffIndex - The point where the stack should start calling from
 #	parameters - The parameters to extend onto the list of parameters to send onward
 ###
-runCallStack = (callStack, parameters) ->
+runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 
 	#First setup the variables
 	callStack = [] unless isArray(callStack)
+	routeStack = [] unless isArray(routeStack)
+	stackDiffIndex = if isNumber(stackDiffIndex) and stackDiffIndex > 0 then parseInt(stackDiffIndex) else 0
 	parameters = {} unless isObject(parameters)
 
-	#TODO: Eliminate steps in the call stack that have already been run, optimization
+	#Don't execute anything if the diff index is larger than any index in the callStack
+	#return if callStack.length <= stackDiffIndex
+
+	#Slice the stack to only call after the given stackDiffIndex
+	callStack = callStack.slice(stackDiffIndex)
 
 	#Lastly execute the callstack, taking into account methods that request for the child callback
-	(callItem = (stack, parameters) ->
-		return if stack.length <= 0
+	(callSetup = (callStack, routeStack, parameters) ->
+		return if callStack.length <= 0
 
-		item = stack.shift()
-		item = {} unless isObject(item)
-		setup = (->) unless isFunction(item.setup)
+		callItem = callStack.shift()
+		routeItem = routeStack.shift()
 
-		if item.setup.length == 2
-			item.setup( parameters, (p) -> 
+		callItem = {} unless isObject(callItem)
+		routeItem = "" unless isString(routeItem)
+
+		setup = (->) unless isFunction(callItem.setup)
+
+		#If the length is 2, then this is an asynchronous call
+		if callItem.setup.length == 2
+			#Call the method asynchronously
+			callItem.setup( parameters, (p) -> 
+				
+				#Extend the parameters if they gave us any aditional
 				p = {} unless isObject(p)
 				extend(parameters, p)
-				callItem.call( callItem, stack, parameters )
+
+				#push the internal stacks
+				currentCallStack.push(callItem)
+				currentRouteStack.push(routeItem)
+
+				#Call the next method in the chain
+				callSetup.call( callSetup, callStack, routeStack, parameters )
 			)
+
+		#Synchronous call
 		else
-			item.setup(parameters)
-			callItem(stack, parameters)
-	)(callStack, parameters)
+			#Execute this item's setup method
+			callItem.setup(parameters)
 
+			#push the internal stacks
+			currentCallStack.push(callItem)
+			currentRouteStack.push(routeItem)
+
+			#recurse to the next call
+			callSetup(callStack, routeStack, parameters)
+
+	)(callStack, routeStack, parameters)
+
+	#Reutrn nothing
 	return
+#END runSetupCallStack
 
-#END runCallStack
+
+
+###
+# Method: findStackDiffIndex
+#	Used to find the index between two stacks where they first differentiate
+#
+# Arguments:
+#	oldRouteStack - The old route stack to compate against
+#	newRouteStack - The new route stack to compare with
+#
+# Returns:
+#	int - The first index where the two stacks aren't equal
+###
+findStackDiffIndex = (oldRouteStack, newRouteStack) ->
+	#Make sure we have valid parameters
+	oldRouteStack = [] unless isArray(oldRouteStack)
+	newRouteStack = [] unless isArray(newRouteStack)
+	stackIndex = 0
+
+	#Iterate over each of the stacks while in their rnages and check the values
+	while oldRouteStack.length > stackIndex and newRouteStack.length > stackIndex
+		#Stop looping if we found our first different value
+		break if oldRouteStack[stackIndex] isnt newRouteStack[stackIndex]
+
+		#increment the index
+		stackIndex++
+	#END while
+	
+	#Return the differentiation point
+	return stackIndex
+#END findStackDiffIndex
+
+
 
 ###
 # Method: buildRouteStack
@@ -253,8 +324,10 @@ buildRouteStack = (pattern, route) ->
 	routeSplit = route.split("/")
 	routeStack = []
 
+	#return the blank stack if no route was given
 	return routeStack if routeSplit.length <= 0
 
+	#Recursive callback to build up the route stack
 	(buildRoute = (pattern) ->
 
 		#split up the pattern
@@ -372,13 +445,16 @@ Finch = {
 				#Get the parameters of the route
 				extend(parameters, getParameters(pattern, route))
 
-				#Create a callstack for this pattern
+				#Create the necessary callstacks
 				callStack = buildCallStack(pattern)
+				routeStack = buildRouteStack(pattern, route)
 
-				console.log(buildRouteStack(pattern, route))
+				#Get the differentiating index between the previous route stack
+				#and the new route stack
+				stackDiffIndex = findStackDiffIndex(currentRouteStack, routeStack)
 
-				#Execute the callstack
-				runCallStack(callStack, parameters)
+				#Execute the setup callstack from the given index
+				runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters)
 
 				#return true
 				return true
