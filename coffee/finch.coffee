@@ -61,12 +61,12 @@ standardizeRoute = (route) ->
 #	string - The idenfitfied parent pattern
 ###
 getParentPattern = (pattern) ->
-
 	#Initialzie the parameters
 	pattern = if isString(pattern) then trim(pattern) else ""
 	parentPattern = null
 
 	#Check if we're starting with a bracket if startsWith(pattern, "[")
+	if startsWith(pattern, "[")
 
 		#find the closing bracket
 		closingBracketIndex = pattern.indexOf("]")
@@ -76,6 +76,8 @@ getParentPattern = (pattern) ->
 			parentPattern = pattern.slice(1, closingBracketIndex)
 	
 	return parentPattern
+
+#END getParentPattern
 
 ###
 # Method: getParameters
@@ -232,6 +234,67 @@ runCallStack = (callStack, parameters) ->
 
 #END runCallStack
 
+###
+# Method: extrapolateRouteStack
+#	Used to extrpolate a stack of routes that will
+#	be called with the given route (full routes, not patterns)
+#
+# Arguments:
+#	pattern - The pattern to reference
+#	route - The route to extrpolate from
+###
+extrapolateRouteStack = (pattern, route) ->
+	#Setup the parameters
+	pattern = standardizeRoute(pattern)
+	route = standardizeRoute(route)
+	routeSplit = route.split("/")
+	routeStack = []
+
+	return routeStack if routeSplit.length <= 0
+
+	(extrapolate = (pattern) ->
+
+		#split up the pattern
+		patternSplit = pattern.split("/")
+		extrapolatedRoute = ""
+		matches = true
+		splitIndex = 0
+
+
+		#Iterate over the pieces to build the extrpolated route
+		while matches and patternSplit.length > splitIndex and routeSplit.length > splitIndex
+
+			#Get the two pieces
+			patternPiece = patternSplit[splitIndex]
+			routePiece = routeSplit[splitIndex]
+
+			#Should we add the route to the extrpolated route
+			if startsWith(patternPiece, ":") or patternPiece is routePiece
+				extrapolatedRoute += "#{routePiece}/"
+			else
+				matches = false
+
+			#Increment the counter
+			splitIndex++
+		#END while
+		
+		#Remove the last '/'
+		extrapolatedRoute = extrapolatedRoute.slice(0,-1) if endsWith(extrapolatedRoute, "/")
+		
+		#Get the assigned pattern
+		assignedPattern = assignedPatterns[pattern]
+
+		#call to extrpolate the parent route, if we extrpolated something in he child route
+		if extrapolatedRoute isnt ""
+			routeStack.push(extrapolatedRoute)
+			extrapolate(assignedPattern.parentPattern, route) if assignedPattern.parentPattern? and assignedPattern.parentPattern isnt ""
+
+	)(pattern)
+
+	return routeStack
+#END extrapolateRouteStack
+
+
 
 ###
 # Class: Finch
@@ -306,6 +369,8 @@ Finch = {
 
 				#Get the parameters of the route
 				extend(parameters, getParameters(pattern, route))
+
+				console.log extrapolateRouteStack(pattern, route)
 
 				#Create a callstack for this pattern
 				callStack = buildCallStack(pattern)
