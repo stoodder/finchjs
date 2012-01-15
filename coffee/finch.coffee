@@ -215,29 +215,35 @@ buildCallStack = (pattern) ->
 #	routeStack - The route stack that is similar to the call stack
 #	staffDiffIndex - The point where the stack should start calling from
 #	parameters - The parameters to extend onto the list of parameters to send onward
+#	callback - The callback method to run when the stack is complete
 ###
-runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
+runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters, callback) ->
 
 	#First setup the variables
 	callStack = [] unless isArray(callStack)
 	routeStack = [] unless isArray(routeStack)
 	stackDiffIndex = if isNumber(stackDiffIndex) and stackDiffIndex > 0 then parseInt(stackDiffIndex) else 0
 	parameters = {} unless isObject(parameters)
+	callback = (->) unless isFunction(callback)
 
-	aborted = false
-	abortedCallback = (->)
-
+	#Setup the current call object, this is a bit messy,
+	#but is used for aborting calls and keeping everything in sync
 	currentCall = {
-		abort: (callback) ->
-			callback = (->) unless isFunction(callback)
-			abortedCallback = () ->
+		aborted: false
+		abortedCallback: (->)
+		abort: (cb) ->
+			cb = (->) unless isFunction(cb)
+			this.aborted = true
+			this.abortedCallback = () ->
 				currentCall = null
-				callback()
-			aborted = true
+				cb()
+		#END abort()
 	}
 
 	#Don't execute anything if the diff index is larger than any index in the callStack
-	return if callStack.length <= stackDiffIndex
+	if callStack.length <= stackDiffIndex
+		currentCall = null
+		return callback(parameters) 
 
 	#Slice the stack to only call after the given stackDiffIndex
 	callStack = callStack.slice(stackDiffIndex)
@@ -245,20 +251,27 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 
 	#Lastly execute the callstack, taking into account methods that request for the child callback
 	(callSetup = (callStack, routeStack, parameters) ->
-		return (currentCall = null) if callStack.length <= 0
-		return abortedCallback() if aborted
+		return currentCall.abortedCallback() if currentCall.aborted
+		if callStack.length <= 0
+			currentCall = null
+			return callback(parameters)
 
+		#Get the next pieces off the stacks
 		callItem = callStack.shift()
 		routeItem = routeStack.shift()
 
+		#validate the items
 		callItem = {} unless isObject(callItem)
 		routeItem = "" unless isString(routeItem)
 
+		#Make sure we have a setup method
 		callItem.setup = (->) unless isFunction(callItem.setup)
+
+		#Clear the callback if it's part of the stack
+		callback = (->) if callback is callItem.setup
 
 		#If the length is 2, then this is an asynchronous call
 		if callItem.setup.length == 2
-			#TODO: consider pushing this prior to the actuall call
 
 			#Call the method asynchronously
 			callItem.setup( parameters, (p) -> 
@@ -426,7 +439,7 @@ buildRouteStack = (pattern, route) ->
 		#call to extrpolate the parent route, if we extrpolated something in he child route
 		if builtRoute isnt ""
 			routeStack.unshift(builtRoute)
-			buildRoute(assignedPattern.parentPattern, route) if assignedPattern.parentPattern? and assignedPattern.parentPattern isnt ""
+			buildRoute(assignedPattern.parentPattern, route) if assignedPattern?.parentPattern? and assignedPattern.parentPattern isnt ""
 
 	)(pattern)
 
@@ -448,27 +461,31 @@ Finch = {
 	#	pattern - The pattern to add
 	#	callback - The callback to assign to the pattern
 	###
-	route: (pattern, callback) ->
+	route: (pattern, settings) ->
+
+		#Check if the input parameter was a function, assign it to the load method
+		# if it was
+		setupMethod = if isFunction(settings) then settings else (->)
+		loadMethod = if isFunction(settings) then settings else (->)
+		teardownMethod = (->)
 
 		#Make sure we have valid inputs
 		pattern = "" unless isString(pattern)
-		callback = (->) unless isFunction(callback)
+		settings = {} unless isObject(settings)
+		settings.context = {} unless isObject(settings.context)
+		settings.setup = setupMethod unless isFunction(settings.setup)
+		settings.load = loadMethod unless isFunction(settings.load)
+		settings.teardown = teardownMethod unless isFunction(settings.teardown)
 
 		#initialize the parent route to call
 		parentPattern = getParentPattern(pattern)
 
 		#Standardize the rotues
-		pattern = standardizeRoute(pattern)
-		parentPattern = standardizeRoute(parentPattern)
+		settings.pattern = standardizeRoute(pattern)
+		settings.parentPattern = standardizeRoute(parentPattern)
 
 		#Store the action for later
-		assignedPatterns[pattern] = {
-			context: {}
-			pattern: pattern
-			parentPattern: parentPattern
-			setup: callback
-			teardown: (->)
-		}
+		assignedPatterns[settings.pattern] = settings
 		
 		#END assignedPatterns[route]
 	
@@ -495,10 +512,6 @@ Finch = {
 		#Extend the parameters with those found in the query string
 		extend(parameters, queryParams)
 
-		# Check if the user is just trying to call on a pattern
-		# If so just call it's callback and return
-		return assignedPatterns[route](parameters) if isFunction(assignedPatterns[route])
-
 		# Iterate over each of the assigned routes and try to find a match
 		for pattern, config of assignedPatterns
 			
@@ -511,6 +524,10 @@ Finch = {
 				#Get the parameters of the route
 				extend(parameters, getParameters(pattern, route))
 
+				#Get the assigned pattern
+				assignedPattern = assignedPatterns[pattern]
+				loadMethod = if isFunction(assignedPattern.load) then assignedPattern.load else (->)
+
 				#Create the necessary callstacks
 				callStack = buildCallStack(pattern)
 				routeStack = buildRouteStack(pattern, route)
@@ -519,12 +536,11 @@ Finch = {
 				#and the new route stack
 				stackDiffIndex = findStackDiffIndex(currentRouteStack, routeStack)
 
-
 				#Execute the teardown callstack from the given index
 				runTeardownCallStack(currentCallStack, currentRouteStack, stackDiffIndex)
 
 				#Execute the setup callstack from the given index
-				runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters)
+				runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters, loadMethod)
 
 				#return true
 				return true

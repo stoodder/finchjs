@@ -3,10 +3,23 @@
 	<head>
 		<script src="./scripts/finch.js" type="text/javascript" language="javascript"></script>
 		<script type="text/javascript" language="javascript">
-			Finch.route("home", function(params, cb)
-			{
-				console.log("Called ---- home -----", JSON.stringify(params));
-				setTimeout(cb, 1000);
+			Finch.route("home", {
+				setup: function(params, cb)
+				{
+					console.log("Setup ---- home -----", JSON.stringify(params));
+					console.log(cb);
+					setTimeout(cb, 1000);
+				},
+
+				load: function(params)
+				{
+					console.log("Loading ---- home -----", JSON.stringify(params));
+				},
+
+				teardown: function()
+				{
+					console.log("Tearing down home")
+				}
 			});
 
 			Finch.route("[home]/news", function(params)
@@ -37,6 +50,13 @@
 			Finch.call("/home/news/33/Rick");
 			Finch.call("/home/news/33/James");
 			Finch.call("/home/news/66/Rick");
+			Finch.call("/home/news/33/James");
+
+			setTimeout(function()
+			{
+				console.log("HERE")
+				Finch.call("/home")
+			},2000)
 
 
 			

@@ -222,38 +222,47 @@
   #	routeStack - The route stack that is similar to the call stack
   #	staffDiffIndex - The point where the stack should start calling from
   #	parameters - The parameters to extend onto the list of parameters to send onward
+  #	callback - The callback method to run when the stack is complete
   */
 
-  runSetupCallStack = function(callStack, routeStack, stackDiffIndex, parameters) {
-    var aborted, abortedCallback, callSetup;
+  runSetupCallStack = function(callStack, routeStack, stackDiffIndex, parameters, callback) {
+    var callSetup;
     if (!isArray(callStack)) callStack = [];
     if (!isArray(routeStack)) routeStack = [];
     stackDiffIndex = isNumber(stackDiffIndex) && stackDiffIndex > 0 ? parseInt(stackDiffIndex) : 0;
     if (!isObject(parameters)) parameters = {};
-    aborted = false;
-    abortedCallback = (function() {});
+    if (!isFunction(callback)) callback = (function() {});
     currentCall = {
-      abort: function(callback) {
-        if (!isFunction(callback)) callback = (function() {});
-        abortedCallback = function() {
+      aborted: false,
+      abortedCallback: (function() {}),
+      abort: function(cb) {
+        if (!isFunction(cb)) cb = (function() {});
+        this.aborted = true;
+        return this.abortedCallback = function() {
           currentCall = null;
-          return callback();
+          return cb();
         };
-        return aborted = true;
       }
     };
-    if (callStack.length <= stackDiffIndex) return;
+    if (callStack.length <= stackDiffIndex) {
+      currentCall = null;
+      return callback(parameters);
+    }
     callStack = callStack.slice(stackDiffIndex);
     routeStack = routeStack.slice(stackDiffIndex);
     (callSetup = function(callStack, routeStack, parameters) {
       var callItem, routeItem;
-      if (callStack.length <= 0) return (currentCall = null);
-      if (aborted) return abortedCallback();
+      if (currentCall.aborted) return currentCall.abortedCallback();
+      if (callStack.length <= 0) {
+        currentCall = null;
+        return callback(parameters);
+      }
       callItem = callStack.shift();
       routeItem = routeStack.shift();
       if (!isObject(callItem)) callItem = {};
       if (!isString(routeItem)) routeItem = "";
       if (!isFunction(callItem.setup)) callItem.setup = (function() {});
+      if (callback === callItem.setup) callback = (function() {});
       if (callItem.setup.length === 2) {
         return callItem.setup(parameters, function(p) {
           currentCallStack.push(callItem);
@@ -355,7 +364,7 @@
       assignedPattern = assignedPatterns[pattern];
       if (builtRoute !== "") {
         routeStack.unshift(builtRoute);
-        if ((assignedPattern.parentPattern != null) && assignedPattern.parentPattern !== "") {
+        if (((assignedPattern != null ? assignedPattern.parentPattern : void 0) != null) && assignedPattern.parentPattern !== "") {
           return buildRoute(assignedPattern.parentPattern, route);
         }
       }
@@ -376,20 +385,21 @@
     	#	pattern - The pattern to add
     	#	callback - The callback to assign to the pattern
     */
-    route: function(pattern, callback) {
-      var parentPattern;
+    route: function(pattern, settings) {
+      var loadMethod, parentPattern, setupMethod, teardownMethod;
+      setupMethod = isFunction(settings) ? settings : (function() {});
+      loadMethod = isFunction(settings) ? settings : (function() {});
+      teardownMethod = (function() {});
       if (!isString(pattern)) pattern = "";
-      if (!isFunction(callback)) callback = (function() {});
+      if (!isObject(settings)) settings = {};
+      if (!isObject(settings.context)) settings.context = {};
+      if (!isFunction(settings.setup)) settings.setup = setupMethod;
+      if (!isFunction(settings.load)) settings.load = loadMethod;
+      if (!isFunction(settings.teardown)) settings.teardown = teardownMethod;
       parentPattern = getParentPattern(pattern);
-      pattern = standardizeRoute(pattern);
-      parentPattern = standardizeRoute(parentPattern);
-      return assignedPatterns[pattern] = {
-        context: {},
-        pattern: pattern,
-        parentPattern: parentPattern,
-        setup: callback,
-        teardown: (function() {})
-      };
+      settings.pattern = standardizeRoute(pattern);
+      settings.parentPattern = standardizeRoute(parentPattern);
+      return assignedPatterns[settings.pattern] = settings;
     },
     /*
     	# Method: Finch.call
@@ -399,16 +409,13 @@
     	#	parameters (optional) - The initial prameters to send
     */
     call: function(uri, parameters) {
-      var callStack, config, pattern, queryParams, queryString, route, routeStack, stackDiffIndex, _ref;
+      var assignedPattern, callStack, config, loadMethod, pattern, queryParams, queryString, route, routeStack, stackDiffIndex, _ref;
       if (!isString(uri)) uri = "";
       if (!isObject(parameters)) parameters = {};
       _ref = uri.split("?", 2), route = _ref[0], queryString = _ref[1];
       route = standardizeRoute(route);
       queryParams = parseQueryString(queryString);
       extend(parameters, queryParams);
-      if (isFunction(assignedPatterns[route])) {
-        return assignedPatterns[route](parameters);
-      }
       for (pattern in assignedPatterns) {
         config = assignedPatterns[pattern];
         if (matchPattern(route, pattern)) {
@@ -418,11 +425,13 @@
             });
           }
           extend(parameters, getParameters(pattern, route));
+          assignedPattern = assignedPatterns[pattern];
+          loadMethod = isFunction(assignedPattern.load) ? assignedPattern.load : (function() {});
           callStack = buildCallStack(pattern);
           routeStack = buildRouteStack(pattern, route);
           stackDiffIndex = findStackDiffIndex(currentRouteStack, routeStack);
           runTeardownCallStack(currentCallStack, currentRouteStack, stackDiffIndex);
-          runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters);
+          runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters, loadMethod);
           return true;
         }
       }
