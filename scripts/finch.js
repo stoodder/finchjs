@@ -230,6 +230,7 @@
     if (!isObject(parameters)) parameters = {};
     if (callStack.length <= stackDiffIndex) return;
     callStack = callStack.slice(stackDiffIndex);
+    routeStack = routeStack.slice(stackDiffIndex);
     (callSetup = function(callStack, routeStack, parameters) {
       var callItem, routeItem;
       if (callStack.length <= 0) return;
@@ -265,10 +266,9 @@
     if (!isArray(routeStack)) routeStack = [];
     stackDiffIndex = isNumber(stackDiffIndex) && stackDiffIndex > 0 ? parseInt(stackDiffIndex) : 0;
     if (callStack.length <= stackDiffIndex) return;
-    callStack = callStack.slice(stackDiffIndex);
     (callTeardown = function(callStack, routeStack) {
       var callItem, routeItem;
-      if (callStack.length <= 0) return;
+      if (callStack.length <= stackDiffIndex) return;
       callItem = callStack.pop();
       routeItem = routeStack.pop();
       if (!isObject(callItem)) callItem = {};

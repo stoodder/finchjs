@@ -226,6 +226,7 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 
 	#Slice the stack to only call after the given stackDiffIndex
 	callStack = callStack.slice(stackDiffIndex)
+	routeStack = routeStack.slice(stackDiffIndex)
 
 	#Lastly execute the callstack, taking into account methods that request for the child callback
 	(callSetup = (callStack, routeStack, parameters) ->
@@ -279,6 +280,7 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 ###
 # Method: runTeardownCallStack
 ###
+# TODO: we really do not need the first and second arguments
 runTeardownCallStack = (callStack, routeStack, stackDiffIndex) ->
 	#First setup the variables
 	callStack = [] unless isArray(callStack)
@@ -288,13 +290,10 @@ runTeardownCallStack = (callStack, routeStack, stackDiffIndex) ->
 	#Don't execute anything if the diff index is larger than any index in the callStack
 	return if callStack.length <= stackDiffIndex
 
-	#Slice the stack to only call after the given stackDiffIndex
-	callStack = callStack.slice(stackDiffIndex)
-
 	#Use a recursive loop (for now) to iterate over the teardown methods 
 	#in reverse order
 	(callTeardown = (callStack, routeStack) ->
-		return if callStack.length <= 0
+		return if callStack.length <= stackDiffIndex
 
 		#Get the last most piece off the stacks
 		callItem = callStack.pop()
@@ -317,7 +316,7 @@ runTeardownCallStack = (callStack, routeStack, stackDiffIndex) ->
 
 	#Reutrn nothing
 	return
-	
+
 #END runSetupCallStack
 
 
@@ -341,6 +340,7 @@ findStackDiffIndex = (oldRouteStack, newRouteStack) ->
 
 	#Iterate over each of the stacks while in their rnages and check the values
 	while oldRouteStack.length > stackIndex and newRouteStack.length > stackIndex
+
 		#Stop looping if we found our first different value
 		break if oldRouteStack[stackIndex] isnt newRouteStack[stackIndex]
 
@@ -498,6 +498,7 @@ Finch = {
 				#Get the differentiating index between the previous route stack
 				#and the new route stack
 				stackDiffIndex = findStackDiffIndex(currentRouteStack, routeStack)
+
 
 				#Execute the teardown callstack from the given index
 				runTeardownCallStack(currentCallStack, currentRouteStack, stackDiffIndex)
