@@ -4,8 +4,6 @@ isArray = (object) -> Object::toString.call( object ) is "[object Array]"
 isString = (object) -> Object::toString.call( object ) is "[object String]"
 
 trim = (str) -> str.replace(/^\s\s*/, '').replace(/\s\s*$/, '')
-leftTrim = (str) -> str.replace(/^\s+/,'')
-rightTrim = (str) -> str.replace(/\s+$/,'')
 startsWith = (haystack, needle) -> haystack.indexOf(needle) is 0
 endsWith = (haystack, needle) ->  haystack.indexOf(needle, haystack.length - needle.length) isnt -1
 
@@ -18,7 +16,7 @@ extend = (obj, extender) ->
 	return obj
 
 #
-assignedRoutes = {}
+assignedPatterns = {}
 
 ###
 # Method used to standardize a route so we can better parse through it
@@ -172,28 +170,42 @@ matchPattern = (route, pattern) ->
 #END matchPattern
 
 ###
+# Method: buildCallStack
+#	Used to build up a callstack for a given patterrn
+#
+# Arguments:
+#	pattern - The route pattern to try and call
+###
+buildCallStack = (pattern) ->
+
+	pattern = standardizeRoute(pattern)
+	callStack = []
+
+	#Next build the callstack
+	(stackAdd = (pattern) ->
+		pattern = assignedPatterns[pattern]
+
+		if isObject(pattern)
+			callStack.push(pattern) if isFunction(pattern.setup)
+			stackAdd(pattern.parentPattern) if pattern.parentPattern? and pattern.parentPattern isnt ""
+	)(pattern)
+
+	return callStack
+#END buildCallStack
+
+###
 # Method: runCallStack
 #	Used to execute a callstack from a route starting at it's top most parent
 #
 # Arguments:
-#	pattern - The route pattern to try and call
+#	stack - The stack to iterate through
 #	parameters - The parameters to extend onto the list of parameters to send onward
 ###
-runCallStack = (pattern, parameters) ->
+runCallStack = (callStack, parameters) ->
 
 	#First setup the variables
-	pattern = standardizeRoute(pattern)
+	callStack = [] unless isFunction(callStack)
 	parameters = {} unless isObject(parameters)
-	stack = []
-
-	#Next build the callstack
-	(stackAdd = (route) ->
-		route = assignedRoutes[route]
-
-		if isObject(route)
-			stack.push(route) if isFunction(route.setup)
-			stackAdd(route.parentPattern) if route.parentPattern? and route.parentPattern isnt ""
-	)(pattern)
 
 	#TODO: Eliminate steps in the call stack that have already been run, optimization
 
@@ -214,7 +226,7 @@ runCallStack = (pattern, parameters) ->
 		else
 			item.setup(parameters)
 			callItem(stack, parameters)
-	)(stack, parameters)
+	)(callStack, parameters)
 
 	return
 
@@ -248,7 +260,7 @@ Finch = {
 		parentPattern = standardizeRoute(parentPattern)
 
 		#Store the action for later
-		assignedRoutes[pattern] = {
+		assignedPatterns[pattern] = {
 			context: {}
 			pattern: pattern
 			parentPattern: parentPattern
@@ -256,7 +268,7 @@ Finch = {
 			teardown: (->)
 		}
 		
-		#END assignedRoutes[route]
+		#END assignedPatterns[route]
 	
 	#END Finch.route
 
@@ -284,10 +296,10 @@ Finch = {
 
 		# Check if the user is just trying to call on a pattern
 		# If so just call it's callback and return
-		return assignedRoutes[route](parameters) if isFunction(assignedRoutes[route])
+		return assignedPatterns[route](parameters) if isFunction(assignedPatterns[route])
 
 		# Iterate over each of the assigned routes and try to find a match
-		for pattern, config of assignedRoutes
+		for pattern, config of assignedPatterns
 			
 			#Check if this route matches the input routpatterne
 			if matchPattern(route, pattern)
@@ -295,15 +307,18 @@ Finch = {
 				#Get the parameters of the route
 				extend(parameters, getParameters(pattern, route))
 
-				#Lastly, since we found a route, run its callstack with the starting parameters
-				runCallStack(pattern, parameters)
+				#Create a callstack for this pattern
+				callStack = buildCallStack(pattern)
+
+				#Execute the callstack
+				runCallStack(callStack, parameters)
 
 				#return true
 				return true
 			
 			#END if match
 		
-		#END for pattern in assignedRoutes
+		#END for pattern in assignedPatterns
 		
 		#return false, we coudln't find a route
 		return false
