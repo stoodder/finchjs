@@ -206,7 +206,7 @@ buildCallStack = (pattern) ->
 runCallStack = (callStack, parameters) ->
 
 	#First setup the variables
-	callStack = [] unless isFunction(callStack)
+	callStack = [] unless isArray(callStack)
 	parameters = {} unless isObject(parameters)
 
 	#TODO: Eliminate steps in the call stack that have already been run, optimization
@@ -369,8 +369,6 @@ Finch = {
 
 				#Get the parameters of the route
 				extend(parameters, getParameters(pattern, route))
-
-				console.log extrapolateRouteStack(pattern, route)
 
 				#Create a callstack for this pattern
 				callStack = buildCallStack(pattern)

@@ -210,7 +210,7 @@
 
   runCallStack = function(callStack, parameters) {
     var callItem;
-    if (!isFunction(callStack)) callStack = [];
+    if (!isArray(callStack)) callStack = [];
     if (!isObject(parameters)) parameters = {};
     (callItem = function(stack, parameters) {
       var item, setup;
@@ -328,7 +328,6 @@
         config = assignedPatterns[pattern];
         if (matchPattern(route, pattern)) {
           extend(parameters, getParameters(pattern, route));
-          console.log(extrapolateRouteStack(pattern, route));
           callStack = buildCallStack(pattern);
           runCallStack(callStack, parameters);
           return true;
