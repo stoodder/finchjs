@@ -1,17 +1,12 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<script src="./scripts/finch.min.js" type="text/javascript" language="javascript"></script>
+		<script src="./scripts/finch.js" type="text/javascript" language="javascript"></script>
 		<script type="text/javascript" language="javascript">
 			Finch.route("home", function(params, cb)
 			{
 				console.log("Called ---- home -----", JSON.stringify(params));
-				setTimeout(function()
-				{
-					console.log("HERE");
-					cb();
-					//The rest of everything should appear after this
-				}, 5000);
+				setTimeout(cb, 1000);
 			});
 
 			Finch.route("[home]/news", function(params)
@@ -30,12 +25,18 @@
 			
 			Finch.call("/home/news/33/Allen");
 			Finch.call("/home/news/33/Rick");
-			Finch.call("/home/news/33/Allen");
+			Finch.call("/home/news/33/James");
 			Finch.call("/home/news/33/Rick");
-			Finch.call("/home/news/33/Allen");
-			//call back one route
+			Finch.call("/home/news/33/James");
+			Finch.call("/home/news/33/Rick");
+			Finch.call("/home/news/33/James");
+			Finch.call("/home/news/33/Rick");
+			Finch.call("/home/news/33/James");
+			Finch.call("/home/news/33/Rick");
+			Finch.call("/home/news/33/James");
+			Finch.call("/home/news/33/Rick");
+			Finch.call("/home/news/33/James");
 			Finch.call("/home/news/66/Rick");
-			Finch.call("/home/news/66/Allen");
 
 
 			

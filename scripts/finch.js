@@ -232,42 +232,43 @@
     if (!isObject(parameters)) parameters = {};
     aborted = false;
     abortedCallback = (function() {});
+    currentCall = {
+      abort: function(callback) {
+        if (!isFunction(callback)) callback = (function() {});
+        abortedCallback = function() {
+          currentCall = null;
+          return callback();
+        };
+        return aborted = true;
+      }
+    };
     if (callStack.length <= stackDiffIndex) return;
     callStack = callStack.slice(stackDiffIndex);
     routeStack = routeStack.slice(stackDiffIndex);
     (callSetup = function(callStack, routeStack, parameters) {
       var callItem, routeItem;
-      if (callStack.length <= 0) return;
+      if (callStack.length <= 0) return (currentCall = null);
+      if (aborted) return abortedCallback();
       callItem = callStack.shift();
       routeItem = routeStack.shift();
       if (!isObject(callItem)) callItem = {};
       if (!isString(routeItem)) routeItem = "";
       if (!isFunction(callItem.setup)) callItem.setup = (function() {});
       if (callItem.setup.length === 2) {
-        if (aborted) return abortedCallback();
-        currentCallStack.push(callItem);
-        currentRouteStack.push(routeItem);
         return callItem.setup(parameters, function(p) {
+          currentCallStack.push(callItem);
+          currentRouteStack.push(routeItem);
           if (!isObject(p)) p = {};
           extend(parameters, p);
           return callSetup.call(callSetup, callStack, routeStack, parameters);
         });
       } else {
-        if (aborted) return abortedCallback();
+        callItem.setup(parameters);
         currentCallStack.push(callItem);
         currentRouteStack.push(routeItem);
-        callItem.setup(parameters);
         return callSetup(callStack, routeStack, parameters);
       }
     })(callStack, routeStack, parameters);
-    return {
-      abort: function(callback) {
-        if (!isFunction(callback)) callback = (function() {});
-        currentCall = null;
-        abortedCallback = callback;
-        return aborted = true;
-      }
-    };
   };
 
   /*
@@ -398,13 +399,7 @@
     	#	parameters (optional) - The initial prameters to send
     */
     call: function(uri, parameters) {
-      var callStack, config, isCalling, pattern, queryParams, queryString, route, routeStack, stackDiffIndex, _ref;
-      if (isObject(currentCall) && currentCall !== null) {
-        currentCall.abort(function() {
-          return Finch.call(uri, parameters);
-        });
-      }
-      isCalling = true;
+      var callStack, config, pattern, queryParams, queryString, route, routeStack, stackDiffIndex, _ref;
       if (!isString(uri)) uri = "";
       if (!isObject(parameters)) parameters = {};
       _ref = uri.split("?", 2), route = _ref[0], queryString = _ref[1];
@@ -417,6 +412,11 @@
       for (pattern in assignedPatterns) {
         config = assignedPatterns[pattern];
         if (matchPattern(route, pattern)) {
+          if (currentCall != null) {
+            return currentCall.abort(function() {
+              return Finch.call(uri, parameters);
+            });
+          }
           extend(parameters, getParameters(pattern, route));
           callStack = buildCallStack(pattern);
           routeStack = buildRouteStack(pattern, route);

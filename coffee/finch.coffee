@@ -25,6 +25,7 @@ extend = (obj, extender) ->
 assignedPatterns = {}
 currentRouteStack = []
 currentCallStack = []
+
 currentCall = null
 
 ###
@@ -226,6 +227,15 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 	aborted = false
 	abortedCallback = (->)
 
+	currentCall = {
+		abort: (callback) ->
+			callback = (->) unless isFunction(callback)
+			abortedCallback = () ->
+				currentCall = null
+				callback()
+			aborted = true
+	}
+
 	#Don't execute anything if the diff index is larger than any index in the callStack
 	return if callStack.length <= stackDiffIndex
 
@@ -235,7 +245,8 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 
 	#Lastly execute the callstack, taking into account methods that request for the child callback
 	(callSetup = (callStack, routeStack, parameters) ->
-		return if callStack.length <= 0
+		return (currentCall = null) if callStack.length <= 0
+		return abortedCallback() if aborted
 
 		callItem = callStack.shift()
 		routeItem = routeStack.shift()
@@ -247,21 +258,18 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 
 		#If the length is 2, then this is an asynchronous call
 		if callItem.setup.length == 2
-			#Check if we aborted the call
-			return abortedCallback() if aborted
-			
-			#push the internal stacks
 			#TODO: consider pushing this prior to the actuall call
-			currentCallStack.push(callItem)
-			currentRouteStack.push(routeItem)
 
 			#Call the method asynchronously
 			callItem.setup( parameters, (p) -> 
 
+				#push the internal stacks
+				currentCallStack.push(callItem)
+				currentRouteStack.push(routeItem)
+
 				#Extend the parameters if they gave us any aditional
 				p = {} unless isObject(p)
 				extend(parameters, p)
-
 
 				#Call the next method in the chain
 				callSetup.call( callSetup, callStack, routeStack, parameters )
@@ -269,15 +277,12 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 
 		#Synchronous call
 		else
-			#Check if we aborted the call
-			return abortedCallback() if aborted
+			#Execute this item's setup method
+			callItem.setup(parameters)
 
 			#push the internal stacks
 			currentCallStack.push(callItem)
 			currentRouteStack.push(routeItem)
-
-			#Execute this item's setup method
-			callItem.setup(parameters)
 
 			#recurse to the next call
 			callSetup(callStack, routeStack, parameters)
@@ -285,13 +290,7 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 	)(callStack, routeStack, parameters)
 
 	#Reutrn nothing
-	return {
-		abort: (callback) ->
-			callback = (->) unless isFunction(callback)
-			currentCall = null
-			abortedCallback = callback
-			aborted = true
-	}
+	return
 #END runSetupCallStack
 
 
@@ -483,8 +482,6 @@ Finch = {
 	#	parameters (optional) - The initial prameters to send
 	###
 	call: (uri, parameters) ->
-		currentCall.abort( () -> Finch.call(uri, parameters) ) if isObject(currentCall) and currentCall isnt null
-		isCalling = true
 
 		#Make sure we have valid arguments
 		uri = "" unless isString(uri)
@@ -507,6 +504,9 @@ Finch = {
 			
 			#Check if this route matches the input routpatterne
 			if matchPattern(route, pattern)
+
+				#Abort the current call if one exists
+				return currentCall.abort( -> Finch.call(uri, parameters) ) if currentCall?
 
 				#Get the parameters of the route
 				extend(parameters, getParameters(pattern, route))
