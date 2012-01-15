@@ -16,6 +16,7 @@ extend = (obj, extender) ->
 	obj[key] = value for key, value of extender
 		
 	return obj
+
 ##################################################
 #
 # Declare some private, state variables for Finch
@@ -24,6 +25,7 @@ extend = (obj, extender) ->
 assignedPatterns = {}
 currentRouteStack = []
 currentCallStack = []
+currentCall = null
 
 ###
 # Method used to standardize a route so we can better parse through it
@@ -221,6 +223,9 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 	stackDiffIndex = if isNumber(stackDiffIndex) and stackDiffIndex > 0 then parseInt(stackDiffIndex) else 0
 	parameters = {} unless isObject(parameters)
 
+	aborted = false
+	abortedCallback = (->)
+
 	#Don't execute anything if the diff index is larger than any index in the callStack
 	return if callStack.length <= stackDiffIndex
 
@@ -244,7 +249,9 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 		if callItem.setup.length == 2
 			#Call the method asynchronously
 			callItem.setup( parameters, (p) -> 
-				
+				#Check if we aborted the call
+				return abortedCallback() if aborted
+
 				#Extend the parameters if they gave us any aditional
 				p = {} unless isObject(p)
 				extend(parameters, p)
@@ -262,6 +269,9 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 			#Execute this item's setup method
 			callItem.setup(parameters)
 
+			#Check if we aborted the call
+			return abortedCallback() if aborted
+
 			#push the internal stacks
 			currentCallStack.push(callItem)
 			currentRouteStack.push(routeItem)
@@ -272,7 +282,13 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 	)(callStack, routeStack, parameters)
 
 	#Reutrn nothing
-	return
+	return {
+		abort: (callback) ->
+			callback = (->) unless isFunction(callback)
+			currentCall = null
+			abortedCallback = callback
+			aborted = true
+	}
 #END runSetupCallStack
 
 
@@ -464,7 +480,8 @@ Finch = {
 	#	parameters (optional) - The initial prameters to send
 	###
 	call: (uri, parameters) ->
-
+		currentCall.abort( () -> Finch.call(uri, parameters) ) if isObject(currentCall) and currentCall isnt null
+		isCalling = true
 
 		#Make sure we have valid arguments
 		uri = "" unless isString(uri)

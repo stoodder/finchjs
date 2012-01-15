@@ -1,5 +1,5 @@
 (function() {
-  var Finch, assignedPatterns, buildCallStack, buildRouteStack, currentCallStack, currentRouteStack, endsWith, extend, findStackDiffIndex, getParameters, getParentPattern, isArray, isFunction, isNumber, isObject, isString, matchPattern, parseQueryString, runSetupCallStack, runTeardownCallStack, standardizeRoute, startsWith, trim, trimSlashes;
+  var Finch, assignedPatterns, buildCallStack, buildRouteStack, currentCall, currentCallStack, currentRouteStack, endsWith, extend, findStackDiffIndex, getParameters, getParentPattern, isArray, isFunction, isNumber, isObject, isString, matchPattern, parseQueryString, runSetupCallStack, runTeardownCallStack, standardizeRoute, startsWith, trim, trimSlashes;
 
   isObject = function(object) {
     return typeof object === typeof {};
@@ -53,6 +53,8 @@
   currentRouteStack = [];
 
   currentCallStack = [];
+
+  currentCall = null;
 
   /*
   # Method used to standardize a route so we can better parse through it
@@ -223,11 +225,13 @@
   */
 
   runSetupCallStack = function(callStack, routeStack, stackDiffIndex, parameters) {
-    var callSetup;
+    var aborted, abortedCallback, callSetup;
     if (!isArray(callStack)) callStack = [];
     if (!isArray(routeStack)) routeStack = [];
     stackDiffIndex = isNumber(stackDiffIndex) && stackDiffIndex > 0 ? parseInt(stackDiffIndex) : 0;
     if (!isObject(parameters)) parameters = {};
+    aborted = false;
+    abortedCallback = (function() {});
     if (callStack.length <= stackDiffIndex) return;
     callStack = callStack.slice(stackDiffIndex);
     routeStack = routeStack.slice(stackDiffIndex);
@@ -241,6 +245,7 @@
       if (!isFunction(callItem.setup)) callItem.setup = (function() {});
       if (callItem.setup.length === 2) {
         return callItem.setup(parameters, function(p) {
+          if (aborted) return abortedCallback();
           if (!isObject(p)) p = {};
           extend(parameters, p);
           currentCallStack.push(callItem);
@@ -249,11 +254,20 @@
         });
       } else {
         callItem.setup(parameters);
+        if (aborted) return abortedCallback();
         currentCallStack.push(callItem);
         currentRouteStack.push(routeItem);
         return callSetup(callStack, routeStack, parameters);
       }
     })(callStack, routeStack, parameters);
+    return {
+      abort: function(callback) {
+        if (!isFunction(callback)) callback = (function() {});
+        currentCall = null;
+        abortedCallback = callback;
+        return aborted = true;
+      }
+    };
   };
 
   /*
@@ -384,7 +398,13 @@
     	#	parameters (optional) - The initial prameters to send
     */
     call: function(uri, parameters) {
-      var callStack, config, pattern, queryParams, queryString, route, routeStack, stackDiffIndex, _ref;
+      var callStack, config, isCalling, pattern, queryParams, queryString, route, routeStack, stackDiffIndex, _ref;
+      if (isObject(currentCall) && currentCall !== null) {
+        currentCall.abort(function() {
+          return Finch.call(uri, parameters);
+        });
+      }
+      isCalling = true;
       if (!isString(uri)) uri = "";
       if (!isObject(parameters)) parameters = {};
       _ref = uri.split("?", 2), route = _ref[0], queryString = _ref[1];
