@@ -67,6 +67,33 @@ Calling the example route with the route setup shown above, we'd expect to the t
 	Finch.call("/user/stoodder")
 	> Looking up user stoodder
 
+#What about query string parameters, how do those work?
+Query string parameters appear at the and of a uri with the following pattern:
+
+	?key1=val1&key2=val2
+
+Finch handles these similarly to inline parameters.  For exmaple, pretend we had the following route set up:
+
+	Finch.route "/home", (params) ->
+		console.log("hello = \"#{params.hello}\"")
+
+... And we called ...
+
+	Finch.call "/home?hello=world"
+
+... We would get the following output
+
+	> hello = "world"
+
+**NOTE** Inline query parameters will always overwrite querystring query parameters
+
+Example:
+	
+	Finch.route "/home/news/:newsId", (params) ->
+		console.log("Called news id #{params.newsId}")
+	
+	Finch.call "/home/news/33?newsId=666"
+	> Called news id 33
 
 ### What's a parent route?
 A parent route is a route that is called before a child route is called.
