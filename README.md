@@ -67,7 +67,7 @@ Calling the example route with the route setup shown above, we'd expect to the t
 	Finch.call("/user/stoodder")
 	> Looking up user stoodder
 
-#What about query string parameters, how do those work?
+### What about query string parameters, how do those work?
 Query string parameters appear at the and of a uri with the following pattern:
 
 	?key1=val1&key2=val2
@@ -87,25 +87,94 @@ Finch handles these similarly to inline parameters.  For exmaple, pretend we had
 
 **NOTE** Inline query parameters will always overwrite querystring query parameters
 
-Example:
-	
 	Finch.route "/home/news/:newsId", (params) ->
 		console.log("Called news id #{params.newsId}")
 	
 	Finch.call "/home/news/33?newsId=666"
 	> Called news id 33
 
+## Parent Routes
 ### What's a parent route?
-A parent route is a route that is called before a child route is called.
+A parent route is a route that is called before a child route is called.  
 
-For exmaple
-Pretend we've assigned two routes in finch:
-* /home
-* [/home]/news
+Okay, so what does that mean? Let me explain by example:
 
-In this example, when we call the route "/home/news", /home will be executed first and then /home/news will be executed.
+Imagine that we have a page (/home) with tabs on it for inbox, news, etc.  We could imagine that each of the tabs has a corresponding route (/home/inbox, /home/news, /home/etc).  Whenever we call one of the tabs (child) routes we'd want to run any setup code for the /home route (such as loading in initial user data).  typically, without parent routes, we'd need to do the same setup code in each of the child route calls.  However, with finch we can easily specify a parent route to call
 
-### Why use parent routes?
-Parent routes are useful for setting up higher-level code.  
+	Finch.route "/home", (params) ->
+		console.log("Setup the home route")
+	
+	Finch.route "[/home]/news", (params) ->
+		console.log("Running /home/news")
 
-Imagine that we have a page (/home) with tabs on it for inbox, news, etc.  We could imagine that each of the tabs has a corresponding route (/home/inbox, /home/news, /home/etc).  Whenever we call one of the child route's we'd want to run any setup code for the /home route (such as loading in initial user data)
+	Finch.route "[/home]/inbox", (params) ->
+		console.log("Running /home/inbox")
+
+	Finch.route "[/home]/etc", (params) ->
+		console.log("Running /home/etc")
+
+Here, the piece of the route wrapped in [] is the parent route.  Running the following on this setup code:
+
+	Finch.call "/home/news"
+
+Would give us:
+	
+	-- Finch.call "/home/news"
+	> Setup the home route
+	> Running /home/news
+
+**NOTE** Routes calling parent routes MUST start with the '[', we cannot call routes with parent routes embdedded in the middle of a route:
+
+	Won't work:
+	Finch.route("/home/[news]")
+
+### Parent routes are multi level
+Pretend now that we wanted to go down another level to get a specific news article
+
+Extending on to our previous examples, we could make a new route:
+
+	Finch.route "[/home/news]/:newsId", (params) ->
+		console.log("Looking at news article #{params.newsId}")
+
+Calling the route could give us:
+
+	-- Finch.call "/home/news/33"
+	> Setup the home route
+	> Running /home/news
+	> Looking at news article 33
+
+### Parent routes are cached
+Often, we'll be switching routes and we won't need to re-setup our parent's data/structure. Finch knows this, and will remember what we've called and will ensure that we don't re-call the setup of our routes.  Hence running the following (with our previous parent route examples):
+
+	Finch.call "/home/news/33"
+	Finch.call "/home/news/99"
+
+Would give us
+	
+	-- Finch.call "/home/news/33"
+	> Setup the home route
+	> Running /home/news
+	> Looking at news article 33
+
+	-- Finch.call "/home/news/66"
+	> Looking at news article 66
+
+Notice, we didn't run re-execute the /home or /home/news rotues (because we didn't need to)
+
+It is also perfectly acceptabkle to call only to upper routes, doing something like this:
+
+	Finch.call "/home/news/33"
+	Finch.call "/home/news"
+
+Would yield the following:
+	
+	-- Finch.call "/home/news/33"
+	> Setup the home route
+	> Running /home/news
+	> Looking at news article 33
+
+	-- Finch.call "/home/news"
+	> Running /home/news
+
+	
+
