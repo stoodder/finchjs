@@ -114,7 +114,7 @@
   #	object - An object of the route's parameters
   #
   # See Also:
-  #	parseQuryString
+  #	parseQueryString
   */
 
   getParameters = function(pattern, route) {
@@ -140,7 +140,7 @@
   # Method: parseQueryString
   #	Used to parse and objectize a query string
   #
-  # Arguments: 
+  # Arguments:
   #	queryString - The query string to split up into an object
   #
   # Returns:
@@ -151,11 +151,13 @@
     var key, piece, queryParams, value, _i, _len, _ref, _ref2;
     queryString = isString(queryString) ? trim(queryString) : "";
     queryParams = {};
-    _ref = queryString.split("&");
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      piece = _ref[_i];
-      _ref2 = piece.split("=", 2), key = _ref2[0], value = _ref2[1];
-      queryParams[key] = value;
+    if (queryString !== "") {
+      _ref = queryString.split("&");
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        piece = _ref[_i];
+        _ref2 = piece.split("=", 2), key = _ref2[0], value = _ref2[1];
+        queryParams[key] = value;
+      }
     }
     return queryParams;
   };
@@ -382,16 +384,19 @@
     	#	callback - The callback to assign to the pattern
     */
     route: function(pattern, settings) {
-      var loadMethod, parentPattern, setupMethod, teardownMethod;
-      setupMethod = isFunction(settings) ? settings : (function() {});
-      loadMethod = isFunction(settings) ? settings : (function() {});
-      teardownMethod = (function() {});
+      var parentPattern;
+      if (isFunction(settings)) {
+        settings = {
+          setup: settings,
+          load: settings
+        };
+      }
       if (!isString(pattern)) pattern = "";
       if (!isObject(settings)) settings = {};
       if (!isObject(settings.context)) settings.context = {};
-      if (!isFunction(settings.setup)) settings.setup = setupMethod;
-      if (!isFunction(settings.load)) settings.load = loadMethod;
-      if (!isFunction(settings.teardown)) settings.teardown = teardownMethod;
+      if (!isFunction(settings.setup)) settings.setup = (function() {});
+      if (!isFunction(settings.load)) settings.load = (function() {});
+      if (!isFunction(settings.teardown)) settings.teardown = (function() {});
       parentPattern = getParentPattern(pattern);
       settings.pattern = standardizeRoute(pattern);
       settings.parentPattern = standardizeRoute(parentPattern);
@@ -432,6 +437,20 @@
         }
       }
       return false;
+    },
+    /*
+    	# Method: Finch.reset
+    	#   Tears down the current stack and resets the routes
+    	#
+    	# Arguments:
+    	#	none
+    */
+    reset: function() {
+      runTeardownCallStack(currentCallStack, currentRouteStack, 0);
+      assignedPatterns = {};
+      currentRouteStack = [];
+      currentCallStack = [];
+      currentCall = null;
     }
   };
 

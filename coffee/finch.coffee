@@ -14,7 +14,7 @@ extend = (obj, extender) ->
 	extender = {} unless isObject(extender)
 
 	obj[key] = value for key, value of extender
-		
+
 	return obj
 
 ##################################################
@@ -46,7 +46,7 @@ standardizeRoute = (route) ->
 		# remove the bracket and pin the two route pieces together
 		if closingBracketIndex > 1
 			route = route.slice(1, closingBracketIndex) + route.slice(closingBracketIndex+1)
-		
+
 		#Otherwise just strip of anything before (including) the closing bracket
 		else
 			route = route.slice( Math.max(1, closingBracketIndex+1) )
@@ -83,7 +83,7 @@ getParentPattern = (pattern) ->
 		#If we found one with a route inside, get the parentPattern
 		if closingBracketIndex > 1
 			parentPattern = pattern.slice(1, closingBracketIndex)
-	
+
 	return parentPattern
 
 #END getParentPattern
@@ -100,7 +100,7 @@ getParentPattern = (pattern) ->
 #	object - An object of the route's parameters
 #
 # See Also:
-#	parseQuryString
+#	parseQueryString
 ###
 getParameters = (pattern, route) ->
 	route = "" unless isString(route)
@@ -118,7 +118,7 @@ getParameters = (pattern, route) ->
 
 	for index, patternPiece of patternSplit
 		if startsWith(patternPiece, ":")
-			parameters[patternPiece.slice(1)] = routeSplit[index] 
+			parameters[patternPiece.slice(1)] = routeSplit[index]
 
 	return parameters
 
@@ -128,7 +128,7 @@ getParameters = (pattern, route) ->
 # Method: parseQueryString
 #	Used to parse and objectize a query string
 #
-# Arguments: 
+# Arguments:
 #	queryString - The query string to split up into an object
 #
 # Returns:
@@ -143,10 +143,11 @@ parseQueryString = (queryString) ->
 	queryParams = {}
 
 	#iterate through the pieces of the query string
-	for piece in queryString.split("&")
-		[key, value] = piece.split("=", 2)
-		queryParams[key] = value
-	
+	if queryString != ""
+		for piece in queryString.split("&")
+			[key, value] = piece.split("=", 2)
+			queryParams[key] = value
+
 	#return the result
 	return queryParams
 
@@ -268,7 +269,7 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters, callback
 		if callItem.setup.length == 2
 
 			#Call the method asynchronously
-			callItem.setup( parameters, (p) -> 
+			callItem.setup( parameters, (p) ->
 
 				#push the internal stacks
 				currentCallStack.push(callItem)
@@ -315,7 +316,7 @@ runTeardownCallStack = (callStack, routeStack, stackDiffIndex) ->
 	#Don't execute anything if the diff index is larger than any index in the callStack
 	return if callStack.length <= stackDiffIndex
 
-	#Use a recursive loop (for now) to iterate over the teardown methods 
+	#Use a recursive loop (for now) to iterate over the teardown methods
 	#in reverse order
 	(callTeardown = (callStack, routeStack) ->
 		return if callStack.length <= stackDiffIndex
@@ -372,7 +373,7 @@ findStackDiffIndex = (oldRouteStack, newRouteStack) ->
 		#increment the index
 		stackIndex++
 	#END while
-	
+
 	#Return the differentiation point
 	return stackIndex
 #END findStackDiffIndex
@@ -423,10 +424,10 @@ buildRouteStack = (pattern, route) ->
 			#Increment the counter
 			splitIndex++
 		#END while
-		
+
 		#Remove the last '/'
 		builtRoute = builtRoute.slice(0,-1) if endsWith(builtRoute, "/")
-		
+
 		#Get the assigned pattern
 		assignedPattern = assignedPatterns[pattern]
 
@@ -457,19 +458,17 @@ Finch = {
 	###
 	route: (pattern, settings) ->
 
-		#Check if the input parameter was a function, assign it to the load method
-		# if it was
-		setupMethod = if isFunction(settings) then settings else (->)
-		loadMethod = if isFunction(settings) then settings else (->)
-		teardownMethod = (->)
+		#Check if the input parameter was a function, assign it to the setup method
+		#if it was
+		settings = {setup: settings, load: settings} if isFunction(settings)
 
 		#Make sure we have valid inputs
 		pattern = "" unless isString(pattern)
 		settings = {} unless isObject(settings)
 		settings.context = {} unless isObject(settings.context)
-		settings.setup = setupMethod unless isFunction(settings.setup)
-		settings.load = loadMethod unless isFunction(settings.load)
-		settings.teardown = teardownMethod unless isFunction(settings.teardown)
+		settings.setup = (->) unless isFunction(settings.setup)
+		settings.load = (->) unless isFunction(settings.load)
+		settings.teardown = (->) unless isFunction(settings.teardown)
 
 		#initialize the parent route to call
 		parentPattern = getParentPattern(pattern)
@@ -480,9 +479,9 @@ Finch = {
 
 		#Store the action for later
 		assignedPatterns[settings.pattern] = settings
-		
+
 		#END assignedPatterns[route]
-	
+
 	#END Finch.route
 
 	###
@@ -508,7 +507,7 @@ Finch = {
 
 		# Iterate over each of the assigned routes and try to find a match
 		for pattern, config of assignedPatterns
-			
+
 			#Check if this route matches the input routpatterne
 			if matchPattern(route, pattern)
 
@@ -538,15 +537,32 @@ Finch = {
 
 				#return true
 				return true
-			
+
 			#END if match
-		
+
 		#END for pattern in assignedPatterns
-		
+
 		#return false, we coudln't find a route
 		return false
-	
+
 	#END Finch.call()
+
+	###
+	# Method: Finch.reset
+	#   Tears down the current stack and resets the routes
+	#
+	# Arguments:
+	#	none
+	###
+	reset: () ->
+		runTeardownCallStack(currentCallStack, currentRouteStack, 0)
+		assignedPatterns = {}
+		currentRouteStack = []
+		currentCallStack = []
+		currentCall = null
+		return
+
+	#END Finch.reset()
 }
 
 #Expose Finch to the window

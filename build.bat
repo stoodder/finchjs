@@ -1,1 +1,1 @@
-coffee -o scripts/ -wc coffee/
+coffee -o scripts/ -wc coffee/ tests/
