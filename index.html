@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<script src="./scripts/finch.js" type="text/javascript" language="javascript"></script>
+		<script src="./scripts/finch.min.js" type="text/javascript" language="javascript"></script>
 		<script type="text/javascript" language="javascript">
 			Finch.route("home", {
 				setup: function(params, cb)
@@ -47,25 +47,18 @@
 			});
 			
 			Finch.call("/home/news/33/Allen");
+
+			//Don't call these until the callback returns
 			Finch.call("/home/news/33/Rick");
-			Finch.call("/home/news/33/James");
-			Finch.call("/home/news/33/Rick");
-			Finch.call("/home/news/33/James");
-			Finch.call("/home/news/33/Rick");
-			Finch.call("/home/news/33/James");
-			Finch.call("/home/news/33/Rick");
-			Finch.call("/home/news/33/James");
-			Finch.call("/home/news/33/Rick");
-			Finch.call("/home/news/33/James");
-			Finch.call("/home/news/33/Rick");
-			Finch.call("/home/news/33/James");
-			Finch.call("/home/news/66/Rick");
 			Finch.call("/home/news/33/James");
 
 			setTimeout(function()
 			{
 				console.log("HERE")
 				Finch.call("/home")
+				Finch.call("/home/news/66")
+				Finch.call("/home")
+				Finch.call("/home/news/66/Richard James Allen III")
 			},2000)
 
 
