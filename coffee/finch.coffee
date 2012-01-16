@@ -1,4 +1,4 @@
-isObject = (object) -> ( typeof object == typeof {} );
+isObject = (object) -> ( typeof object is typeof {} );
 isFunction = (object) -> Object::toString.call( object ) is "[object Function]"
 isArray = (object) -> Object::toString.call( object ) is "[object Array]"
 isString = (object) -> Object::toString.call( object ) is "[object String]"
@@ -265,7 +265,7 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters, callback
 		callback = (->) if callback is callItem.setup
 
 		#If the length is 2, then this is an asynchronous call
-		if callItem.setup.length == 2
+		if callItem.setup.length is 2
 
 			#Call the method asynchronously
 			callItem.setup( parameters, (p) -> 
