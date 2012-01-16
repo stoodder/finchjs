@@ -17,24 +17,27 @@ To start, you'll need to incldue the Finch.js file on page load
 ```
 
 Once you've included Finch, start setting up the routes that you'd like:
-```js
-Finch.route "/home", (params) ->
-	console.log("Called home!")
 
-Finch.route "/home/news", (params) ->
-	console.log("Called home/news!")
-```
+	Finch.route "/home", (params) ->
+		console.log("Called home!")
+
+	Finch.route "/home/news", (params) ->
+		console.log("Called home/news!")
 
 Lastly, once you're done setting up the routes, start calling them:
-```
-Finch.call "/home"
-Finch.call "/home/news"
-```
+
+	Finch.call "/home"
+	Finch.call "/home/news"
 
 Will output in the console:
-```js
-> Called home!
-> Called home/news!
+
+```coffee
+	> Called home!
+	> Called home/news!
+```
+
+```coffeescript
+	Coffee Script
 ```
 
 
