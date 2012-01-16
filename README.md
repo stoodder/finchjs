@@ -26,19 +26,46 @@ Once you've included Finch, start setting up the routes that you'd like:
 
 Lastly, once you're done setting up the routes, start calling them:
 
-	Finch.call "/home"
-	Finch.call "/home/news"
+	Finch.call("/home")
+	Finch.call("/home/news")
 
-Will output in the console:
+Will output this to the console:
 
-```coffee
 	> Called home!
 	> Called home/news!
-```
 
-```coffeescript
-	Coffee Script
-```
+Simple, right?
+
+### Okay, what about inline parameters?
+An inline parameter is a parameter that is found within the route (rather than in the query string)
+
+here's some examples of routes with parameters
+	
+	/home/news/1 -> '1' could be a parameter for a news article id
+	/home/news/33/comments -> again, we could get '33'
+	/user/stoodder -> here we might want to extract 'stoodder'
+
+For the examples above, we could setup funch to listen for routes like these as follows:
+
+	Finch.route "/home/news/:newsId", (params) ->
+		console.log("Looking for news article #{params.newsId}")
+	
+	Finch.route "/home/news/:newsId/comments", (params) ->
+		console.log("Looking for news article #{params.newsId}'s comments")
+	
+	Finch.route "/user/:username", (params) ->
+		console.log("Looking up user #{params.username}")
+
+Calling the example route with the route setup shown above, we'd expect to the the following in the console:
+	
+	Finch.call("/home/news/1")
+	> Looking for news article 1
+
+	Finch.call("/home/news/33/comments")
+	> Looking for news article 33's comments
+
+	Finch.call("/user/stoodder")
+	> Looking up user stoodder
 
 
 ### What's a parent route?
