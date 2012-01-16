@@ -218,7 +218,6 @@ buildCallStack = (pattern) ->
 #	callback - The callback method to run when the stack is complete
 ###
 runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters, callback) ->
-
 	#First setup the variables
 	callStack = [] unless isArray(callStack)
 	routeStack = [] unless isArray(routeStack)
@@ -240,11 +239,6 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters, callback
 		#END abort()
 	}
 
-	#Don't execute anything if the diff index is larger than any index in the callStack
-	if callStack.length <= stackDiffIndex
-		currentCall = null
-		return callback(parameters) 
-
 	#Slice the stack to only call after the given stackDiffIndex
 	callStack = callStack.slice(stackDiffIndex)
 	routeStack = routeStack.slice(stackDiffIndex)
@@ -254,7 +248,7 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters, callback
 		return currentCall.abortedCallback() if currentCall.aborted
 		if callStack.length <= 0
 			currentCall = null
-			return callback(parameters)
+			return callback(parameters, (->))
 
 		#Get the next pieces off the stacks
 		callItem = callStack.shift()

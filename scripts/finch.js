@@ -244,10 +244,6 @@
         };
       }
     };
-    if (callStack.length <= stackDiffIndex) {
-      currentCall = null;
-      return callback(parameters);
-    }
     callStack = callStack.slice(stackDiffIndex);
     routeStack = routeStack.slice(stackDiffIndex);
     (callSetup = function(callStack, routeStack, parameters) {
@@ -255,7 +251,7 @@
       if (currentCall.aborted) return currentCall.abortedCallback();
       if (callStack.length <= 0) {
         currentCall = null;
-        return callback(parameters);
+        return callback(parameters, (function() {}));
       }
       callItem = callStack.shift();
       routeItem = routeStack.shift();

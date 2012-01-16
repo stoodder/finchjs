@@ -32,8 +32,18 @@
 				console.log("Called ---- home/news/:id -----", JSON.stringify(params));
 			});
 
-			Finch.route("[home/news/:id]/:name", function(params){
-				console.log("Called ---- [home/news/:id]/:name -----", JSON.stringify(params));
+			Finch.route("[home/news/:id]/:name", 
+			{
+				setup: function(params, cb)
+				{
+					console.log("Setup ---- [home/news/:id]/:name -----", JSON.stringify(params));
+					cb()
+				},
+
+				teardown: function()
+				{
+					console.log("Teardown ---- [home/news/:id]/:name -----")
+				}
 			});
 			
 			Finch.call("/home/news/33/Allen");
