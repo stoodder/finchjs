@@ -48,7 +48,7 @@ here's some examples of routes with parameters
 	/home/news/33/comments -> again, we could get '33'
 	/user/stoodder -> here we might want to extract 'stoodder'
 
-For the examples above, we could setup funch to listen for routes like these as follows:
+For the examples above, we could setup Finch to listen for routes like these as follows:
 
 	Finch.route "/home/news/:newsId", (params) ->
 		console.log("Looking for news article #{params.newsId}")
@@ -159,8 +159,8 @@ Would give us
 	> Running /home/news
 	> Looking at news article 33
 
-	-- Finch.call "/home/news/66"
-	> Looking at news article 66
+	-- Finch.call "/home/news/99"
+	> Looking at news article 99
 
 Notice, we didn't run re-execute the /home or /home/news rotues (because we didn't need to)
 
@@ -234,9 +234,91 @@ Again, calling the /home/news route would yield:
 	... waits for 1 second
 	> Called /home/news, hello = "world"
 
-**NOTE** Because of Finch's caching abilities, if a call is interupted (perhaps a use is clicking madly through your website), the current call will be aborted and once finished, will call the newly updated route.
+**NOTE** Because of Finch's caching abilities, if a call is interupted (perhaps a user is clicking madly through your website... because they lvoe it so much, of course), the current call will be aborted and once finished, will call the newly updated route.  This is useful for keeping things in sync and not firing off a ton of ajax requests (which would lead to weird race conditions anyways)
 
 ### Setup, Load, and Teardown
+The last topic to cover is advanced route creation with setup, load, and teardown.  Until now, we've seen the short hand version (Finch.route "route", callback), but there is also a more complex long hand notation.  The second parameter may, instead of being a function, be an object containing the keys setup, load, teardown.  Like so:
 
+	Finch.route "/home", {
+		setup: (params, childCallback) ->
+		load: (params) ->
+		teardown: () ->
+	}
+
+Typically, these pieces are called as follows:
+
+- **setup** - is called when a route is called in the call stack.  Usually used for any setup code (loading in initial page data or setuping up a model)
+- **load** - is only called at the top most level of a call stack after all of the setup methods are called, typically is just used for listening to query string changes (perhaps we're searching the current page?)
+- **teardown** - is called when we leave the current route for a new route.  Removing any intervals or necessary page data.
+
+**NOTE** Setups second argument (childCallback) is optional. Again, this determines if the setup is asynchronous or not.
+
+So to dig in a bit more, pretend we had the following setup:
+
+	Finch.route "/home", {
+		setup: (params, childCallback) ->
+			console.log("Setup home")
+			childCallback()
+
+		load: (params) ->
+			console.log("Loaded home")
+
+		teardown: () ->
+			console.log("Teardown home")
+	}
+
+	Finch.route "[/home]/news", {
+		setup: (params) ->
+			console.log("Setup home/news")
+
+		load: (params) ->
+			console.log("Loaded home/news")
+		
+		teardown: () ->
+			console.log("Teardown home/news")
+	}
+
+	Finch.route "[/home/news]/:newsId", {
+		setup: (params) ->
+			console.log("Setup home/news/:id, id = \"#{params.id}\"")
+
+		load: (params) ->
+			console.log("Loaded home/news/:id, id = \"#{params.id}\"")
+		
+		teardown: () ->
+			console.log("Teardown home/news/:id")
+	}
+
+Therefore, with the above setup, if we called:
+
+	Finch.call "/home/news/33"
+	Finch.call "/home"
+	Finch.call "/home/news/66"
+	Finch.call "/home/news/99"
+	Finch.call "/home/news/99?hello=world"
+
+We would get the following:
 	
+	-- Finch.call "/home/news/33"
+	> Setup home
+	> Setup home/news
+	> Setup home/news/:id, id = 33
+	> Loaded home/news/:id, id = 33
 
+	-- Finch.call "/home"
+	> Teardown home/news/:id
+	> Teardown home/news
+	> Loaded home
+
+	-- Finch.call "/home/news/66"
+	> Setup home/news
+	> Setup home/news/:id, id = 66
+	> Loaded home/news/:id, id = 66
+
+	-- Finch.call "/home/news/99"
+	> Teardown home/news/:id
+	> Setup home/news/:id, id = 99
+	> Loaded home/news/:id, id = 99
+
+	-- Finch.call "/home/news/99?hello=world"
+	> Loaded home/news/:id, id = 99
