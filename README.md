@@ -2,23 +2,22 @@
 Finch.js is a simple, yet powerful, route handling library.  It focuses on easing the assignment of routes, working with parent routes, and handling inline route parameters.
 
 **Table of Contents**
-1. [Basic Usage](#basicUsage)
-	1. [Sounds nifty, where do I start?](#whereDoIStart)
-2. [Parameters](#parameters)
-	1. [Okay, what about inline parameters?](#inlineParameters)
-	2. [What about query string parameters, how do those work?](#queryStringParamaters)
-3. [Parent Routes](#parentRoutes)
-	1. [What's a parent route?](#whatAreParentRoutes)
-	2. [Parent routes are multi level](#parentRoutesMultiLevel)
-	3. [Parent routes are cached](#parentRoutesCached)
-	4. [And what about using parameters in parent routes?](#paramsInParentRoutes)
-4. [Advanced Topics](#advancedTopcis)
-	1. [Asynchronous routes](#asyncRoutes)
-	2. [Setup, Load, and Teardown](#setupLoadTeardown)
+1.	[Basic Usage](#basicUsage)
+	1.	[Sounds nifty, where do I start?](#whereDoIStart)
+2.	[Parameters](#parameters)
+	1.	[Okay, what about inline parameters?](#inlineParameters)
+	2.	[What about query string parameters, how do those work?](#queryStringParamaters)
+3.	[Parent Routes](#parentRoutes)
+	1.	[What's a parent route?](#whatAreParentRoutes)
+	2.	[Parent routes are multi level](#parentRoutesMultiLevel)
+	3.	[Parent routes are cached](#parentRoutesCached)
+	4.	[And what about using parameters in parent routes?](#paramsInParentRoutes)
+4.	[Advanced Topics](#advancedTopcis)
+	1.	[Asynchronous routes](#asyncRoutes)
+	2.	[Setup, Load, and Teardown](#setupLoadTeardown)
 
-## <a name="basicUsage">Basic Usage</a>
-<a name="whereDoIStart"></a>
-### Sounds nifty, where do I start?
+## Basic Usage <a name="basicUsage"></a>
+### Sounds nifty, where do I start? <a name="whereDoIStart"></a>
 To start, you'll need to include the Finch.js file on page load.
 
 ```html
@@ -53,10 +52,8 @@ Will output this to the console:
 
 Simple, right?
 
-<a name="parameters"></a>
-## Parameters
-<a name="inlineParameters"></a>
-### Okay, what about inline parameters?
+## Parameters <a name="parameters"></a>
+### Okay, what about inline parameters? <a name="inlineParameters"></a>
 An inline parameter is a parameter that is found within the route (rather than in the query string)
 
 Here's some examples of routes with parameters:
@@ -87,8 +84,7 @@ Calling the example route with the route setup shown above, we'd expect to the t
 	-- Finch.call "/user/stoodder"
 	> Looking up user stoodder
 
-<a name="queryStringParamaters"></a>
-### What about query string parameters, how do those work?
+### What about query string parameters, how do those work? <a name="queryStringParamaters"></a>
 Query string parameters appear at the and of a uri with the following pattern:
 
 	?key1=val1&key2=val2
@@ -114,10 +110,8 @@ Finch handles these similarly to inline parameters.  For example, pretend we had
 	Finch.call "/home/news/33?newsId=666"
 	> Called news id 33
 
-<a name="parentRoutes"></a>
-## Parent Routes
-<a name="whatAreParentRoutes"></a>
-### What's a parent route?
+## Parent Routes <a name="parentRoutes"></a>
+### What's a parent route? <a name="whatAreParentRoutes"></a>
 A parent route is a route that is called before a child route is called.
 
 Okay, so what does that mean? Let me explain by example:
@@ -151,8 +145,7 @@ Would give us:
 	Won't work:
 	Finch.route "/home/[news]", () -> console.log("ARG!!!!")
 
-<a name="parentRoutesMultiLevel"></a>
-### Parent routes are multi level!
+### Parent routes are multi level! <a name="parentRoutesMultiLevel"></a>
 Pretend now that we wanted to go down another level to get a specific news article.
 
 Extending on to our previous examples, we could make a new route:
@@ -167,8 +160,7 @@ Calling the route would give us:
 	> Running /home/news
 	> Looking at news article 33
 
-<a name="parentRoutesCached"></a>
-### Parent routes are cached
+### Parent routes are cached <a name="parentRoutesCached"></a>
 Often, we'll be switching routes and we won't need to re-setup our parent's data/structure (in out example we could switch tabs or change news articles). Finch knows this, and will remember what we've called and will ensure that we don't re-call the setup of our routes.  Hence running the following (with our previous parent route examples):
 
 	Finch.call "/home/news/33"
@@ -201,8 +193,7 @@ Would yield the following:
 	-- Finch.call "/home/news"
 	> Running /home/news
 
-<a name="paramsInParentRoutes"></a>
-### And what about using parameters in parent routes?
+### And what about using parameters in parent routes? <a name="paramsInParentRoutes"></a>
 Again, simple.  We can repeat the pattern above, and extend a new parent route for a news article to get its comments:
 
 	Finch.route "[/home/news/:newsId]/comments", (params) ->
@@ -218,10 +209,8 @@ Calling this would give us (again, still using our examples)
 
 Notice in our setup all we had to do was wrap the parent route in brackets.
 
-<a name="advancedTopcis"></a>
-## Advanced Topics
-<a name="asyncRoutes"></a>
-### Asynchronous routes
+## Advanced Topics <a name="advancedTopcis"></a>
+### Asynchronous routes <a name="asyncRoutes"></a>
 Sometimes (most of the time?) you'll want to load a parent route before any of the child routes are executed.  Most likely, you'll want to continue down the route call chain after an ajax request has returned a successful result.  To do this, you'll need to specify an **Asynchronous Callback**.  To do so is simple.  Just add a second parameter in your callback method for the child callback, like so:
 
 	Finch.route "/home", (params, childCallback) ->
@@ -261,8 +250,7 @@ Again, calling the /home/news route would yield:
 
 **NOTE** Because of Finch's caching abilities, if a call is interrupted (perhaps a user is clicking madly through your website... because they love it so much, of course), the current call will be aborted and once finished, will call the newly updated route.  This is useful for keeping things in sync and prevents firing off a ton of concurrent ajax requests (which could even lead to weird race conditions!)
 
-<a name="setupLoadTeardown"></a>
-### Setup, Load, and Teardown
+### Setup, Load, and Teardown <a name="setupLoadTeardown"></a>
 The last topic to cover is advanced route creation with setup, load, and teardown functions.  Until now, we've seen the short hand version (Finch.route "route", callback), but there is also a more complex long hand notation.  The second parameter may, instead of being a function, be an object containing the keys setup, load, teardown.  Like so:
 
 	Finch.route "/home", {
