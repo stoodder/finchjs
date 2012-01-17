@@ -4,6 +4,11 @@ Finch.js is a simple, yet powerful, route handling library.  It focuses on easin
 ### Table of Contents
 <ol><li><a href="#basicUsage">Basic Usage</a></li><ol><li><a href="#whereDoIStart">Sounds nifty, where do I start?</a></li></ol><li><a href="#parameters">Parameters</a></li><ol><li><a href="#inlineParameters">Okay, what about inline parameters?</a></li><li><a href="#queryStringParamaters">What about query string parameters, how do those work?</a></li></ol><li><a href="#parentRoutes">Parent Routes</a></li><ol><li><a href="#whatAreParentRoutes">What's a parent route?</a></li><li><a href="#parentRoutesMultiLevel">Parent routes are multi level</a></li><li><a href="#parentRoutesCached">Parent routes are cached</a></li><li><a href="#paramsInParentRoutes">And what about using parameters in parent routes?</a></li></ol><li><a href="#advancedTopcis">Advanced Topics</a></li><ol><li><a href="#asyncRoutes">Asynchronous routes</a></li><li><a href="#setupLoadTeardown">Setup, Load, and Teardown</a></li></ol></ol>
 
+1. hello
+1.1 world
+2. wee
+3. wooo
+
 <a name="basicUsage"></a>
 ## Basic Usage
 <a name="whereDoIStart"></a>
