@@ -1,20 +1,33 @@
 # Finch.js
 Finch.js is a simple, yet powerful, route handling library.  It focuses on easing the assignment of routes, working with parent routes, and handling inline route parameters.
 
-**Table of Contents**
-1\.  [Basic Usage](#basicUsage)
-1.1\.  [Sounds nifty, where do I start?](#whereDoIStart)
-2\.  [Parameters](#parameters)
-2.1\.  [Okay, what about inline parameters?](#inlineParameters)
-2.2\.  [What about query string parameters, how do those work?](#queryStringParamaters)
-3\.  [Parent Routes](#parentRoutes)
-3.1\.  [What's a parent route?](#whatAreParentRoutes)
-3.2\.  [Parent routes are multi level](#parentRoutesMultiLevel)
-3.3\.  [Parent routes are cached](#parentRoutesCached)
-3.4\.  [And what about using parameters in parent routes?](#paramsInParentRoutes)
-4\.  [Advanced Topics](#advancedTopcis)
-4.1\.  [Asynchronous routes](#asyncRoutes)
-4.2\.  [Setup, Load, and Teardown](#setupLoadTeardown)
+<ol>
+	<lh>Table of Contents</lh>
+	<li>[Basic Usage](#basicUsage)</li>
+	<ol>
+		<li>[Sounds nifty, where do I start?](#whereDoIStart)</li>
+	</ol>
+
+	<li>[Parameters](#parameters)</li>
+	<ol>
+		<li>[Okay, what about inline parameters?](#inlineParameters)</li>
+		<li>[What about query string parameters, how do those work?](#queryStringParamaters)</li>
+	</ol>
+
+	<li>[Parent Routes](#parentRoutes)</li>
+	<ol>
+		<li>[What's a parent route?](#whatAreParentRoutes)</li>
+		<li>[Parent routes are multi level](#parentRoutesMultiLevel)</li>
+		<li>[Parent routes are cached](#parentRoutesCached)</li>
+		<li>[And what about using parameters in parent routes?](#paramsInParentRoutes)</li>
+	</ol>
+
+	<li>[Advanced Topics](#advancedTopcis)</li>
+	<ol>
+		<li>[Asynchronous routes](#asyncRoutes)</li>
+		<li>[Setup, Load, and Teardown](#setupLoadTeardown)</li>
+	</ol>
+</ol>
 
 <a name="basicUsage"></a>
 ## Basic Usage
