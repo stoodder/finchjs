@@ -1,5 +1,5 @@
 (function() {
-  var Finch, assignedPatterns, buildCallStack, buildRouteStack, currentCall, currentCallStack, currentRouteStack, endsWith, extend, findStackDiffIndex, getParameters, getParentPattern, isArray, isFunction, isNumber, isObject, isString, matchPattern, parseQueryString, runSetupCallStack, runTeardownCallStack, standardizeRoute, startsWith, trim, trimSlashes;
+  var Finch, assignedPatterns, buildCallStack, buildRouteStack, currentCall, currentCallStack, currentQueryParams, currentRouteStack, endsWith, extend, findStackDiffIndex, getParameters, getParentPattern, isArray, isFunction, isNumber, isObject, isString, matchPattern, objectsEqual, parseQueryString, runSetupCallStack, runTeardownCallStack, standardizeRoute, startsWith, trim, trimSlashes;
 
   isObject = function(object) {
     return typeof object === typeof {};
@@ -48,6 +48,19 @@
     return obj;
   };
 
+  objectsEqual = function(obj1, obj2) {
+    var key, value;
+    for (key in obj1) {
+      value = obj1[key];
+      if (obj2[key] !== value) return false;
+    }
+    for (key in obj2) {
+      value = obj2[key];
+      if (obj1[key] !== value) return false;
+    }
+    return true;
+  };
+
   assignedPatterns = {};
 
   currentRouteStack = [];
@@ -55,6 +68,8 @@
   currentCallStack = [];
 
   currentCall = null;
+
+  currentQueryParams = "";
 
   /*
   # Method used to standardize a route so we can better parse through it
@@ -224,16 +239,17 @@
   #	routeStack - The route stack that is similar to the call stack
   #	staffDiffIndex - The point where the stack should start calling from
   #	parameters - The parameters to extend onto the list of parameters to send onward
-  #	callback - The callback method to run when the stack is complete
   */
 
-  runSetupCallStack = function(callStack, routeStack, stackDiffIndex, parameters, callback) {
-    var callSetup;
+  runSetupCallStack = function(callStack, routeStack, stackDiffIndex, parameters) {
+    var callSetup, callback, lastItem;
     if (!isArray(callStack)) callStack = [];
     if (!isArray(routeStack)) routeStack = [];
     stackDiffIndex = isNumber(stackDiffIndex) && stackDiffIndex > 0 ? parseInt(stackDiffIndex) : 0;
     if (!isObject(parameters)) parameters = {};
-    if (!isFunction(callback)) callback = (function() {});
+    if (callStack.length <= 0) return;
+    lastItem = callStack[callStack.length - 1];
+    callback = isFunction(lastItem.load) ? lastItem.load : (function() {});
     currentCall = {
       aborted: false,
       abortedCallback: (function() {}),
@@ -253,7 +269,7 @@
       if (currentCall.aborted) return currentCall.abortedCallback();
       if (callStack.length <= 0) {
         currentCall = null;
-        return callback(parameters, (function() {}));
+        return callback.call(lastItem.context, parameters, (function() {}));
       }
       callItem = callStack.shift();
       routeItem = routeStack.shift();
@@ -262,7 +278,7 @@
       if (!isFunction(callItem.setup)) callItem.setup = (function() {});
       if (callback === callItem.setup) callback = (function() {});
       if (callItem.setup.length === 2) {
-        return callItem.setup(parameters, function(p) {
+        return callItem.setup.call(callItem.context, parameters, function(p) {
           currentCallStack.push(callItem);
           currentRouteStack.push(routeItem);
           if (!isObject(p)) p = {};
@@ -270,7 +286,7 @@
           return callSetup.call(callSetup, callStack, routeStack, parameters);
         });
       } else {
-        callItem.setup(parameters);
+        callItem.setup.call(callItem.context, parameters);
         currentCallStack.push(callItem);
         currentRouteStack.push(routeItem);
         return callSetup(callStack, routeStack, parameters);
@@ -280,6 +296,11 @@
 
   /*
   # Method: runTeardownCallStack
+  #
+  # Arguments:
+  #	callStack
+  #	routeStack
+  #	stackDiffIndex
   */
 
   runTeardownCallStack = function(callStack, routeStack, stackDiffIndex) {
@@ -296,7 +317,7 @@
       if (!isObject(callItem)) callItem = {};
       if (!isString(routeItem)) routeItem = "";
       if (!isFunction(callItem.teardown)) callItem.teardown = (function() {});
-      callItem.teardown();
+      callItem.teardown.call(callItem.context);
       return callTeardown(callStack, routeStack);
     })(callStack, routeStack);
   };
@@ -360,11 +381,9 @@
       }
       if (endsWith(builtRoute, "/")) builtRoute = builtRoute.slice(0, -1);
       assignedPattern = assignedPatterns[pattern];
-      if (builtRoute !== "") {
-        routeStack.unshift(builtRoute);
-        if (((assignedPattern != null ? assignedPattern.parentPattern : void 0) != null) && assignedPattern.parentPattern !== "") {
-          return buildRoute(assignedPattern.parentPattern, route);
-        }
+      routeStack.unshift(builtRoute);
+      if (((assignedPattern != null ? assignedPattern.parentPattern : void 0) != null) && assignedPattern.parentPattern !== "") {
+        return buildRoute(assignedPattern.parentPattern, route);
       }
     })(pattern);
     return routeStack;
@@ -410,7 +429,7 @@
     	#	parameters (optional) - The initial prameters to send
     */
     call: function(uri, parameters) {
-      var assignedPattern, callStack, config, loadMethod, pattern, queryParams, queryString, route, routeStack, stackDiffIndex, _ref;
+      var assignedPattern, callStack, config, lastItem, pattern, queryParams, queryString, route, routeStack, stackDiffIndex, _ref, _ref2;
       if (!isString(uri)) uri = "";
       if (!isObject(parameters)) parameters = {};
       _ref = uri.split("?", 2), route = _ref[0], queryString = _ref[1];
@@ -427,12 +446,21 @@
           }
           extend(parameters, getParameters(pattern, route));
           assignedPattern = assignedPatterns[pattern];
-          loadMethod = isFunction(assignedPattern.load) ? assignedPattern.load : (function() {});
           callStack = buildCallStack(pattern);
           routeStack = buildRouteStack(pattern, route);
           stackDiffIndex = findStackDiffIndex(currentRouteStack, routeStack);
-          runTeardownCallStack(currentCallStack, currentRouteStack, stackDiffIndex);
-          runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters, loadMethod);
+          if ((currentCallStack.length === (_ref2 = callStack.length) && _ref2 === stackDiffIndex)) {
+            if (!objectsEqual(queryParams, currentQueryParams)) {
+              lastItem = currentCallStack[currentCallStack.length - 1];
+              if (lastItem != null) {
+                lastItem.load.call(lastItem.context, parameters);
+              }
+            }
+          } else {
+            runTeardownCallStack(currentCallStack, currentRouteStack, stackDiffIndex);
+            runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters);
+          }
+          currentQueryParams = queryParams;
           return true;
         }
       }

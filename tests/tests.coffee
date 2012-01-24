@@ -41,8 +41,8 @@ test "Simple hierarchical routing", sinon.test ->
 
 	Finch.call "/foo/bar"
 
-	ok foo.calledOnce, "foo called"
-	ok foo_bar.calledOnce, "foo/bar called"
+	equal foo.callCount, 1, "foo called"
+	equal foo_bar.callCount, 1, "foo/bar called"
 	ok foo.calledBefore(foo_bar), "foo called before foo/bar"
 	foo.reset()
 	foo_bar.reset()
@@ -51,7 +51,7 @@ test "Simple hierarchical routing", sinon.test ->
 
 	ok !foo.called, "foo not called again"
 	ok !foo_bar.called, "foo/bar not called again"
-	ok foo_bar_id.calledOnce, "foo/bar/id called"
+	equal foo_bar_id.callCount, 1, "foo/bar/id called"
 	deepEqual foo_bar_id.getCall(0).args[0], { id: "123" }, "foo/bar/id params"
 	foo_bar_id.reset()
 
@@ -59,7 +59,7 @@ test "Simple hierarchical routing", sinon.test ->
 
 	ok !foo.called, "foo not called again"
 	ok !foo_bar.called, "foo/bar not called again"
-	ok foo_bar_id.calledOnce, "foo/bar/id called"
+	equal foo_bar_id.callCount, 1, "foo/bar/id called"
 	deepEqual foo_bar_id.getCall(0).args[0], {
 		x: "Hello"
 		y: "World"
@@ -145,7 +145,82 @@ test "Collision between inlined and query string params", sinon.test ->
 		quux: "789"
 	}, "foo/bar/baz params"
 
-test "Routing with setup/teardown", sinon.test ->
+test "Simple routing with setup/teardown", sinon.test ->
+
+	cb = callbackGroup()
+
+	Finch.route "/",
+		setup:   	cb.setup_slash = @stub()
+		load:    	cb.load_slash = @stub()
+		teardown:	cb.teardown_slash = @stub()
+	Finch.route "foo",
+		setup:   	cb.setup_foo = @stub()
+		load:    	cb.load_foo = @stub()
+		teardown:	cb.teardown_foo = @stub()
+	Finch.route "foo/bar",
+		setup:   	cb.setup_foo_bar = @stub()
+		load:    	cb.load_foo_bar = @stub()
+		teardown:	cb.teardown_foo_bar = @stub()
+
+	# Test routes
+
+	Finch.call "/"
+
+	equal cb.setup_slash.callCount, 1,   	'/: / setup called'
+	equal cb.load_slash.callCount, 1,    	'/: / load called'
+	equal cb.teardown_slash.callCount, 0,	'/: / teardown not called'
+	cb.reset()
+
+	Finch.call "/foo"
+
+	equal cb.setup_slash.callCount, 0,   	'/foo: / setup not called'
+	equal cb.load_slash.callCount, 0,    	'/foo: / load not called'
+	equal cb.teardown_slash.callCount, 1,	'/foo: / teardown called'
+	equal cb.setup_foo.callCount, 1,     	'/foo: foo setup called'
+	equal cb.load_foo.callCount, 1,      	'/foo: foo load called'
+	equal cb.teardown_foo.callCount, 0,  	'/foo: foo teardown not called'
+	cb.reset()
+
+	Finch.call "/foo/bar"
+
+	equal cb.setup_slash.callCount, 0,     	'/foo/bar: / setup not called'
+	equal cb.load_slash.callCount, 0,      	'/foo/bar: / load not called'
+	equal cb.teardown_slash.callCount, 0,  	'/foo/bar: / teardown not called'
+	equal cb.setup_foo.callCount, 0,       	'/foo/bar: foo setup not called'
+	equal cb.load_foo.callCount, 0,        	'/foo/bar: foo load not called'
+	equal cb.teardown_foo.callCount, 1,    	'/foo/bar: foo teardown called'
+	equal cb.setup_foo_bar.callCount, 1,   	'/foo/bar: foo/bar setup called'
+	equal cb.load_foo_bar.callCount, 1,    	'/foo/bar: foo/bar load called'
+	equal cb.teardown_foo_bar.callCount, 0,	'/foo/bar: foo/bar teardown not called'
+	cb.reset()
+
+	Finch.call "/foo/bar?baz=quux"
+
+	equal cb.setup_slash.callCount, 0,     	'/foo/bar?baz=quux: / setup not called'
+	equal cb.load_slash.callCount, 0,      	'/foo/bar?baz=quux: / load not called'
+	equal cb.teardown_slash.callCount, 0,  	'/foo/bar?baz=quux: / teardown not called'
+	equal cb.setup_foo.callCount, 0,       	'/foo/bar?baz=quux: foo setup not called'
+	equal cb.load_foo.callCount, 0,        	'/foo/bar?baz=quux: foo load not called'
+	equal cb.teardown_foo.callCount, 0,    	'/foo/bar?baz=quux: foo teardown not called'
+	equal cb.setup_foo_bar.callCount, 0,   	'/foo/bar?baz=quux: foo/bar setup not called'
+	equal cb.load_foo_bar.callCount, 1,    	'/foo/bar?baz=quux: foo/bar load called'
+	equal cb.teardown_foo_bar.callCount, 0,	'/foo/bar?baz=quux: foo/bar teardown not called'
+	cb.reset()
+
+	Finch.call "/foo/bar?baz=xyzzy"
+
+	equal cb.setup_slash.callCount, 0,     	'/foo/bar?baz=xyzzy: / setup not called'
+	equal cb.load_slash.callCount, 0,      	'/foo/bar?baz=xyzzy: / load not called'
+	equal cb.teardown_slash.callCount, 0,  	'/foo/bar?baz=xyzzy: / teardown not called'
+	equal cb.setup_foo.callCount, 0,       	'/foo/bar?baz=xyzzy: foo setup not called'
+	equal cb.load_foo.callCount, 0,        	'/foo/bar?baz=xyzzy: foo load not called'
+	equal cb.teardown_foo.callCount, 0,    	'/foo/bar?baz=xyzzy: foo teardown not called'
+	equal cb.setup_foo_bar.callCount, 0,   	'/foo/bar?baz=xyzzy: foo/bar setup not called'
+	equal cb.load_foo_bar.callCount, 1,    	'/foo/bar?baz=xyzzy: foo/bar load called'
+	equal cb.teardown_foo_bar.callCount, 0,	'/foo/bar?baz=xyzzy: foo/bar teardown not called'
+	cb.reset()
+
+test "Hierarchical routing with setup/teardown", sinon.test ->
 
 	cb = callbackGroup()
 
@@ -172,67 +247,213 @@ test "Routing with setup/teardown", sinon.test ->
 
 	Finch.call "/foo"
 
-	ok cb.setup_foo.called, "/foo: foo setup"
-	ok cb.load_foo.called, "/foo: foo load"
+	ok cb.setup_foo.called,	"/foo: foo setup"
+	ok cb.load_foo.called, 	"/foo: foo load"
 	cb.reset()
 
 	Finch.call "/foo/bar"
 
-	ok !cb.setup_foo.called, "/foo/bar: no foo setup"
-	ok !cb.load_foo.called, "/foo/bar: no foo load"
-	ok !cb.teardown_foo.called, "/foo/bar: no foo teardown"
-	ok cb.setup_foo_bar.called, "/foo/bar: foo/bar setup"
-	ok cb.load_foo_bar.called, "/foo/bar: foo/bar load"
+	ok !cb.setup_foo.called,   	"/foo/bar: no foo setup"
+	ok !cb.load_foo.called,    	"/foo/bar: no foo load"
+	ok !cb.teardown_foo.called,	"/foo/bar: no foo teardown"
+	ok cb.setup_foo_bar.called,	"/foo/bar: foo/bar setup"
+	ok cb.load_foo_bar.called, 	"/foo/bar: foo/bar load"
 	cb.reset()
 
 	Finch.call "/foo"
 
-	ok cb.teardown_foo_bar.called, "/foo: foo/bar teardown"
-	ok !cb.setup_foo.called, "/foo: no foo setup"
-	ok cb.load_foo.called, "/foo: foo load"
+	ok cb.teardown_foo_bar.called,	"/foo return: foo/bar teardown"
+	ok !cb.setup_foo.called,      	"/foo return: no foo setup"
+	ok cb.load_foo.called,        	"/foo return: foo load"
 	cb.reset()
 
 	Finch.call "/foo/bar/123?x=abc"
-	ok !cb.teardown_foo.called, "/foo/bar/123: no foo teardown"
-	ok !cb.setup_foo.called, "/foo/bar/123: no foo setup"
-	ok cb.setup_foo_bar.called, "/foo/bar/123: foo/bar setup"
-	ok cb.setup_foo_bar_id.called, "/foo/bar/123: foo/bar/id setup"
-	ok !cb.load_foo.called, "/foo/bar/123: no foo load"
-	ok !cb.load_foo_bar.called, "/foo/bar/123: no foo/bar load"
-	ok cb.load_foo_bar_id.called, "/foo/bar/123: foo/bar/id load"
+	ok !cb.teardown_foo.called,   	"/foo/bar/123: no foo teardown"
+	ok !cb.setup_foo.called,      	"/foo/bar/123: no foo setup"
+	ok cb.setup_foo_bar.called,   	"/foo/bar/123: foo/bar setup"
+	ok cb.setup_foo_bar_id.called,	"/foo/bar/123: foo/bar/id setup"
+	ok !cb.load_foo.called,       	"/foo/bar/123: no foo load"
+	ok !cb.load_foo_bar.called,   	"/foo/bar/123: no foo/bar load"
+	ok cb.load_foo_bar_id.called, 	"/foo/bar/123: foo/bar/id load"
 	cb.reset()
 
-	Finch.call "/foo/bar/456?x=abc"
+	Finch.call "/foo/bar/456?x=aaa&y=zzz"
 
-	ok cb.teardown_foo_bar_id.called, "/foo/bar/456?x=abc: foo/bar/id teardown"
-	ok cb.setup_foo_bar_id.called, "/foo/bar/456?x=abc: foo/bar/id setup"
-	ok cb.load_foo_bar_id.called, "/foo/bar/456?x=abc: foo/bar/id load"
+	ok cb.teardown_foo_bar_id.called,	"/foo/bar/456?x=aaa&y=zzz: foo/bar/id teardown"
+	ok cb.setup_foo_bar_id.called,   	"/foo/bar/456?x=aaa&y=zzz: foo/bar/id setup"
+	ok cb.load_foo_bar_id.called,    	"/foo/bar/456?x=aaa&y=zzz: foo/bar/id load"
 	cb.reset()
 
-	Finch.call "/foo/bar/456?x=def"
+	Finch.call "/foo/bar/456?x=bbb&y=zzz"
 
-	ok !cb.setup_foo_bar_id.called, "/foo/bar/456?x=def: no foo/bar/id setup"
-	ok cb.load_foo_bar_id.called, "/foo/bar/456?x=def: foo/bar/id load"
+	ok !cb.setup_foo_bar_id.called,	"/foo/bar/456?x=bbb&y=zzz: no foo/bar/id setup"
+	ok cb.load_foo_bar_id.called,  	"/foo/bar/456?x=bbb&y=zzz: foo/bar/id load"
+	cb.reset()
+
+	Finch.call "/foo/bar/456?y=zzz&x=bbb"
+
+	ok !cb.setup_foo_bar_id.called,	"/foo/bar/456?y=zzz&x=bbb: no foo/bar/id setup"
+	ok !cb.load_foo_bar_id.called, 	"/foo/bar/456?y=zzz&x=bbb: no foo/bar/id load"
 	cb.reset()
 
 	Finch.call "/foo/baz/789"
 
-	ok cb.teardown_foo_bar_id.called, "/foo/baz/789: foo/baz/id teardown"
-	ok cb.teardown_foo_bar.called, "/foo/baz/789: foo/bar teardown"
-	ok !cb.teardown_foo.called, "/foo/baz/789: no foo teardown"
-	ok !cb.setup_foo.called, "/foo/baz/789: no foo setup"
-	ok cb.setup_foo_baz.calledOnce, "/foo/baz/789: foo/baz setup"
-	ok cb.setup_foo_baz_id.calledOnce, "/foo/baz/789: foo/baz/id setup"
-	ok !cb.load_foo.called, "/foo/baz/789: no foo load"
+	ok cb.teardown_foo_bar_id.called, 	"/foo/baz/789: foo/baz/id teardown"
+	ok cb.teardown_foo_bar.called,    	"/foo/baz/789: foo/bar teardown"
+	ok !cb.teardown_foo.called,       	"/foo/baz/789: no foo teardown"
+	ok !cb.setup_foo.called,          	"/foo/baz/789: no foo setup"
+	ok cb.setup_foo_baz.calledOnce,   	"/foo/baz/789: foo/baz setup"
+	ok cb.setup_foo_baz_id.calledOnce,	"/foo/baz/789: foo/baz/id setup"
+	ok !cb.load_foo.called,           	"/foo/baz/789: no foo load"
 	cb.reset()
 
 	Finch.call "/foo/baz/abc?term=Hello"
 
-	ok cb.teardown_foo_baz_id.called, "/foo/baz/abc?term=Hello: foo/baz/id teardown"
-	ok cb.setup_foo_baz_id.called, "/foo/baz/abc?term=Hello: foo/baz/id setup"
+	ok cb.teardown_foo_baz_id.called,	"/foo/baz/abc?term=Hello: foo/baz/id teardown"
+	ok cb.setup_foo_baz_id.called,   	"/foo/baz/abc?term=Hello: foo/baz/id setup"
 	cb.reset()
 
 	Finch.call "/foo/baz/abc?term=World"
 
-	ok !cb.teardown_foo_baz_id.called, "/foo/baz/abc?term=World: no foo/baz/id teardown"
-	ok !cb.setup_foo_baz_id.called, "/foo/baz/abc?term=World: no foo/baz/id setup"
+	ok !cb.teardown_foo_baz_id.called,	"/foo/baz/abc?term=World: no foo/baz/id teardown"
+	ok !cb.setup_foo_baz_id.called,   	"/foo/baz/abc?term=World: no foo/baz/id setup"
+
+test "Calling with context", sinon.test ->
+
+	Finch.route "foo",
+		setup:   	setup_foo = @stub()
+		load:    	load_foo = @stub()
+		teardown:	teardown_foo = @stub()
+	Finch.route "bar", @stub()
+
+	# Test routes
+
+	Finch.call "/foo"
+
+	equal setup_foo.callCount, 1, 'foo setup called'
+	equal load_foo.callCount, 1, 'foo load called'
+
+	context = setup_foo.getCall(0).thisValue
+	ok load_foo.calledOn(context), 'foo load called on same context as setup'
+
+	Finch.call "/bar"
+	ok teardown_foo.calledOn(context), 'foo teardown called on same context as setup and load'
+
+test "Hierarchical calling with context", sinon.test ->
+
+	Finch.route "foo",
+		setup:   	setup_foo = @stub()
+		load:    	load_foo = @stub()
+		teardown:	teardown_foo = @stub()
+	Finch.route "[foo]/bar",
+		setup:   	setup_foo_bar = @stub()
+		load:    	load_foo_bar = @stub()
+		teardown:	teardown_foo_bar = @stub()
+	Finch.route "baz", @stub()
+
+	# Test routes
+
+	Finch.call "/foo"
+
+	equal setup_foo.callCount, 1, 'foo setup called'
+	equal load_foo.callCount, 1, 'foo load called'
+
+	foo_context = setup_foo.getCall(0).thisValue
+	ok load_foo.calledOn(foo_context), 'foo load called on same context as setup'
+
+	Finch.call "/foo/bar"
+
+	equal setup_foo_bar.callCount, 1, 'foo/bar setup called'
+	equal load_foo_bar.callCount, 1, 'foo/bar load called'
+
+	foo_bar_context = setup_foo_bar.getCall(0).thisValue
+	ok load_foo_bar.calledOn(foo_bar_context), 'foo/bar load called on same context as setup'
+
+	notEqual foo_context, foo_bar_context, 'foo/bar should be called on a different context than foo'
+
+	Finch.call "/baz"
+
+	equal teardown_foo_bar.callCount, 1, 'foo/bar teardown called'
+	equal teardown_foo.callCount, 1, 'foo teardown called'
+	ok teardown_foo_bar.calledBefore(teardown_foo), 'foo/bar teardown called before foo teardown'
+
+	ok teardown_foo_bar.calledOn(foo_bar_context), 'foo/bar teardown called on same context as setup and load'
+	ok teardown_foo.calledOn(foo_context), 'foo teardown called on same context as setup and load'
+
+test "Route sanitation", sinon.test ->
+
+	Finch.route "/", slash_stub = @stub()
+	Finch.route "/foo", foo_stub = @stub()
+	Finch.route "/foo/bar", foo_bar_stub = @stub()
+
+	Finch.call ""
+	equal slash_stub.callCount, 1, "/ called once"
+	slash_stub.reset()
+
+	Finch.call "/"
+	equal slash_stub.callCount, 0, "/ not called again"
+	slash_stub.reset()
+
+	Finch.call ""
+	equal slash_stub.callCount, 0, "/ not called again"
+	slash_stub.reset()
+
+	Finch.call "//"
+	equal slash_stub.callCount, 0, "/ not called again"
+	slash_stub.reset()
+
+	Finch.call "foo"
+	equal slash_stub.callCount, 0, "/ not called again"
+	equal foo_stub.callCount, 1, "foo called once"
+	slash_stub.reset()
+	foo_stub.reset()
+
+	Finch.call "/foo"
+	equal slash_stub.callCount, 0, "/ not called again"
+	equal foo_stub.callCount, 0, "foo not called again"
+	slash_stub.reset()
+	foo_stub.reset()
+
+	Finch.call "/foo/"
+	equal slash_stub.callCount, 0, "/ not called again"
+	equal foo_stub.callCount, 0, "foo not called again"
+	slash_stub.reset()
+	foo_stub.reset()
+
+	Finch.call "foo/"
+	equal slash_stub.callCount, 0, "/ not called again"
+	equal foo_stub.callCount, 0, "foo not called again"
+	slash_stub.reset()
+	foo_stub.reset()
+
+	Finch.call "foo/bar"
+	equal slash_stub.callCount, 0,  	"/ not called again"
+	equal foo_stub.callCount, 0,    	"foo not called again"
+	equal foo_bar_stub.callCount, 1,	"foo/bar called once"
+	slash_stub.reset()
+	foo_stub.reset()
+	foo_bar_stub.reset()
+
+	Finch.call "/foo/bar"
+	equal slash_stub.callCount, 0,  	"/ not called again"
+	equal foo_stub.callCount, 0,    	"foo not called again"
+	equal foo_bar_stub.callCount, 0,	"foo/bar not called again"
+	slash_stub.reset()
+	foo_stub.reset()
+	foo_bar_stub.reset()
+
+	Finch.call "/foo/bar/"
+	equal slash_stub.callCount, 0,  	"/ not called again"
+	equal foo_stub.callCount, 0,    	"foo not called again"
+	equal foo_bar_stub.callCount, 0,	"foo/bar not called again"
+	slash_stub.reset()
+	foo_stub.reset()
+	foo_bar_stub.reset()
+
+	Finch.call "foo/bar/"
+	equal slash_stub.callCount, 0,  	"/ not called again"
+	equal foo_stub.callCount, 0,    	"foo not called again"
+	equal foo_bar_stub.callCount, 0,	"foo/bar not called again"
+	slash_stub.reset()
+	foo_stub.reset()
+	foo_bar_stub.reset()

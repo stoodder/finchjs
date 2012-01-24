@@ -17,6 +17,13 @@ extend = (obj, extender) ->
 
 	return obj
 
+objectsEqual = (obj1, obj2) ->
+	for key, value of obj1
+		return false if obj2[key] isnt value
+	for key, value of obj2
+		return false if obj1[key] isnt value
+	return true
+
 ##################################################
 #
 # Declare some private, state variables for Finch
@@ -27,12 +34,12 @@ currentRouteStack = []
 currentCallStack = []
 
 currentCall = null
+currentQueryParams = ""
 
 ###
 # Method used to standardize a route so we can better parse through it
 ###
 standardizeRoute = (route) ->
-
 	#Get a valid rotue
 	route = if isString(route) then trim(route) else ""
 
@@ -216,15 +223,21 @@ buildCallStack = (pattern) ->
 #	routeStack - The route stack that is similar to the call stack
 #	staffDiffIndex - The point where the stack should start calling from
 #	parameters - The parameters to extend onto the list of parameters to send onward
-#	callback - The callback method to run when the stack is complete
 ###
-runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters, callback) ->
+runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
 	#First setup the variables
 	callStack = [] unless isArray(callStack)
 	routeStack = [] unless isArray(routeStack)
 	stackDiffIndex = if isNumber(stackDiffIndex) and stackDiffIndex > 0 then parseInt(stackDiffIndex) else 0
 	parameters = {} unless isObject(parameters)
-	callback = (->) unless isFunction(callback)
+
+	#Don't do anything if the call stack is empty
+	return if callStack.length <= 0
+
+	# Get the last item off the stack, we'll try to call its load method
+	# at the end of the call stack if it wasn't already called (as a setup method)
+	lastItem = callStack[callStack.length-1]
+	callback = if isFunction(lastItem.load) then lastItem.load else (->)
 
 	#Setup the current call object, this is a bit messy,
 	#but is used for aborting calls and keeping everything in sync
@@ -249,7 +262,7 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters, callback
 		return currentCall.abortedCallback() if currentCall.aborted
 		if callStack.length <= 0
 			currentCall = null
-			return callback(parameters, (->))
+			return callback.call(lastItem.context, parameters, (->))
 
 		#Get the next pieces off the stacks
 		callItem = callStack.shift()
@@ -269,7 +282,7 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters, callback
 		if callItem.setup.length is 2
 
 			#Call the method asynchronously
-			callItem.setup( parameters, (p) ->
+			callItem.setup.call(callItem.context, parameters, (p) ->
 
 				#push the internal stacks
 				currentCallStack.push(callItem)
@@ -286,7 +299,7 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters, callback
 		#Synchronous call
 		else
 			#Execute this item's setup method
-			callItem.setup(parameters)
+			callItem.setup.call(callItem.context, parameters)
 
 			#push the internal stacks
 			currentCallStack.push(callItem)
@@ -305,6 +318,11 @@ runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters, callback
 
 ###
 # Method: runTeardownCallStack
+#
+# Arguments:
+#	callStack
+#	routeStack
+#	stackDiffIndex
 ###
 # TODO: we really do not need the first and second arguments
 runTeardownCallStack = (callStack, routeStack, stackDiffIndex) ->
@@ -333,14 +351,14 @@ runTeardownCallStack = (callStack, routeStack, stackDiffIndex) ->
 		callItem.teardown = (->) unless isFunction(callItem.teardown)
 
 		#Call the teardown method
-		callItem.teardown()
+		callItem.teardown.call(callItem.context)
 
 		#execute the next step
 		callTeardown(callStack, routeStack)
 
 	)(callStack, routeStack)
 
-	#Reutrn nothing
+	#Return nothing
 	return
 
 #END runSetupCallStack
@@ -364,7 +382,7 @@ findStackDiffIndex = (oldRouteStack, newRouteStack) ->
 	newRouteStack = [] unless isArray(newRouteStack)
 	stackIndex = 0
 
-	#Iterate over each of the stacks while in their rnages and check the values
+	#Iterate over each of the stacks while in their ranges and check the values
 	while oldRouteStack.length > stackIndex and newRouteStack.length > stackIndex
 
 		#Stop looping if we found our first different value
@@ -372,6 +390,7 @@ findStackDiffIndex = (oldRouteStack, newRouteStack) ->
 
 		#increment the index
 		stackIndex++
+
 	#END while
 
 	#Return the differentiation point
@@ -432,9 +451,8 @@ buildRouteStack = (pattern, route) ->
 		assignedPattern = assignedPatterns[pattern]
 
 		#call to extrpolate the parent route, if we extrpolated something in he child route
-		if builtRoute isnt ""
-			routeStack.unshift(builtRoute)
-			buildRoute(assignedPattern.parentPattern, route) if assignedPattern?.parentPattern? and assignedPattern.parentPattern isnt ""
+		routeStack.unshift(builtRoute)
+		buildRoute(assignedPattern.parentPattern, route) if assignedPattern?.parentPattern? and assignedPattern.parentPattern isnt ""
 
 	)(pattern)
 
@@ -519,7 +537,6 @@ Finch = {
 
 				#Get the assigned pattern
 				assignedPattern = assignedPatterns[pattern]
-				loadMethod = if isFunction(assignedPattern.load) then assignedPattern.load else (->)
 
 				#Create the necessary callstacks
 				callStack = buildCallStack(pattern)
@@ -529,11 +546,28 @@ Finch = {
 				#and the new route stack
 				stackDiffIndex = findStackDiffIndex(currentRouteStack, routeStack)
 
-				#Execute the teardown callstack from the given index
-				runTeardownCallStack(currentCallStack, currentRouteStack, stackDiffIndex)
+				#Quit if the stacks are the same size as the stackDiffIndex
+				if currentCallStack.length is callStack.length is stackDiffIndex
 
-				#Execute the setup callstack from the given index
-				runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters, loadMethod)
+					#only execute further if the query string has changed
+					if not objectsEqual(queryParams, currentQueryParams)
+
+						#Get the  last item if it exists
+						lastItem = currentCallStack[currentCallStack.length-1]
+
+						#Check if the parameters are different
+						lastItem?.load.call(lastItem.context, parameters)
+
+				#Otherwise run the teardown and setup stacks
+				else
+					#Execute the teardown callstack from the given index
+					runTeardownCallStack(currentCallStack, currentRouteStack, stackDiffIndex)
+
+					#Execute the setup callstack from the given index
+					runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters)
+
+				#Store the current query string
+				currentQueryParams = queryParams
 
 				#return true
 				return true
