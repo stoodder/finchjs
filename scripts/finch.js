@@ -1,5 +1,5 @@
 (function() {
-  var Finch, assignedPatterns, buildCallStack, buildRouteStack, currentCall, currentCallStack, currentQueryParams, currentRouteStack, endsWith, extend, findStackDiffIndex, getParameters, getParentPattern, isArray, isFunction, isNumber, isObject, isString, matchPattern, objectsEqual, parseQueryString, runSetupCallStack, runTeardownCallStack, standardizeRoute, startsWith, trim, trimSlashes;
+  var Finch, NodeType, Route, RouteTreeNode, addRoute, arraysEqual, contains, currentRoute, endsWith, extend, findNearestCommonAncestor, findRoute, getChildRouteString, getComponentName, getComponentType, getParentRouteString, isArray, isFunction, isNumber, isObject, isString, loadRoute, objectsEqual, parseQueryString, routeTreeRoot, setupRoute, splitRouteString, startsWith, teardownRoute, trim, trimSlashes;
 
   isObject = function(object) {
     return typeof object === typeof {};
@@ -37,6 +37,10 @@
     return haystack.indexOf(needle, haystack.length - needle.length) !== -1;
   };
 
+  contains = function(haystack, needle) {
+    return haystack.indexOf(needle) !== -1;
+  };
+
   extend = function(obj, extender) {
     var key, value;
     if (!isObject(obj)) obj = {};
@@ -61,94 +65,62 @@
     return true;
   };
 
-  assignedPatterns = {};
-
-  currentRouteStack = [];
-
-  currentCallStack = [];
-
-  currentCall = null;
-
-  currentQueryParams = "";
-
-  /*
-  # Method used to standardize a route so we can better parse through it
-  */
-
-  standardizeRoute = function(route) {
-    var closingBracketIndex;
-    route = isString(route) ? trim(route) : "";
-    if (startsWith(route, "[")) {
-      closingBracketIndex = route.indexOf("]");
-      if (closingBracketIndex > 1) {
-        route = route.slice(1, closingBracketIndex) + route.slice(closingBracketIndex + 1);
-      } else {
-        route = route.slice(Math.max(1, closingBracketIndex + 1));
-      }
+  arraysEqual = function(arr1, arr2) {
+    var index, value, _len;
+    if (arr1.length !== arr2.length) return false;
+    for (index = 0, _len = arr1.length; index < _len; index++) {
+      value = arr1[index];
+      if (arr2[index] !== value) return false;
     }
-    route = trimSlashes(route);
-    return route;
+    return true;
   };
 
-  /*
-  # Method: getParentPattern
-  # 	Used to extract the parent pattern out of a given pattern
-  #	- A parent pattern is specified within brackets, ex: [/home]/news
-  #		'/home' would be the parent pattern
-  #	- Useful for identifying and calling the parent pattern's callback
-  #
-  # Arguments:
-  #	pattern - The pattern to dig into and find a parent pattern, if one exisst
-  #
-  # Returns
-  #	string - The idenfitfied parent pattern
-  */
-
-  getParentPattern = function(pattern) {
-    var closingBracketIndex, parentPattern;
-    pattern = isString(pattern) ? trim(pattern) : "";
-    parentPattern = null;
-    if (startsWith(pattern, "[")) {
-      closingBracketIndex = pattern.indexOf("]");
-      if (closingBracketIndex > 1) {
-        parentPattern = pattern.slice(1, closingBracketIndex);
-      }
-    }
-    return parentPattern;
+  NodeType = {
+    Literal: 'Literal',
+    Variable: 'Variable'
   };
 
-  /*
-  # Method: getParameters
-  # 	Used to extract the parameters out of a route (from within the route's path, not query string)
-  #
-  # Arguments:
-  #	pattern - The pattern to use as a reference for finding parameters
-  #	route - The given route to extract parameters from
-  #
-  # Returns:
-  #	object - An object of the route's parameters
-  #
-  # See Also:
-  #	parseQueryString
-  */
+  RouteTreeNode = (function() {
 
-  getParameters = function(pattern, route) {
-    var index, parameters, patternPiece, patternSplit, routeSplit;
-    if (!isString(route)) route = "";
-    if (!isString(pattern)) pattern = "";
-    route = standardizeRoute(route);
-    pattern = standardizeRoute(pattern);
-    routeSplit = route.split("/");
-    patternSplit = pattern.split("/");
-    if (routeSplit.length !== patternSplit.length) return {};
-    parameters = {};
-    for (index in patternSplit) {
-      patternPiece = patternSplit[index];
-      if (startsWith(patternPiece, ":")) {
-        parameters[patternPiece.slice(1)] = routeSplit[index];
-      }
+    function RouteTreeNode(_arg) {
+      var name, nodeType;
+      name = _arg.name, nodeType = _arg.nodeType;
+      this.name = name != null ? name : "";
+      this.nodeType = nodeType != null ? nodeType : void 0;
+      this.parentNode = void 0;
+      this.route = void 0;
+      this.childLiterals = {};
+      this.childVariable = void 0;
+      this.bindings = [];
     }
-    return parameters;
+
+    return RouteTreeNode;
+
+  })();
+
+  Route = (function() {
+
+    function Route(_arg) {
+      var context, load, setup, teardown;
+      setup = _arg.setup, load = _arg.load, teardown = _arg.teardown, context = _arg.context;
+      this.setup = isFunction(setup) ? setup : (function() {});
+      this.load = isFunction(load) ? load : (function() {});
+      this.teardown = isFunction(teardown) ? teardown : (function() {});
+      this.context = isObject(context) ? context : {};
+    }
+
+    return Route;
+
+  })();
+
+  routeTreeRoot = new RouteTreeNode({
+    name: "*"
+  });
+
+  currentRoute = {
+    node: void 0,
+    boundValues: {},
+    parameters: {}
   };
 
   /*
@@ -163,230 +135,312 @@
   */
 
   parseQueryString = function(queryString) {
-    var key, piece, queryParams, value, _i, _len, _ref, _ref2;
+    var key, piece, queryParameters, value, _i, _len, _ref, _ref2;
     queryString = isString(queryString) ? trim(queryString) : "";
-    queryParams = {};
+    queryParameters = {};
     if (queryString !== "") {
       _ref = queryString.split("&");
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         piece = _ref[_i];
         _ref2 = piece.split("=", 2), key = _ref2[0], value = _ref2[1];
-        queryParams[key] = value;
+        queryParameters[key] = value;
       }
     }
-    return queryParams;
+    return queryParameters;
   };
 
   /*
-  # Method: matchPattern
-  #	Method used to determine if a route matches a pattern
+  # Method: getParentRouteString
+  #	Gets the parent route sub-string of a route string
   #
   # Arguments:
-  #	route - The route to check
-  #	pattern - The pattern to compare the route against
+  #	routeString - The route string to parse
   #
   # Returns:
-  #	boolean - Did the route match the pattern?
+  #	string - The parent route sub-string
   */
 
-  matchPattern = function(route, pattern) {
-    var index, patternPiece, patternSplit, routeSplit;
-    route = standardizeRoute(route);
-    pattern = standardizeRoute(pattern);
-    routeSplit = route.split("/");
-    patternSplit = pattern.split("/");
-    if (routeSplit.length !== patternSplit.length) return false;
-    for (index in patternSplit) {
-      patternPiece = patternSplit[index];
-      if (!(patternPiece === routeSplit[index] || startsWith(patternPiece, ":"))) {
-        return false;
-      }
+  getParentRouteString = function(routeString) {
+    var closingBracketIndex;
+    if (!startsWith(routeString, "[")) return "";
+    closingBracketIndex = routeString.indexOf("]");
+    return routeString.slice(1, (closingBracketIndex - 1) + 1 || 9e9);
+  };
+
+  /*
+  # Method: getChildRouteString
+  #	Gets the child route sub-string of a route string
+  #
+  # Arguments:
+  #	routeString - The route string to parse
+  #
+  # Returns:
+  #	string - The child route sub-string
+  */
+
+  getChildRouteString = function(routeString) {
+    var closingBracketIndex;
+    if (!startsWith(routeString, "[")) return routeString;
+    closingBracketIndex = routeString.indexOf("]");
+    return routeString.slice(closingBracketIndex + 1);
+  };
+
+  /*
+  # Method: splitRouteString
+  #	Splits a route string into its components.
+  #
+  # Arguments:
+  #	routeString - The route string to split up into an array
+  #
+  # Returns:
+  #	array - An array of the split apart route string
+  #
+  # Examples:
+  #	splitRouteString("")
+  #		-> []
+  #	splitRouteString("/")
+  #		-> []
+  #	splitRouteString("/foo")
+  #		-> ["foo"]
+  #	splitRouteString("/foo/bar/")
+  #		-> ["foo", "bar"]
+  */
+
+  splitRouteString = function(routeString) {
+    routeString = trimSlashes(routeString);
+    if (routeString === "") {
+      return [];
+    } else {
+      return routeString.split('/');
     }
-    return true;
+  };
+
+  getComponentType = function(routeStringComponent) {
+    if (startsWith(routeStringComponent, ":")) return NodeType.Variable;
+    return NodeType.Literal;
+  };
+
+  getComponentName = function(routeStringComponent) {
+    switch (getComponentType(routeStringComponent)) {
+      case NodeType.Literal:
+        return routeStringComponent;
+      case NodeType.Variable:
+        return routeStringComponent.slice(1);
+    }
   };
 
   /*
-  # Method: buildCallStack
-  #	Used to build up a callstack for a given patterrn
+  # Method: addRoute
+  #	Adds a new route node to the route tree, given a route string.
   #
   # Arguments:
-  #	pattern - The route pattern to try and call
+  #	routeString - The route string to parse and add to the route tree.
+  #	settings - The settings for the new route
+  #
+  # Returns:
+  #	Route - The added route
   */
 
-  buildCallStack = function(pattern) {
-    var callStack, stackAdd;
-    pattern = standardizeRoute(pattern);
-    callStack = [];
-    (stackAdd = function(pattern) {
-      var assignedPattern;
-      assignedPattern = assignedPatterns[pattern];
-      if (isObject(assignedPattern)) {
-        if (isFunction(assignedPattern.setup)) callStack.unshift(assignedPattern);
-        if ((assignedPattern.parentPattern != null) && assignedPattern.parentPattern !== "") {
-          return stackAdd(assignedPattern.parentPattern);
-        }
+  addRoute = function(routeString, settings) {
+    var bindings, childRouteComponents, parentNode, parentRouteComponents, recur;
+    parentRouteComponents = splitRouteString(getParentRouteString(routeString));
+    childRouteComponents = splitRouteString(getChildRouteString(routeString));
+    parentNode = void 0;
+    bindings = [];
+    return (recur = function(currentNode, name) {
+      var component, componentName, componentType, nextNode, onParentNode, _base, _ref, _ref2;
+      component = void 0;
+      onParentNode = false;
+      nextNode = void 0;
+      if (parentRouteComponents.length <= 0 && childRouteComponents.length <= 0) {
+        currentNode.parentNode = parentNode;
+        currentNode.bindings = bindings;
+        return currentNode.route = new Route(settings);
       }
-    })(pattern);
-    return callStack;
+      if (parentRouteComponents.length > 0) {
+        component = parentRouteComponents.shift();
+        if (parentRouteComponents.length === 0) onParentNode = true;
+      } else {
+        component = childRouteComponents.shift();
+      }
+      componentType = getComponentType(component);
+      componentName = getComponentName(component);
+      name = "" + name + "/" + component;
+      switch (componentType) {
+        case NodeType.Literal:
+          nextNode = (_ref = (_base = currentNode.childLiterals)[componentName]) != null ? _ref : _base[componentName] = new RouteTreeNode({
+            name: name,
+            nodeType: componentType
+          });
+          break;
+        case NodeType.Variable:
+          nextNode = (_ref2 = currentNode.childVariable) != null ? _ref2 : currentNode.childVariable = new RouteTreeNode({
+            name: name,
+            nodeType: componentType
+          });
+          bindings.push(componentName);
+      }
+      if (onParentNode) parentNode = nextNode;
+      return recur(nextNode, name);
+    })(routeTreeRoot, "");
   };
 
   /*
-  # Method: runSetupCallStack
-  #	Used to execute a callstack from a route starting at it's top most parent
+  # Method: findRoute
+  #	Finds a route in the route tree, given a URI.
   #
   # Arguments:
-  #	callStack - The stack to iterate through (calls each item's setup method)
-  #	routeStack - The route stack that is similar to the call stack
-  #	staffDiffIndex - The point where the stack should start calling from
-  #	parameters - The parameters to extend onto the list of parameters to send onward
+  #	uri - The uri to parse and match against the route tree.
+  #
+  # Returns:
+  #	{ node, boundValues }
+  #	node - The node that matches the URI
+  #	boundValues - An ordered list of values bound to each variable in the URI
   */
 
-  runSetupCallStack = function(callStack, routeStack, stackDiffIndex, parameters) {
-    var callSetup, callback, lastItem;
-    if (!isArray(callStack)) callStack = [];
-    if (!isArray(routeStack)) routeStack = [];
-    stackDiffIndex = isNumber(stackDiffIndex) && stackDiffIndex > 0 ? parseInt(stackDiffIndex) : 0;
-    if (!isObject(parameters)) parameters = {};
-    if (callStack.length <= 0) return;
-    lastItem = callStack[callStack.length - 1];
-    callback = isFunction(lastItem.load) ? lastItem.load : (function() {});
-    currentCall = {
-      aborted: false,
-      abortedCallback: (function() {}),
-      abort: function(cb) {
-        if (!isFunction(cb)) cb = (function() {});
-        this.aborted = true;
-        return this.abortedCallback = function() {
-          currentCall = null;
-          return cb();
+  findRoute = function(uri) {
+    var boundValues, recur, uriComponents;
+    uriComponents = splitRouteString(uri);
+    boundValues = [];
+    return (recur = function(currentNode) {
+      var component, result;
+      if (uriComponents.length <= 0) {
+        return {
+          node: currentNode,
+          boundValues: boundValues
         };
       }
-    };
-    callStack = callStack.slice(stackDiffIndex);
-    routeStack = routeStack.slice(stackDiffIndex);
-    (callSetup = function(callStack, routeStack, parameters) {
-      var callItem, routeItem;
-      if (currentCall.aborted) return currentCall.abortedCallback();
-      if (callStack.length <= 0) {
-        currentCall = null;
-        return callback.call(lastItem.context, parameters, (function() {}));
+      component = uriComponents.shift();
+      if (currentNode.childLiterals[component] != null) {
+        result = recur(currentNode.childLiterals[component]);
+        if (result != null) return result;
       }
-      callItem = callStack.shift();
-      routeItem = routeStack.shift();
-      if (!isObject(callItem)) callItem = {};
-      if (!isString(routeItem)) routeItem = "";
-      if (!isFunction(callItem.setup)) callItem.setup = (function() {});
-      if (callback === callItem.setup) callback = (function() {});
-      if (callItem.setup.length === 2) {
-        return callItem.setup.call(callItem.context, parameters, function(p) {
-          currentCallStack.push(callItem);
-          currentRouteStack.push(routeItem);
-          if (!isObject(p)) p = {};
-          extend(parameters, p);
-          return callSetup.call(callSetup, callStack, routeStack, parameters);
-        });
-      } else {
-        callItem.setup.call(callItem.context, parameters);
-        currentCallStack.push(callItem);
-        currentRouteStack.push(routeItem);
-        return callSetup(callStack, routeStack, parameters);
+      if (currentNode.childVariable != null) {
+        boundValues.push(component);
+        result = recur(currentNode.childVariable);
+        if (result != null) return result;
+        boundValues.pop();
       }
-    })(callStack, routeStack, parameters);
+    })(routeTreeRoot);
   };
 
   /*
-  # Method: runTeardownCallStack
+  # Method: findNearestCommonAncestor
+  #	Finds the nearest common ancestor route node of two routes.
   #
   # Arguments:
-  #	callStack
-  #	routeStack
-  #	stackDiffIndex
-  */
-
-  runTeardownCallStack = function(callStack, routeStack, stackDiffIndex) {
-    var callTeardown;
-    if (!isArray(callStack)) callStack = [];
-    if (!isArray(routeStack)) routeStack = [];
-    stackDiffIndex = isNumber(stackDiffIndex) && stackDiffIndex > 0 ? parseInt(stackDiffIndex) : 0;
-    if (callStack.length <= stackDiffIndex) return;
-    (callTeardown = function(callStack, routeStack) {
-      var callItem, routeItem;
-      if (callStack.length <= stackDiffIndex) return;
-      callItem = callStack.pop();
-      routeItem = routeStack.pop();
-      if (!isObject(callItem)) callItem = {};
-      if (!isString(routeItem)) routeItem = "";
-      if (!isFunction(callItem.teardown)) callItem.teardown = (function() {});
-      callItem.teardown.call(callItem.context);
-      return callTeardown(callStack, routeStack);
-    })(callStack, routeStack);
-  };
-
-  /*
-  # Method: findStackDiffIndex
-  #	Used to find the index between two stacks where they first differentiate
-  #
-  # Arguments:
-  #	oldRouteStack - The old route stack to compate against
-  #	newRouteStack - The new route stack to compare with
+  #	route1, route2 - Objects representing the two routes to compare.
+  #	-- node - The route node
+  #	-- boundValues - An ordered list of values bound to the route bindings
   #
   # Returns:
-  #	int - The first index where the two stacks aren't equal
+  #	RouteTreeNode - The nearest common ancestor node of the two routes, or
+  #	undefined if there is no common ancestor.
   */
 
-  findStackDiffIndex = function(oldRouteStack, newRouteStack) {
-    var stackIndex;
-    if (!isArray(oldRouteStack)) oldRouteStack = [];
-    if (!isArray(newRouteStack)) newRouteStack = [];
-    stackIndex = 0;
-    while (oldRouteStack.length > stackIndex && newRouteStack.length > stackIndex) {
-      if (oldRouteStack[stackIndex] !== newRouteStack[stackIndex]) break;
-      stackIndex++;
+  findNearestCommonAncestor = function(route1, route2) {
+    var ancestor, ancestors, boundValues1, boundValues2, currentNode, node1, node2, _i, _len, _ref, _ref2;
+    _ref = [route1.node, route1.boundValues], node1 = _ref[0], boundValues1 = _ref[1];
+    _ref2 = [route2.node, route2.boundValues], node2 = _ref2[0], boundValues2 = _ref2[1];
+    ancestors = [];
+    currentNode = node1;
+    while (currentNode != null) {
+      ancestors.push({
+        node: currentNode,
+        boundValues: boundValues1
+      });
+      if (currentNode.nodeType === NodeType.Variable) {
+        boundValues1 = boundValues1.slice(0, boundValues1.length - 1);
+      }
+      currentNode = currentNode.parentNode;
     }
-    return stackIndex;
+    currentNode = node2;
+    while (currentNode != null) {
+      for (_i = 0, _len = ancestors.length; _i < _len; _i++) {
+        ancestor = ancestors[_i];
+        if (ancestor.node === currentNode && arraysEqual(ancestor.boundValues, boundValues2)) {
+          return currentNode;
+        }
+      }
+      if (currentNode.nodeType === NodeType.Variable) {
+        boundValues2 = boundValues2.slice(0, boundValues2.length - 1);
+      }
+      currentNode = currentNode.parentNode;
+    }
   };
 
   /*
-  # Method: buildRouteStack
-  #	Used to build a stack of routes that will
-  #	be called with the given route (full routes, not patterns)
+  # Method: setupRoute
+  #	Recursively sets up a new route given an ancestor from which to start the setup.
   #
   # Arguments:
-  #	pattern - The pattern to reference
-  #	route - The route to extrpolate from
+  #	ancestor - The ancestor node of the new route that represents the current state
+  #	newRouteNode - The route node to set up to
+  #	parameters - The parameters for the new route
   */
 
-  buildRouteStack = function(pattern, route) {
-    var buildRoute, routeSplit, routeStack;
-    pattern = standardizeRoute(pattern);
-    route = standardizeRoute(route);
-    routeSplit = route.split("/");
-    routeStack = [];
-    if (routeSplit.length <= 0) return routeStack;
-    (buildRoute = function(pattern) {
-      var assignedPattern, builtRoute, matches, patternPiece, patternSplit, routePiece, splitIndex;
-      patternSplit = pattern.split("/");
-      builtRoute = "";
-      matches = true;
-      splitIndex = 0;
-      while (matches && patternSplit.length > splitIndex && routeSplit.length > splitIndex) {
-        patternPiece = patternSplit[splitIndex];
-        routePiece = routeSplit[splitIndex];
-        if (startsWith(patternPiece, ":") || patternPiece === routePiece) {
-          builtRoute += "" + routePiece + "/";
-        } else {
-          matches = false;
-        }
-        splitIndex++;
+  setupRoute = function(ancestor, newRouteNode, parameters) {
+    var recur;
+    return (recur = function(currentNode, continuation) {
+      if (currentNode === ancestor) {
+        return continuation(parameters);
+      } else {
+        return recur(currentNode.parentNode, function(parameters) {
+          var context, setup, _ref;
+          _ref = currentNode.route, context = _ref.context, setup = _ref.setup;
+          if (setup.length === 2) {
+            return setup.call(context, parameters, function(addedParameters) {
+              if (!isObject(addedParameters)) addedParameters = {};
+              parameters = extend({}, parameters);
+              extend(parameters, addedParameters);
+              return continuation(parameters);
+            });
+          } else {
+            setup.call(context, parameters);
+            return continuation(parameters);
+          }
+        });
       }
-      if (endsWith(builtRoute, "/")) builtRoute = builtRoute.slice(0, -1);
-      assignedPattern = assignedPatterns[pattern];
-      routeStack.unshift(builtRoute);
-      if (((assignedPattern != null ? assignedPattern.parentPattern : void 0) != null) && assignedPattern.parentPattern !== "") {
-        return buildRoute(assignedPattern.parentPattern, route);
+    })(newRouteNode, function(parameters) {
+      var load, setup, _ref;
+      _ref = newRouteNode.route, setup = _ref.setup, load = _ref.load;
+      if (setup !== load) return loadRoute(newRouteNode, parameters);
+    });
+  };
+
+  /*
+  # Method: loadRoute
+  #	Loads a route with the given parameters.
+  #
+  # Arguments:
+  #	routeNode- The route node to load
+  #	parameters - The parameters for the route
+  */
+
+  loadRoute = function(routeNode, parameters) {
+    var context, load, _ref;
+    _ref = routeNode.route, context = _ref.context, load = _ref.load;
+    return load.call(context, parameters);
+  };
+
+  /*
+  # Method: teardownRoute
+  #	Recursively tears down the current route given an ancestor to tear down to.
+  #
+  # Arguments:
+  #	ancestor - The ancestor node to tear down to
+  */
+
+  teardownRoute = function(ancestor) {
+    var recur;
+    return (recur = function(currentNode) {
+      var context;
+      if (currentNode !== ancestor) {
+        context = currentNode.route.context;
+        currentNode.route.teardown.call(context);
+        return recur(currentNode.parentNode);
       }
-    })(pattern);
-    return routeStack;
+    })(currentRoute.node);
   };
 
   /*
@@ -403,23 +457,15 @@
     	#	callback - The callback to assign to the pattern
     */
     route: function(pattern, settings) {
-      var parentPattern;
       if (isFunction(settings)) {
         settings = {
           setup: settings,
           load: settings
         };
       }
-      if (!isString(pattern)) pattern = "";
       if (!isObject(settings)) settings = {};
-      if (!isObject(settings.context)) settings.context = {};
-      if (!isFunction(settings.setup)) settings.setup = (function() {});
-      if (!isFunction(settings.load)) settings.load = (function() {});
-      if (!isFunction(settings.teardown)) settings.teardown = (function() {});
-      parentPattern = getParentPattern(pattern);
-      settings.pattern = standardizeRoute(pattern);
-      settings.parentPattern = standardizeRoute(parentPattern);
-      return assignedPatterns[settings.pattern] = settings;
+      if (!isString(pattern)) pattern = "";
+      return addRoute(pattern, settings);
     },
     /*
     	# Method: Finch.call
@@ -429,42 +475,33 @@
     	#	parameters (optional) - The initial prameters to send
     */
     call: function(uri, parameters) {
-      var assignedPattern, callStack, config, lastItem, pattern, queryParams, queryString, route, routeStack, stackDiffIndex, _ref, _ref2;
+      var ancestor, binding, index, newRoute, queryParameters, queryString, _len, _ref, _ref2;
       if (!isString(uri)) uri = "";
       if (!isObject(parameters)) parameters = {};
-      _ref = uri.split("?", 2), route = _ref[0], queryString = _ref[1];
-      route = standardizeRoute(route);
-      queryParams = parseQueryString(queryString);
-      extend(parameters, queryParams);
-      for (pattern in assignedPatterns) {
-        config = assignedPatterns[pattern];
-        if (matchPattern(route, pattern)) {
-          if (currentCall != null) {
-            return currentCall.abort(function() {
-              return Finch.call(uri, parameters);
-            });
-          }
-          extend(parameters, getParameters(pattern, route));
-          assignedPattern = assignedPatterns[pattern];
-          callStack = buildCallStack(pattern);
-          routeStack = buildRouteStack(pattern, route);
-          stackDiffIndex = findStackDiffIndex(currentRouteStack, routeStack);
-          if ((currentCallStack.length === (_ref2 = callStack.length) && _ref2 === stackDiffIndex)) {
-            if (!objectsEqual(queryParams, currentQueryParams)) {
-              lastItem = currentCallStack[currentCallStack.length - 1];
-              if (lastItem != null) {
-                lastItem.load.call(lastItem.context, parameters);
-              }
-            }
-          } else {
-            runTeardownCallStack(currentCallStack, currentRouteStack, stackDiffIndex);
-            runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters);
-          }
-          currentQueryParams = queryParams;
-          return true;
-        }
+      _ref = uri.split("?", 2), uri = _ref[0], queryString = _ref[1];
+      queryParameters = parseQueryString(queryString);
+      newRoute = findRoute(uri);
+      if (!(newRoute != null)) return false;
+      newRoute.parameters = extend(parameters, queryParameters);
+      _ref2 = newRoute.node.bindings;
+      for (index = 0, _len = _ref2.length; index < _len; index++) {
+        binding = _ref2[index];
+        newRoute.parameters[binding] = newRoute.boundValues[index];
       }
-      return false;
+      if (newRoute.node === currentRoute.node && arraysEqual(newRoute.boundValues, currentRoute.boundValues)) {
+        if (!objectsEqual(currentRoute.parameters, newRoute.parameters)) {
+          loadRoute(newRoute.node, newRoute.parameters);
+        }
+      } else {
+        ancestor = findNearestCommonAncestor({
+          node: currentRoute.node,
+          boundValues: currentRoute.boundValues
+        }, newRoute);
+        teardownRoute(ancestor);
+        setupRoute(ancestor, newRoute.node, newRoute.parameters);
+      }
+      currentRoute = newRoute;
+      return true;
     },
     /*
     	# Method: Finch.reset
@@ -474,11 +511,10 @@
     	#	none
     */
     reset: function() {
-      runTeardownCallStack(currentCallStack, currentRouteStack, 0);
-      assignedPatterns = {};
-      currentRouteStack = [];
-      currentCallStack = [];
-      currentCall = null;
+      teardownRoute(void 0);
+      routeTreeRoot = new RouteTreeNode({
+        name: "*"
+      });
     }
   };
 
