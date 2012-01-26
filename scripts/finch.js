@@ -1,5 +1,5 @@
 (function() {
-  var Finch, NodeType, Route, RouteTreeNode, addRoute, arraysEqual, contains, currentRoute, endsWith, extend, findNearestCommonAncestor, findRoute, getChildRouteString, getComponentName, getComponentType, getParentRouteString, isArray, isFunction, isNumber, isObject, isString, loadRoute, objectsEqual, parseQueryString, routeTreeRoot, setupRoute, splitRouteString, startsWith, teardownRoute, trim, trimSlashes;
+  var Finch, NodeType, RoutePath, RouteSettings, RouteTreeNode, addRoute, arraysEqual, contains, currentParameters, currentPath, endsWith, extend, findNearestCommonAncestor, findRoutePath, getChildRouteString, getComponentName, getComponentType, getParentRouteString, isArray, isFunction, isNumber, isObject, isString, loadRoute, objectsEqual, parseQueryString, routeTreeRoot, setupRoute, splitRouteString, startsWith, teardownRoute, trim, trimSlashes;
 
   isObject = function(object) {
     return typeof object === typeof {};
@@ -83,14 +83,14 @@
   RouteTreeNode = (function() {
 
     function RouteTreeNode(_arg) {
-      var name, nodeType;
-      name = _arg.name, nodeType = _arg.nodeType;
+      var name, nodeType, parent, _ref;
+      _ref = _arg != null ? _arg : {}, name = _ref.name, nodeType = _ref.nodeType, parent = _ref.parent;
       this.name = name != null ? name : "";
-      this.nodeType = nodeType != null ? nodeType : void 0;
-      this.parentNode = void 0;
-      this.route = void 0;
+      this.nodeType = nodeType != null ? nodeType : null;
+      this.parent = parent != null ? parent : null;
+      this.routeSettings = null;
       this.childLiterals = {};
-      this.childVariable = void 0;
+      this.childVariable = null;
       this.bindings = [];
     }
 
@@ -98,30 +98,97 @@
 
   })();
 
-  Route = (function() {
+  RouteSettings = (function() {
 
-    function Route(_arg) {
-      var context, load, setup, teardown;
-      setup = _arg.setup, load = _arg.load, teardown = _arg.teardown, context = _arg.context;
+    function RouteSettings(_arg) {
+      var context, load, setup, teardown, _ref;
+      _ref = _arg != null ? _arg : {}, setup = _ref.setup, load = _ref.load, teardown = _ref.teardown, context = _ref.context;
       this.setup = isFunction(setup) ? setup : (function() {});
       this.load = isFunction(load) ? load : (function() {});
       this.teardown = isFunction(teardown) ? teardown : (function() {});
       this.context = isObject(context) ? context : {};
     }
 
-    return Route;
+    return RouteSettings;
 
   })();
+
+  RoutePath = (function() {
+
+    function RoutePath(_arg) {
+      var boundValues, node, _ref;
+      _ref = _arg != null ? _arg : {}, node = _ref.node, boundValues = _ref.boundValues;
+      this.node = node != null ? node : null;
+      this.boundValues = boundValues != null ? boundValues : [];
+    }
+
+    RoutePath.prototype.getBindings = function() {
+      var binding, bindings, index, _len, _ref;
+      bindings = {};
+      _ref = this.node.bindings;
+      for (index = 0, _len = _ref.length; index < _len; index++) {
+        binding = _ref[index];
+        bindings[binding] = this.boundValues[index];
+      }
+      return bindings;
+    };
+
+    RoutePath.prototype.isEqual = function(routePath) {
+      return (routePath != null) && this.node === routePath.node && arraysEqual(this.boundValues, routePath.boundValues);
+    };
+
+    RoutePath.prototype.isRoot = function() {
+      return !(this.node.parent != null);
+    };
+
+    RoutePath.prototype.getParent = function() {
+      var bindingCount, boundValues, _ref, _ref2;
+      if (this.node == null) return null;
+      bindingCount = (_ref = (_ref2 = this.node.parent) != null ? _ref2.bindings.length : void 0) != null ? _ref : 0;
+      boundValues = this.boundValues.slice(0, bindingCount);
+      return new RoutePath({
+        node: this.node.parent,
+        boundValues: boundValues
+      });
+    };
+
+    RoutePath.prototype.getChild = function(targetRoutePath) {
+      var boundvalues, targetNode;
+      targetNode = targetRoutePath != null ? targetRoutePath.node : void 0;
+      while ((targetNode != null) && targetNode.parent !== this.node) {
+        targetNode = targetNode.parent;
+      }
+      if (targetNode == null) return null;
+      if (!arraysEqual(this.boundValues, targetNode.boundValues.slice(0, this.boundValues.length + 1 || 9e9))) {
+        return null;
+      }
+      boundvalues = this.boundValues.slice(0);
+      if (targetNode.nodeType === NodeType.Variable) {
+        boundValues.push(targetNode.boundValues[this.boundValues.length]);
+      }
+      return new RoutePath({
+        node: targetNode,
+        boundValues: boundValues
+      });
+    };
+
+    return RoutePath;
+
+  })();
+
+  /*
+  # Globals
+  */
 
   routeTreeRoot = new RouteTreeNode({
     name: "*"
   });
 
-  currentRoute = {
-    node: void 0,
-    boundValues: {},
-    parameters: {}
-  };
+  currentPath = new RoutePath({
+    node: null
+  });
+
+  currentParameters = {};
 
   /*
   # Method: parseQueryString
@@ -207,12 +274,9 @@
   */
 
   splitRouteString = function(routeString) {
+    if (routeString === "") return [];
     routeString = trimSlashes(routeString);
-    if (routeString === "") {
-      return [];
-    } else {
-      return routeString.split('/');
-    }
+    return routeString.split('/');
   };
 
   getComponentType = function(routeStringComponent) {
@@ -241,21 +305,21 @@
   #	Route - The added route
   */
 
-  addRoute = function(routeString, settings) {
+  addRoute = function(routeTreeRoot, routeString, settings) {
     var bindings, childRouteComponents, parentNode, parentRouteComponents, recur;
     parentRouteComponents = splitRouteString(getParentRouteString(routeString));
     childRouteComponents = splitRouteString(getChildRouteString(routeString));
-    parentNode = void 0;
+    parentNode = routeTreeRoot;
     bindings = [];
     return (recur = function(currentNode, name) {
       var component, componentName, componentType, nextNode, onParentNode, _base, _ref, _ref2;
-      component = void 0;
+      component = null;
       onParentNode = false;
-      nextNode = void 0;
+      nextNode = null;
       if (parentRouteComponents.length <= 0 && childRouteComponents.length <= 0) {
-        currentNode.parentNode = parentNode;
+        currentNode.parent = parentNode;
         currentNode.bindings = bindings;
-        return currentNode.route = new Route(settings);
+        return currentNode.routeSettings = new RouteSettings(settings);
       }
       if (parentRouteComponents.length > 0) {
         component = parentRouteComponents.shift();
@@ -270,7 +334,8 @@
         case NodeType.Literal:
           nextNode = (_ref = (_base = currentNode.childLiterals)[componentName]) != null ? _ref : _base[componentName] = new RouteTreeNode({
             name: name,
-            nodeType: componentType
+            nodeType: componentType,
+            parent: routeTreeRoot
           });
           break;
         case NodeType.Variable:
@@ -286,29 +351,29 @@
   };
 
   /*
-  # Method: findRoute
+  # Method: findRoutePath
   #	Finds a route in the route tree, given a URI.
   #
   # Arguments:
   #	uri - The uri to parse and match against the route tree.
   #
   # Returns:
-  #	{ node, boundValues }
+  #	RoutePath
   #	node - The node that matches the URI
   #	boundValues - An ordered list of values bound to each variable in the URI
   */
 
-  findRoute = function(uri) {
+  findRoutePath = function(uri) {
     var boundValues, recur, uriComponents;
     uriComponents = splitRouteString(uri);
     boundValues = [];
     return (recur = function(currentNode) {
       var component, result;
       if (uriComponents.length <= 0) {
-        return {
+        return new RoutePath({
           node: currentNode,
           boundValues: boundValues
-        };
+        });
       }
       component = uriComponents.shift();
       if (currentNode.childLiterals[component] != null) {
@@ -321,6 +386,7 @@
         if (result != null) return result;
         boundValues.pop();
       }
+      return null;
     })(routeTreeRoot);
   };
 
@@ -335,38 +401,26 @@
   #
   # Returns:
   #	RouteTreeNode - The nearest common ancestor node of the two routes, or
-  #	undefined if there is no common ancestor.
+  #	null if there is no common ancestor.
   */
 
-  findNearestCommonAncestor = function(route1, route2) {
-    var ancestor, ancestors, boundValues1, boundValues2, currentNode, node1, node2, _i, _len, _ref, _ref2;
-    _ref = [route1.node, route1.boundValues], node1 = _ref[0], boundValues1 = _ref[1];
-    _ref2 = [route2.node, route2.boundValues], node2 = _ref2[0], boundValues2 = _ref2[1];
+  findNearestCommonAncestor = function(routePath1, routePath2) {
+    var ancestor, ancestors, currentRoute, _i, _len;
     ancestors = [];
-    currentNode = node1;
-    while (currentNode != null) {
-      ancestors.push({
-        node: currentNode,
-        boundValues: boundValues1
-      });
-      if (currentNode.nodeType === NodeType.Variable) {
-        boundValues1 = boundValues1.slice(0, boundValues1.length - 1);
-      }
-      currentNode = currentNode.parentNode;
+    currentRoute = routePath2;
+    while (currentRoute != null) {
+      ancestors.push(currentRoute);
+      currentRoute = currentRoute.getParent();
     }
-    currentNode = node2;
-    while (currentNode != null) {
+    currentRoute = routePath1;
+    while (currentRoute != null) {
       for (_i = 0, _len = ancestors.length; _i < _len; _i++) {
         ancestor = ancestors[_i];
-        if (ancestor.node === currentNode && arraysEqual(ancestor.boundValues, boundValues2)) {
-          return currentNode;
-        }
+        if (currentRoute.isEqual(ancestor)) return currentRoute;
       }
-      if (currentNode.nodeType === NodeType.Variable) {
-        boundValues2 = boundValues2.slice(0, boundValues2.length - 1);
-      }
-      currentNode = currentNode.parentNode;
+      currentRoute = currentRoute.getParent();
     }
+    return null;
   };
 
   /*
@@ -379,32 +433,31 @@
   #	parameters - The parameters for the new route
   */
 
-  setupRoute = function(ancestor, newRouteNode, parameters) {
+  setupRoute = function(ancestorPath, newPath) {
     var recur;
-    return (recur = function(currentNode, continuation) {
-      if (currentNode === ancestor) {
-        return continuation(parameters);
+    return (recur = function(currentPath, continuation) {
+      if (currentPath.isEqual(ancestorPath)) {
+        return continuation();
       } else {
-        return recur(currentNode.parentNode, function(parameters) {
-          var context, setup, _ref;
-          _ref = currentNode.route, context = _ref.context, setup = _ref.setup;
+        return recur(currentPath.getParent(), function() {
+          var bindings, context, setup, _ref;
+          if (currentPath.node.routeSettings == null) return continuation();
+          bindings = currentPath.getBindings();
+          _ref = currentPath.node.routeSettings, context = _ref.context, setup = _ref.setup;
           if (setup.length === 2) {
-            return setup.call(context, parameters, function(addedParameters) {
-              if (!isObject(addedParameters)) addedParameters = {};
-              parameters = extend({}, parameters);
-              extend(parameters, addedParameters);
-              return continuation(parameters);
+            return setup.call(context, bindings, function() {
+              return continuation();
             });
           } else {
-            setup.call(context, parameters);
-            return continuation(parameters);
+            setup.call(context, bindings);
+            return continuation();
           }
         });
       }
-    })(newRouteNode, function(parameters) {
+    })(newPath, function() {
       var load, setup, _ref;
-      _ref = newRouteNode.route, setup = _ref.setup, load = _ref.load;
-      if (setup !== load) return loadRoute(newRouteNode, parameters);
+      _ref = newPath.node.routeSettings, setup = _ref.setup, load = _ref.load;
+      if (setup !== load) return loadRoute(newPath);
     });
   };
 
@@ -417,10 +470,10 @@
   #	parameters - The parameters for the route
   */
 
-  loadRoute = function(routeNode, parameters) {
+  loadRoute = function(routePath) {
     var context, load, _ref;
-    _ref = routeNode.route, context = _ref.context, load = _ref.load;
-    return load.call(context, parameters);
+    _ref = routePath.node.routeSettings, context = _ref.context, load = _ref.load;
+    return load.call(context, currentParameters);
   };
 
   /*
@@ -431,16 +484,26 @@
   #	ancestor - The ancestor node to tear down to
   */
 
-  teardownRoute = function(ancestor) {
+  teardownRoute = function(ancestorPath) {
     var recur;
-    return (recur = function(currentNode) {
-      var context;
-      if (currentNode !== ancestor) {
-        context = currentNode.route.context;
-        currentNode.route.teardown.call(context);
-        return recur(currentNode.parentNode);
+    return (recur = function(currentPath) {
+      var bindings, context, teardown, _ref;
+      if (!currentPath.isEqual(ancestorPath)) {
+        if (currentPath.node.routeSettings == null) {
+          return recur(currentPath.getParent());
+        }
+        bindings = currentPath.getBindings();
+        _ref = currentPath.node.routeSettings, context = _ref.context, teardown = _ref.teardown;
+        if (teardown.length === 2) {
+          return teardown.call(context, bindings, function() {
+            return recur(currentPath.getParent());
+          });
+        } else {
+          teardown.call(context, bindings);
+          return recur(currentPath.getParent());
+        }
       }
-    })(currentRoute.node);
+    })(currentPath);
   };
 
   /*
@@ -448,6 +511,7 @@
   */
 
   Finch = {
+    debug: true,
     /*
     	# Mathod: Finch.route
     	#	Used to setup a new route
@@ -465,42 +529,31 @@
       }
       if (!isObject(settings)) settings = {};
       if (!isString(pattern)) pattern = "";
-      return addRoute(pattern, settings);
+      return addRoute(routeTreeRoot, pattern, settings);
     },
     /*
     	# Method: Finch.call
     	#
     	# Arguments:
     	#	route - The route to try and call
-    	#	parameters (optional) - The initial prameters to send
     */
-    call: function(uri, parameters) {
-      var ancestor, binding, index, newRoute, queryParameters, queryString, _len, _ref, _ref2;
+    call: function(uri) {
+      var ancestorPath, bindings, newPath, queryParameters, queryString, _ref;
       if (!isString(uri)) uri = "";
-      if (!isObject(parameters)) parameters = {};
       _ref = uri.split("?", 2), uri = _ref[0], queryString = _ref[1];
+      newPath = findRoutePath(uri);
+      if (newPath == null) return false;
       queryParameters = parseQueryString(queryString);
-      newRoute = findRoute(uri);
-      if (!(newRoute != null)) return false;
-      newRoute.parameters = extend(parameters, queryParameters);
-      _ref2 = newRoute.node.bindings;
-      for (index = 0, _len = _ref2.length; index < _len; index++) {
-        binding = _ref2[index];
-        newRoute.parameters[binding] = newRoute.boundValues[index];
-      }
-      if (newRoute.node === currentRoute.node && arraysEqual(newRoute.boundValues, currentRoute.boundValues)) {
-        if (!objectsEqual(currentRoute.parameters, newRoute.parameters)) {
-          loadRoute(newRoute.node, newRoute.parameters);
-        }
+      bindings = newPath.getBindings();
+      currentParameters = extend(queryParameters, bindings);
+      if (newPath.isEqual(currentPath)) {
+        loadRoute(currentPath);
       } else {
-        ancestor = findNearestCommonAncestor({
-          node: currentRoute.node,
-          boundValues: currentRoute.boundValues
-        }, newRoute);
-        teardownRoute(ancestor);
-        setupRoute(ancestor, newRoute.node, newRoute.parameters);
+        ancestorPath = findNearestCommonAncestor(currentPath, newPath);
+        teardownRoute(ancestorPath);
+        setupRoute(ancestorPath, newPath);
       }
-      currentRoute = newRoute;
+      currentPath = newPath;
       return true;
     },
     /*
@@ -511,12 +564,69 @@
     	#	none
     */
     reset: function() {
-      teardownRoute(void 0);
+      teardownRoute(null);
       routeTreeRoot = new RouteTreeNode({
         name: "*"
       });
+      currentPath = new RoutePath({
+        node: null
+      });
+      currentParameters = {};
     }
   };
+
+  if (Finch.debug) {
+    Finch.private = {
+      isObject: isObject,
+      isFunction: isFunction,
+      isArray: isArray,
+      isString: isString,
+      isNumber: isNumber,
+      trim: trim,
+      trimSlashes: trimSlashes,
+      startsWith: startsWith,
+      endsWith: endsWith,
+      contains: contains,
+      extend: extend,
+      objectsEqual: objectsEqual,
+      arraysEqual: arraysEqual,
+      NodeType: NodeType,
+      RouteSettings: RouteSettings,
+      RoutePath: RoutePath,
+      RouteTreeNode: RouteTreeNode,
+      parseQueryString: parseQueryString,
+      getParentRouteString: getParentRouteString,
+      getChildRouteString: getChildRouteString,
+      splitRouteString: splitRouteString,
+      getComponentType: getComponentType,
+      getComponentName: getComponentName,
+      addRoute: addRoute,
+      findRoutePath: findRoutePath,
+      findNearestCommonAncestor: findNearestCommonAncestor,
+      setupRoute: setupRoute,
+      loadRoute: loadRoute,
+      teardownRoute: teardownRoute,
+      getRouteTreeRoot: function() {
+        return routeTreeRoot;
+      },
+      setupTest: function() {
+        Finch.route("foo", (function() {}));
+        Finch.route("[foo]/bar", (function() {}));
+        Finch.route("[foo/bar]/:id", (function() {}));
+        Finch.route("[foo/bar/:id1]/:id2", (function() {}));
+        Finch.route("quux", (function() {}));
+        window.rp1 = findRoutePath("/foo");
+        window.rp2 = findRoutePath("/foo/bar");
+        window.rp3a = findRoutePath("/foo/bar/123");
+        window.rp4aa = findRoutePath("/foo/bar/123/456");
+        window.rp4ab = findRoutePath("/foo/bar/123/789");
+        window.rp3b = findRoutePath("/foo/bar/abc");
+        window.rp4ba = findRoutePath("/foo/bar/abc/def");
+        window.rp4bb = findRoutePath("/foo/bar/abc/ghi");
+        return window.rp1x = findRoutePath("/quux");
+      }
+    };
+  }
 
   this.Finch = Finch;
 

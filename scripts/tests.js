@@ -21,12 +21,10 @@
   };
 
   module("Finch", {
-    teardown: function() {
-      return Finch.reset();
-    }
+    teardown: function() {}
   });
 
-  test("Simple routing", sinon.test(function() {
+  test("Simple routing 1", sinon.test(function() {
     var baz_quux, foo_bar;
     foo_bar = this.stub();
     baz_quux = this.stub();
@@ -86,8 +84,6 @@
     ok(quux_id.called, "quux/id called");
     ok(quux.calledBefore(quux_id), "quux called before quux/id");
     return deepEqual(quux_id.getCall(0).args[0], {
-      band: "Sunn O)))",
-      genre: "Post-Progressive Fridgecore",
       id: "789"
     }, "quux/id params");
   }));
@@ -121,8 +117,6 @@
     ok(quux_id.called, "quux/id called");
     ok(quux.calledBefore(quux_id), "quux called before quux/id");
     return deepEqual(quux_id.getCall(0).args[0], {
-      x: "",
-      y: "",
       id: "123"
     }, "quux params");
   }));
@@ -130,12 +124,11 @@
   test("Collision between inlined and query string params", sinon.test(function() {
     var foo_bar_baz;
     Finch.route("foo/:bar/:baz", foo_bar_baz = this.stub());
-    Finch.call("foo/abc/def?bar=123&baz=456&quux=789");
+    Finch.call("/foo/abc/def?bar=123&baz=456&quux=789");
     ok(foo_bar_baz.called, "foo/bar/baz called");
     return deepEqual(foo_bar_baz.getCall(0).args[0], {
       bar: "abc",
-      baz: "def",
-      quux: "789"
+      baz: "def"
     }, "foo/bar/baz params");
   }));
 
@@ -147,7 +140,7 @@
       load: cb.load_slash = this.stub(),
       teardown: cb.teardown_slash = this.stub()
     });
-    Finch.route("foo", {
+    Finch.route("/foo", {
       setup: cb.setup_foo = this.stub(),
       load: cb.load_foo = this.stub(),
       teardown: cb.teardown_foo = this.stub()
@@ -400,7 +393,7 @@
     equal(foo_bar_stub.callCount, 0, "foo/bar not called again");
     slash_stub.reset();
     foo_stub.reset();
-    return foo_bar_stub.reset();
+    return foo_bar_stub.reset;
   }));
 
 }).call(this);

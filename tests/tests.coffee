@@ -7,9 +7,9 @@ callbackGroup = () ->
 
 module "Finch",
 	teardown: ->
-		Finch.reset()
+		#Finch.reset()
 
-test "Simple routing", sinon.test ->
+test "Simple routing 1", sinon.test ->
 
 	foo_bar = @stub()
 	baz_quux = @stub()
@@ -83,8 +83,6 @@ test "Simple hierarchical routing", sinon.test ->
 	ok quux_id.called, "quux/id called"
 	ok quux.calledBefore(quux_id), "quux called before quux/id"
 	deepEqual quux_id.getCall(0).args[0], {
-		band: "Sunn O)))"
-		genre: "Post-Progressive Fridgecore"
 		id: "789"
 	}, "quux/id params"
 
@@ -125,8 +123,6 @@ test "Empty string params", sinon.test ->
 	ok quux_id.called, "quux/id called"
 	ok quux.calledBefore(quux_id), "quux called before quux/id"
 	deepEqual quux_id.getCall(0).args[0], {
-		x: ""
-		y: ""
 		id: "123"
 	}, "quux params"
 
@@ -136,13 +132,12 @@ test "Collision between inlined and query string params", sinon.test ->
 
 	# Test routes
 
-	Finch.call "foo/abc/def?bar=123&baz=456&quux=789"
+	Finch.call "/foo/abc/def?bar=123&baz=456&quux=789"
 
 	ok foo_bar_baz.called, "foo/bar/baz called"
 	deepEqual foo_bar_baz.getCall(0).args[0], {
 		bar: "abc"
 		baz: "def"
-		quux: "789"
 	}, "foo/bar/baz params"
 
 test "Simple routing with setup/teardown", sinon.test ->
@@ -153,7 +148,7 @@ test "Simple routing with setup/teardown", sinon.test ->
 		setup:   	cb.setup_slash = @stub()
 		load:    	cb.load_slash = @stub()
 		teardown:	cb.teardown_slash = @stub()
-	Finch.route "foo",
+	Finch.route "/foo",
 		setup:   	cb.setup_foo = @stub()
 		load:    	cb.load_foo = @stub()
 		teardown:	cb.teardown_foo = @stub()
@@ -456,4 +451,4 @@ test "Route sanitation", sinon.test ->
 	equal foo_bar_stub.callCount, 0,	"foo/bar not called again"
 	slash_stub.reset()
 	foo_stub.reset()
-	foo_bar_stub.reset()
+	foo_bar_stub.reset

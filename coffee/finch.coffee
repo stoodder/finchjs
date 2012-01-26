@@ -37,30 +37,67 @@ NodeType = {
 }
 
 class RouteTreeNode
-	constructor: ({name, nodeType}) ->
+	constructor: ({name, nodeType, parent} = {}) ->
 		# The name property is not used by code; it is included
 		# for readability of the generated objects
 		@name = name ? ""
-		@nodeType = nodeType ? undefined
-		@parentNode = undefined
-		@route = undefined
+		@nodeType = nodeType ? null
+		@parent = parent ? null
+		@routeSettings = null
 		@childLiterals = {}
-		@childVariable = undefined
+		@childVariable = null
 		@bindings = []
 
-class Route
-	constructor: ({setup, load, teardown, context}) ->
+class RouteSettings
+	constructor: ({setup, load, teardown, context} = {}) ->
 		@setup = if isFunction(setup) then setup else (->)
 		@load = if isFunction(load) then load else (->)
 		@teardown = if isFunction(teardown) then teardown else (->)
 		@context = if isObject(context) then context else {}
 
+class RoutePath
+	constructor: ({node, boundValues} = {}) ->
+		@node = node ? null
+		@boundValues = boundValues ? []
+
+	getBindings: ->
+		bindings = {}
+		for binding, index in @node.bindings
+			bindings[binding] = @boundValues[index]
+		return bindings
+
+	isEqual: (routePath) -> routePath? and @node is routePath.node and arraysEqual(@boundValues, routePath.boundValues)
+
+	isRoot: -> not @node.parent?
+
+	getParent: ->
+		return null unless @node?
+		bindingCount = @node.parent?.bindings.length ? 0
+		boundValues = @boundValues.slice(0, bindingCount)
+		return new RoutePath(node: @node.parent, boundValues: boundValues)
+
+	getChild: (targetRoutePath) ->
+		# Find the immediate child of this route path towards the target route path
+		targetNode = targetRoutePath?.node
+		targetNode = targetNode.parent while targetNode? and targetNode.parent isnt @node
+
+		# Return null if this route path node was not an ancestor of the target route path node
+		return null unless targetNode?
+
+		# Return null if this route path's bound values do not match the target route path's
+		return null unless arraysEqual(@boundValues, targetNode.boundValues[0..@boundValues.length])
+
+		boundvalues = @boundValues.slice(0)
+		boundValues.push(targetNode.boundValues[@boundValues.length]) if targetNode.nodeType is NodeType.Variable
+		return new RoutePath(node: targetNode, boundValues: boundValues)
+
+###
+# Globals
+###
+
 routeTreeRoot = new RouteTreeNode(name: "*")
-currentRoute = {
-	node: undefined
-	boundValues: {}
-	parameters: {}
-}
+currentPath = new RoutePath(node: null)
+currentParameters = {}
 
 ###
 # Method: parseQueryString
@@ -104,7 +141,7 @@ parseQueryString = (queryString) ->
 ###
 getParentRouteString = (routeString) ->
 	# Return empty string if there is no parent route
-	return "" if not startsWith(routeString, "[")
+	return "" unless startsWith(routeString, "[")
 
 	#Find the index of the closing bracket
 	closingBracketIndex = routeString.indexOf("]")
@@ -127,7 +164,7 @@ getParentRouteString = (routeString) ->
 ###
 getChildRouteString = (routeString) ->
 	# Return entire string if there is no parent route
-	return routeString if not startsWith(routeString, "[")
+	return routeString unless startsWith(routeString, "[")
 
 	#Find the index of the closing bracket
 	closingBracketIndex = routeString.indexOf("]")
@@ -158,11 +195,13 @@ getChildRouteString = (routeString) ->
 #		-> ["foo", "bar"]
 ###
 splitRouteString = (routeString) ->
+	return [] if routeString is ""
+
 	# Remove trailing and leading '/'
 	routeString = trimSlashes(routeString)
 
 	# Split the route string by '/'
-	return if routeString is "" then [] else routeString.split('/')
+	return routeString.split('/')
 
 # END splitRouteString
 
@@ -186,22 +225,22 @@ getComponentName = (routeStringComponent) ->
 # Returns:
 #	Route - The added route
 ###
-addRoute = (routeString, settings) ->
+addRoute = (routeTreeRoot, routeString, settings) ->
 	parentRouteComponents = splitRouteString( getParentRouteString( routeString ))
 	childRouteComponents = splitRouteString( getChildRouteString( routeString ))
-	parentNode = undefined
+	parentNode = routeTreeRoot
 	bindings = []
 
 	(recur = (currentNode, name) ->
-		component = undefined
+		component = null
 		onParentNode = false
-		nextNode = undefined
+		nextNode = null
 
 		# Are we done traversing the route string?
 		if parentRouteComponents.length <= 0 and childRouteComponents.length <= 0
-			currentNode.parentNode = parentNode
+			currentNode.parent = parentNode
 			currentNode.bindings = bindings
-			return currentNode.route = new Route(settings)
+			return currentNode.routeSettings = new RouteSettings(settings)
 
 		# Are we still parsing through the parent route?
 		if parentRouteComponents.length > 0
@@ -219,7 +258,7 @@ addRoute = (routeString, settings) ->
 
 		switch componentType
 			when NodeType.Literal
-				nextNode = currentNode.childLiterals[componentName] ?= new RouteTreeNode(name: name, nodeType: componentType)
+				nextNode = currentNode.childLiterals[componentName] ?= new RouteTreeNode(name: name, nodeType: componentType, parent: routeTreeRoot)
 			when NodeType.Variable
 				nextNode = currentNode.childVariable ?= new RouteTreeNode(name: name, nodeType: componentType)
 				# Push the variable name onto the end of the bindings list
@@ -232,25 +271,25 @@ addRoute = (routeString, settings) ->
 # END addRoute
 
 ###
-# Method: findRoute
+# Method: findRoutePath
 #	Finds a route in the route tree, given a URI.
 #
 # Arguments:
 #	uri - The uri to parse and match against the route tree.
 #
 # Returns:
-#	{ node, boundValues }
+#	RoutePath
 #	node - The node that matches the URI
 #	boundValues - An ordered list of values bound to each variable in the URI
 ###
-findRoute = (uri) ->
+findRoutePath = (uri) ->
 	uriComponents = splitRouteString(uri)
 	boundValues = []
 
 	(recur = (currentNode) ->
 		# Are we done traversing the uri?
 		if uriComponents.length <= 0
-			return { node: currentNode, boundValues: boundValues }
+			return new RoutePath( node: currentNode, boundValues: boundValues )
 
 		component = uriComponents.shift()
 
@@ -267,10 +306,10 @@ findRoute = (uri) ->
 			boundValues.pop()
 
 		# No matching route found in this traversal branch
-		return undefined
+		return null
 	)(routeTreeRoot)
 
-# END findRoute
+# END findRoutePath
 
 ###
 # Method: findNearestCommonAncestor
@@ -283,32 +322,25 @@ findRoute = (uri) ->
 #
 # Returns:
 #	RouteTreeNode - The nearest common ancestor node of the two routes, or
-#	undefined if there is no common ancestor.
+#	null if there is no common ancestor.
 ###
-findNearestCommonAncestor = (route1, route2) ->
-	[node1, boundValues1] = [route1.node, route1.boundValues]
-	[node2, boundValues2] = [route2.node, route2.boundValues]
-
-	# Enumerate all ancestors of node1 in order
+findNearestCommonAncestor = (routePath1, routePath2) ->
+	# Enumerate all ancestors of routePath2 in order
 	ancestors = []
-	currentNode = node1
-	while currentNode?
-		ancestors.push {node: currentNode, boundValues: boundValues1}
-		if currentNode.nodeType is NodeType.Variable
-			boundValues1 = boundValues1.slice(0, boundValues1.length-1)
-		currentNode = currentNode.parentNode
+	currentRoute = routePath2
+	while currentRoute?
+		ancestors.push currentRoute
+		currentRoute = currentRoute.getParent()
 
-	# Find the first ancestor of node2 that is also an ancestor of node1
-	currentNode = node2
-	while currentNode?
+	# Find the first ancestor of routePath1 that is also an ancestor of routePath2
+	currentRoute = routePath1
+	while currentRoute?
 		for ancestor in ancestors
-			return currentNode if ancestor.node is currentNode and arraysEqual(ancestor.boundValues, boundValues2)
-		if currentNode.nodeType is NodeType.Variable
-			boundValues2 = boundValues2.slice(0, boundValues2.length-1)
-		currentNode = currentNode.parentNode
+			return currentRoute if currentRoute.isEqual(ancestor)
+		currentRoute = currentRoute.getParent()
 
-	# No common ancestors
-	return undefined
+	# No common ancestors. (Do these nodes belong to different trees?)
+	return null
 
 # END findNearestCommonAncestor
 
@@ -321,29 +353,32 @@ findNearestCommonAncestor = (route1, route2) ->
 #	newRouteNode - The route node to set up to
 #	parameters - The parameters for the new route
 ###
-setupRoute = (ancestor, newRouteNode, parameters) ->
-	(recur = (currentNode, continuation) ->
-		if currentNode is ancestor
-			continuation(parameters)
-		else recur(currentNode.parentNode, (parameters) ->
-			{context, setup} = currentNode.route
+setupRoute = (ancestorPath, newPath) ->
+	(recur = (currentPath, continuation) ->
+		if currentPath.isEqual(ancestorPath)
+			return continuation()
+
+		else recur(currentPath.getParent(), ->
+			return continuation() unless currentPath.node.routeSettings?
+
+			bindings = currentPath.getBindings()
+			{context, setup} = currentPath.node.routeSettings
 
 			# If the setup takes two parameters, then it is an asynchronous call
 			if setup.length is 2
-				setup.call(context, parameters, (addedParameters) ->
-					addedParameters = {} unless isObject(addedParameters)
-					parameters = extend({}, parameters)
-					extend(parameters, addedParameters)
-					continuation(parameters)
+				return setup.call(context, bindings, ->
+					return continuation()
 				)
+
 			# Synchronous call
 			else
-				setup.call(context, parameters)
-				continuation(parameters)
-		)
-	)(newRouteNode, (parameters) ->
-		{setup, load} = newRouteNode.route
-		loadRoute(newRouteNode, parameters) if setup isnt load
+				setup.call(context, bindings)
+				return continuation()
+
+		) #END else recur
+	)(newPath, ->
+		{setup, load} = newPath.node.routeSettings
+		loadRoute(newPath) if setup isnt load
 	)
 
 # END setupRoute
@@ -356,9 +391,9 @@ setupRoute = (ancestor, newRouteNode, parameters) ->
 #	routeNode- The route node to load
 #	parameters - The parameters for the route
 ###
-loadRoute = (routeNode, parameters) ->
-	{context, load} = routeNode.route
-	load.call(context, parameters)
+loadRoute = (routePath) ->
+	{context, load} = routePath.node.routeSettings
+	load.call(context, currentParameters)
 
 # END loadRoute
 
@@ -369,13 +404,26 @@ loadRoute = (routeNode, parameters) ->
 # Arguments:
 #	ancestor - The ancestor node to tear down to
 ###
-teardownRoute = (ancestor) ->
-	(recur = (currentNode) ->
-		if currentNode isnt ancestor
-			context = currentNode.route.context
-			currentNode.route.teardown.call(context)
-			recur(currentNode.parentNode)
-	)(currentRoute.node)
+teardownRoute = (ancestorPath) ->
+	(recur = (currentPath) ->
+		unless currentPath.isEqual(ancestorPath)
+
+			return recur(currentPath.getParent()) unless currentPath.node.routeSettings?
+
+			bindings = currentPath.getBindings()
+			{context, teardown} = currentPath.node.routeSettings
+
+			# If the setup takes two parameters, then it is an asynchronous call
+			if teardown.length is 2
+				teardown.call(context, bindings, ->
+					return recur(currentPath.getParent())
+				)
+
+			# Synchronous call
+			else
+				teardown.call(context, bindings)
+				return recur(currentPath.getParent())
+	)(currentPath)
 
 # END teardownRoute
 
@@ -383,6 +431,8 @@ teardownRoute = (ancestor) ->
 # Class: Finch
 ###
 Finch = {
+
+	debug: true
 
 	###
 	# Mathod: Finch.route
@@ -403,7 +453,7 @@ Finch = {
 		pattern = "" unless isString(pattern)
 
 		# Add the new route to the route tree
-		addRoute(pattern, settings)
+		addRoute(routeTreeRoot, pattern, settings)
 
 	#END Finch.route
 
@@ -412,48 +462,39 @@ Finch = {
 	#
 	# Arguments:
 	#	route - The route to try and call
-	#	parameters (optional) - The initial prameters to send
 	###
-	call: (uri, parameters) ->
+	call: (uri) ->
 
 		#Make sure we have valid arguments
 		uri = "" unless isString(uri)
-		parameters = {} unless isObject(parameters)
 
 		#Extract the route and query parameters from the uri
 		[uri, queryString] = uri.split("?", 2)
-		queryParameters = parseQueryString(queryString)
 
 		# Find matching route in route tree
-		newRoute = findRoute(uri)
+		newPath = findRoutePath(uri)
 
 		# Return false if there was no matching route
-		return false if not newRoute?
+		return false unless newPath?
 
-		#Extend the parameters with those found in the query string
-		newRoute.parameters = extend(parameters, queryParameters)
+		queryParameters = parseQueryString(queryString)
+		bindings = newPath.getBindings()
+		currentParameters = extend(queryParameters, bindings)
 
-		# Bind values against the bindings on the found node
-		for binding, index in newRoute.node.bindings
-			newRoute.parameters[binding] = newRoute.boundValues[index]
-
-		# If we are still using the same route, call load if the query string parameters have changed
-		if newRoute.node is currentRoute.node and arraysEqual(newRoute.boundValues, currentRoute.boundValues)
-			loadRoute(newRoute.node, newRoute.parameters) if not objectsEqual(currentRoute.parameters, newRoute.parameters)
+		# If we are still using the same route, call load
+		if newPath.isEqual(currentPath)
+			loadRoute(currentPath)
 		else
 			# Find the nearest common ancestor of the current and new route nodes
-			ancestor = findNearestCommonAncestor(
-				{node: currentRoute.node, boundValues: currentRoute.boundValues}
-				newRoute
-			)
+			ancestorPath = findNearestCommonAncestor(currentPath, newPath)
 
 			# Tear down old route up to the common ancestor
-			teardownRoute(ancestor)
+			teardownRoute(ancestorPath)
 
 			# Build up new route from the common ancestor
-			setupRoute(ancestor, newRoute.node, newRoute.parameters)
+			setupRoute(ancestorPath, newPath)
 
-		currentRoute = newRoute
+		currentPath = newPath
 
 		return true;
 
@@ -468,14 +509,76 @@ Finch = {
 	###
 	reset: () ->
 		# Tear down the entire route
-		teardownRoute(undefined)
+		teardownRoute(null)
 
 		# Reset the route tree
 		routeTreeRoot = new RouteTreeNode(name: "*")
+		currentPath = new RoutePath(node: null)
+		currentParameters = {}
 		return
 
 	#END Finch.reset()
 }
+
+if Finch.debug
+	Finch.private = {
+		# utility
+		isObject
+		isFunction
+		isArray
+		isString
+		isNumber
+		trim
+		trimSlashes 
+		startsWith
+		endsWith
+		contains
+		extend
+		objectsEqual
+		arraysEqual
+
+		# enums
+		NodeType	
+
+		# classes
+		RouteSettings
+		RoutePath
+		RouteTreeNode
+
+		#functions
+		parseQueryString
+		getParentRouteString
+		getChildRouteString
+		splitRouteString
+		getComponentType
+		getComponentName
+		addRoute
+		findRoutePath
+		findNearestCommonAncestor
+		setupRoute
+		loadRoute
+		teardownRoute
+
+		#globals
+		getRouteTreeRoot: -> routeTreeRoot
+
+		setupTest: ->
+			Finch.route "foo", (->)
+			Finch.route "[foo]/bar", (->)
+			Finch.route "[foo/bar]/:id", (->)
+			Finch.route "[foo/bar/:id1]/:id2", (->)
+			Finch.route "quux", (->)
+
+			window.rp1 = findRoutePath("/foo")
+			window.rp2 = findRoutePath("/foo/bar")
+			window.rp3a = findRoutePath("/foo/bar/123")
+			window.rp4aa = findRoutePath("/foo/bar/123/456")
+			window.rp4ab = findRoutePath("/foo/bar/123/789")
+			window.rp3b = findRoutePath("/foo/bar/abc")
+			window.rp4ba = findRoutePath("/foo/bar/abc/def")
+			window.rp4bb = findRoutePath("/foo/bar/abc/ghi")
+			window.rp1x = findRoutePath("/quux")
+	}
 
 #Expose Finch to the window
 @Finch = Finch
