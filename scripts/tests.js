@@ -403,34 +403,34 @@
     return foo_bar.reset();
   }));
 
-  test('Asynchronous setup', sinon.test(function() {
+  test("Asynchronous setup", sinon.test(function() {
     var cb, params;
     cb = callbackGroup();
     cb.setup_foo = this.stub();
     cb.setup_foo_bar = this.stub();
     params = {
-      name: 'Bob the Unforgiving',
-      title: 'Czar of the Universe'
+      name: "Bob the Unforgiving",
+      title: "Czar of the Universe"
     };
-    Finch.route('foo', {
+    Finch.route("foo", {
       setup: function(params, callback) {
         return cb.setup_foo(params, callback);
       },
       load: cb.load_foo = this.stub()
     });
-    Finch.route('foo/bar', {
+    Finch.route("foo/bar", {
       setup: function(params, callback) {
         return cb.setup_foo_bar(params, callback);
       },
       load: cb.load_foo_bar = this.stub(),
       teardown: cb.teardown_foo_bar = this.stub()
     });
-    Finch.route('[foo/bar]/baz', {
+    Finch.route("[foo/bar]/baz", {
       setup: cb.setup_foo_bar_baz = this.stub(),
       load: cb.load_foo_bar_baz = this.stub(),
       teardown: cb.teardown_foo_bar_baz = this.stub()
     });
-    Finch.route('quux', {
+    Finch.route("quux", {
       setup: cb.setup_quux = this.stub(),
       load: cb.load_quux = this.stub()
     });
