@@ -133,14 +133,17 @@ print_error = (error, file_name, file_contents) ->
 
 task 'release', 'build, tag the current release, and push', ->
 	console.log "Trying to tag #{version_tag}..."
-	with_clean_repo ->
-		without_existing_tag ->
-			build ->
-				tag_release ->
-				push_repo [], ->
-					push_repo ['--tags'], ->
-					console.log "Successfully tagged #{version_tag}: https://github.com/stoodder/finchjs/tree/#{version_tag}"
+	with_clean_repo( ->
+		without_existing_tag( ->
+			build( ->
+				tag_release ( ->
+					push_repo [], ( ->
+						push_repo ['--tags'], ( ->
+							console.log "Successfully tagged #{version_tag}: https://github.com/stoodder/finchjs/tree/#{version_tag}"
 
-					, untag_release
-				, untag_release
-			, untag_release
+						), untag_release
+					), untag_release
+				), untag_release
+			)
+		)
+	)
