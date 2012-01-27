@@ -599,5 +599,69 @@ Finch = {
 	#END Finch.reset()
 }
 
+# Add the listen and ignore methods
+( ->
+	interval = null
+	listening = false
+	hashChange = ( ->
+		currentHash = null
+		return (event) ->
+			hash = ""
+			if "hash" of window.location
+				hash = window.location.hash
+				hash = hash.slice(1) if  startsWith(hash, "#")
+			else
+				url = window.location.href
+				urlSplit = url.split("#", 2)
+				hash = (if urlSplit.length is 2 then urlSplit[1] else "")
+
+			if hash isnt currentHash
+				Finch.call(hash)
+				currentHash = hash
+	)()
+
+	Finch.listen = () ->
+		if not listening
+			if "onhashchange" of window
+				if isFunction(window.addEventListener)
+					window.addEventListener("hashchange", hashChange, true)
+					listening = true
+
+				else if isFunction(window.attachEvent)
+					window.attachEvent("hashchange", hashChange)
+					listening = true
+			
+			console.log( "listening #{listening}" )
+			if not listening
+				interval = setInterval(hashChange, 33)
+				listening = true
+
+			hashChange()
+		
+		return listening
+
+	#END Finch.listen
+
+	Finch.ignore = () ->
+		if listening
+
+			if interval isnt null
+				clearInterval(interval)
+				interval = null
+				listening = false
+
+			if listening and "onhashchange" of window
+				if isFunction(window.removeEventListener)
+					window.removeEventListener("hashchange", hashChange, true)
+					listening = false
+
+				if listening and isFunction(window.detachEvent)
+					window.detachEvent("hashchange", hashChange)
+					listening = false
+		
+		return not listening
+		
+	#END Finch.ignore
+)()
 #Expose Finch to the window
 @Finch = Finch

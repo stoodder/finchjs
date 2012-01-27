@@ -482,6 +482,72 @@
     }
   };
 
+  (function() {
+    var hashChange, interval, listening;
+    interval = null;
+    listening = false;
+    hashChange = (function() {
+      var currentHash;
+      currentHash = null;
+      return function(event) {
+        var hash, url, urlSplit;
+        hash = "";
+        if ("hash" in window.location) {
+          hash = window.location.hash;
+          if (startsWith(hash, "#")) hash = hash.slice(1);
+        } else {
+          url = window.location.href;
+          urlSplit = url.split("#", 2);
+          hash = (urlSplit.length === 2 ? urlSplit[1] : "");
+        }
+        if (hash !== currentHash) {
+          Finch.call(hash);
+          return currentHash = hash;
+        }
+      };
+    })();
+    Finch.listen = function() {
+      if (!listening) {
+        if ("onhashchange" in window) {
+          if (isFunction(window.addEventListener)) {
+            window.addEventListener("hashchange", hashChange, true);
+            listening = true;
+          } else if (isFunction(window.attachEvent)) {
+            window.attachEvent("hashchange", hashChange);
+            listening = true;
+          }
+        }
+        console.log("listening " + listening);
+        if (!listening) {
+          interval = setInterval(hashChange, 33);
+          listening = true;
+        }
+        hashChange();
+      }
+      return listening;
+    };
+    return Finch.ignore = function() {
+      if (listening) {
+        if (interval !== null) {
+          clearInterval(interval);
+          interval = null;
+          listening = false;
+        }
+        if (listening && "onhashchange" in window) {
+          if (isFunction(window.removeEventListener)) {
+            window.removeEventListener("hashchange", hashChange, true);
+            listening = false;
+          }
+          if (listening && isFunction(window.detachEvent)) {
+            window.detachEvent("hashchange", hashChange);
+            listening = false;
+          }
+        }
+      }
+      return !listening;
+    };
+  })();
+
   this.Finch = Finch;
 
 }).call(this);
