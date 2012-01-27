@@ -11,6 +11,9 @@ endsWith = (haystack, needle) ->  haystack.indexOf(needle, haystack.length - nee
 contains = (haystack, needle) -> haystack.indexOf(needle) isnt -1
 peek = (arr) -> arr[arr.length - 1]
 
+objectKeys = (obj) -> (key for key of obj)
+objectValues = (obj) -> (value for key, value of obj)
+
 extend = (obj, extender) ->
 	obj = {} unless isObject(obj)
 	extender = {} unless isObject(extender)
@@ -32,10 +35,13 @@ arraysEqual = (arr1, arr2) ->
 		return false if arr2[index] isnt value
 	return true
 
-toArray = (obj) ->
-	arr = []
-	arr[arr.length] = value for key, value of obj ? {}
-	return arr
+diffObjects = (oldObject = {}, newObject = {}) ->
+	result = {}
+	for key, value of oldObject
+		result[key] = newObject[key] if newObject[key] != value
+	for key, value of newObject
+		result[key] = value if oldObject[key] != value
+	return result
 
 #------------------
 # Classes
@@ -94,16 +100,23 @@ class ParameterObservable
 		@callback = callback
 		@callback = (->) unless isFunction(@callback)
 		@dependencies = []
-		@parameterAccessor = (key) =>
-			@dependencies.push(key) unless contains(@dependencies, key)
-			return CurrentParameters[key]
+		@initialized = false
 
-	resetDependencies: ->
-		@dependencies = []
+	notify: (updatedKeys) ->
+		shouldTrigger = do =>
+			return true if not @initialized
+			for key in @dependencies
+				return true if contains(updatedKeys, key)
+			return false
+		@.trigger() if shouldTrigger
 
 	trigger: ->
-		@.resetDependencies()
-		@callback(@parameterAccessor)
+		@dependencies = []
+		parameterAccessor = (key) =>
+			@dependencies.push(key) unless contains(@dependencies, key)
+			return CurrentParameters[key]
+		@callback(parameterAccessor)
+		@initialized = true
 
 #------------------
 # Constants
@@ -147,7 +160,6 @@ parseQueryString = (queryString) ->
 	return queryParameters
 
 #END parseQueryString
-
 
 ###
 # Method: getParentRouteString
@@ -239,6 +251,7 @@ getComponentName = (routeStringComponent) ->
 #	Adds a new route node to the route tree, given a route string.
 #
 # Arguments:
+#	rootNode - The root node of the route tree.
 #	routeString - The route string to parse and add to the route tree.
 #	settings - The settings for the new route
 #
@@ -366,12 +379,14 @@ findNearestCommonAncestor = (path1, path2) ->
 ###
 # Globals
 ###
-RootNode = CurrentPath = CurrentParameters = CurrentTargetPath = null
+RootNode = CurrentPath = CurrentTargetPath = null
+PreviousParameters = CurrentParameters = null
 HashInterval = CurrentHash = null
 HashListening = false
 do resetGlobals = ->
 	RootNode = new RouteNode(name: "*")
 	CurrentPath = NullPath
+	PreviousParameters = {}
 	CurrentParameters = {}
 	CurrentTargetPath = null
 
@@ -384,10 +399,11 @@ step = ->
 	if CurrentTargetPath.isEqual(CurrentPath)
 
 		# Run observables
-		# TODO: Only trigger on change
+		keys = objectKeys( diffObjects( PreviousParameters, CurrentParameters ))
+		PreviousParameters = CurrentParameters
 		for observableList in CurrentPath.parameterObservables
 			for observable in observableList
-				observable.trigger()
+				observable.notify(keys)
 
 		# End the step process
 		CurrentTargetPath = null
@@ -431,7 +447,7 @@ stepTeardown = ->
 	recur = ->
 		# During setup and teardown, CurrentPath should always be the path to the
 		# node getting setup or torn down.
-		# In the setup case: CurrentPath must be set after the teardown function is called.
+		# In the teardown case: CurrentPath must be set after the teardown function is called.
 		CurrentPath = CurrentPath.getParent()
 		step()
 
@@ -534,38 +550,40 @@ Finch = {
 	#	Used to set up observers on the query string.
 	#
 	# Form 1:
+	#	Finch.observe(key, key, ..., callback(keys...))
 	# Arguments:
-	#	keys... - A List of keys to listen to
+	#	keys... - A list of parameter keys
 	#	callback(keys...) - A callback function to execute with the values bound to each key in order.
 	#
 	# Form 2:
+	#	Finch.observe([key, key, ...], callback(keys...))
 	# Arguments:
-	#	keys[] - An array of param keys
+	#	keys[] - An array of parameter keys
 	#	callback(keys...) - A callback function to execute with the values bound to each key in order.
 	#
 	# Form 3:
+	#	Finch.observe(callback(accessor))
 	# Arguments:
-	#	callback(params) - A callback function to execute with a params accessor.
+	#	callback(accessor) - A callback function to execute with a parameter accessor.
 	###
 	observe: (args...) ->
-		# Handle argument form 1
-		if args.length > 2
-			callback = args.pop() 
-			return Finch.observe( toArray(args), callback )
-		
-		#Handle form 2
-		else if args.length is 2
-			[keys, callback] = args
-			keys = [keys] if isString(keys)
-			keys = [] unless isArray(keys)
-			callback = (->) unless isFunction(callback)
+		# The callback is alwaysthe last parameter
+		callback = args.pop()
+		callback = (->) unless isFunction(callback)
 
-			return Finch.observe (params) ->
-				values = (params(key) for key in keys)
+		# Handle argument form 1/2
+		if args.length > 0
+
+			if args.length is 1 and isArray(args[0])
+				keys = args[0]
+			else
+				keys = args
+			return Finch.observe (paramAccessor) ->
+				values = (paramAccessor(key) for key in keys)
 				callback(values...)
+
 		#Handle form 3
-		else 
-			callback = if isFunction(args[0]) then args[0] else (->)
+		else
 			observable = new ParameterObservable(callback)
 			peek(CurrentPath.parameterObservables).push(observable)
 
@@ -591,8 +609,8 @@ Finch = {
 				else if isFunction(window.attachEvent)
 					window.attachEvent("hashchange", hashChange)
 					HashListening = true
-			
-			# if we're still nto listening fallback to a set interval
+
+			# if we're still not listening fallback to a set interval
 			if not HashListening
 				HashInterval = setInterval(hashChange, 33)
 				HashListening = true
