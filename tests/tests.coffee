@@ -7,7 +7,7 @@ callbackGroup = () ->
 
 module "Finch",
 	teardown: ->
-		#Finch.reset()
+		Finch.reset()
 
 test "Simple routing 1", sinon.test ->
 

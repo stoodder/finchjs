@@ -95,8 +95,9 @@ class RoutePath
 # Globals
 ###
 
+NullPath = new RoutePath(node: null)
 routeTreeRoot = new RouteTreeNode(name: "*")
-currentPath = new RoutePath(node: null)
+currentPath = NullPath
 currentParameters = {}
 
 ###
@@ -188,7 +189,7 @@ getChildRouteString = (routeString) ->
 #	splitRouteString("")
 #		-> []
 #	splitRouteString("/")
-#		-> []
+#		-> [""]
 #	splitRouteString("/foo")
 #		-> ["foo"]
 #	splitRouteString("/foo/bar/")
@@ -466,7 +467,8 @@ Finch = {
 	call: (uri) ->
 
 		#Make sure we have valid arguments
-		uri = "" unless isString(uri)
+		uri = "/" unless isString(uri)
+		uri = "/" if uri is ""
 
 		#Extract the route and query parameters from the uri
 		[uri, queryString] = uri.split("?", 2)
@@ -509,7 +511,7 @@ Finch = {
 	###
 	reset: () ->
 		# Tear down the entire route
-		teardownRoute(null)
+		teardownRoute(NullPath)
 
 		# Reset the route tree
 		routeTreeRoot = new RouteTreeNode(name: "*")
@@ -529,7 +531,7 @@ if Finch.debug
 		isString
 		isNumber
 		trim
-		trimSlashes 
+		trimSlashes
 		startsWith
 		endsWith
 		contains
@@ -538,7 +540,7 @@ if Finch.debug
 		arraysEqual
 
 		# enums
-		NodeType	
+		NodeType
 
 		# classes
 		RouteSettings
@@ -559,25 +561,11 @@ if Finch.debug
 		loadRoute
 		teardownRoute
 
-		#globals
-		getRouteTreeRoot: -> routeTreeRoot
-
-		setupTest: ->
-			Finch.route "foo", (->)
-			Finch.route "[foo]/bar", (->)
-			Finch.route "[foo/bar]/:id", (->)
-			Finch.route "[foo/bar/:id1]/:id2", (->)
-			Finch.route "quux", (->)
-
-			window.rp1 = findRoutePath("/foo")
-			window.rp2 = findRoutePath("/foo/bar")
-			window.rp3a = findRoutePath("/foo/bar/123")
-			window.rp4aa = findRoutePath("/foo/bar/123/456")
-			window.rp4ab = findRoutePath("/foo/bar/123/789")
-			window.rp3b = findRoutePath("/foo/bar/abc")
-			window.rp4ba = findRoutePath("/foo/bar/abc/def")
-			window.rp4bb = findRoutePath("/foo/bar/abc/ghi")
-			window.rp1x = findRoutePath("/quux")
+		globals: -> return {
+			routeTreeRoot
+			currentPath
+			currentParameters
+		}
 	}
 
 #Expose Finch to the window

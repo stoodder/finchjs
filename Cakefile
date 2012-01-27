@@ -24,6 +24,14 @@ destinations = [
 	"scripts/finch.js"
 ]
 
+tests = [
+	"tests/tests.coffee"
+]
+
+testDestinations = [
+	"tests/tests.js"
+]
+
 Array::unique = ->
 	output = {}
 	output[@[key]] = @[key] for key in [0...@length]
@@ -65,14 +73,30 @@ task 'build', 'build from source', build = (cb) ->
 
 		for destination in destinations
 			write_javascript_file(destination, code)
-			write_javascript_file( destination.replace(/\.js$/,'.min.js'), minifiedCode)
+			write_javascript_file(destination.replace(/\.js$/,'.min.js'), minifiedCode)
+
+		cb() if typeof cb is 'function'
+	catch e
+		print_error e, file_name, file_contents
+
+task 'build-tests', 'build tests from source', (cb) ->
+	file_name = file_contents = null
+	try
+		code = ""
+		for test in tests
+			file_name = test
+			file_contents = "#{fs.readFileSync(test)}"
+			code += CoffeeScript.compile(file_contents)
+
+		for testDestination in testDestinations
+			write_javascript_file(testDestination, code)
 
 		cb() if typeof cb is 'function'
 	catch e
 		print_error e, file_name, file_contents
 
 #Task to watch files (so they're built when saved)
-task 'watch', 'watch coffee/ for changes and build', ->
+task 'watch', 'watch coffee/ and tests/ for changes and build', ->
 	console.log "Watching for changes in coffee/"
 
 	for source in sources
@@ -80,6 +104,12 @@ task 'watch', 'watch coffee/ for changes and build', ->
 			if +curr.mtime isnt +prev.mtime
 				console.log "Saw change in #{source}"
 				invoke 'build'
+		)
+	for test in tests
+		fs.watch( test, (curr, prev) ->
+			if +curr.mtime isnt +prev.mtime
+				console.log "Saw change in #{test}"
+				invoke 'build-tests'
 		)
 
 run = (cmd, args, cb, err_cb) ->
