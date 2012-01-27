@@ -1,3 +1,12 @@
+calledOnce = (fake, message) ->
+	QUnit.push fake.calledOnce, fake.callCount, 1, message
+neverCalled = (fake, message) ->
+	QUnit.push !fake.called, fake.callCount, 0, message
+lastCalledWithExactly = (fake, expectedArgs, message) ->
+	result = fake.lastCall? and QUnit.equiv(fake.lastCall.args, expectedArgs)
+	actualArgs = fake.lastCall?.args
+	QUnit.push result, actualArgs, expectedArgs, message
+
 callbackGroup = () ->
 	group = {}
 	group.reset = () ->
@@ -38,10 +47,10 @@ test "Simple hierarchical routing", sinon.test ->
 
 	Finch.call "/foo/bar"
 
-	equal foo.callCount, 1, "foo called once"
-	deepEqual foo.getCall(0).args, [{}], "foo called with correct params"
-	equal foo_bar.callCount, 1, "foo/bar called once"
-	deepEqual foo_bar.getCall(0).args, [{}], "foo called with correct params"
+	calledOnce foo, "foo called once"
+	lastCalledWithExactly foo, [{}], "foo called with correct bindings"
+	calledOnce foo_bar, "foo/bar called once"
+	lastCalledWithExactly foo_bar, [{}], "foo called with correct bindings"
 	ok foo.calledBefore(foo_bar), "foo called before foo/bar"
 	foo.reset()
 	foo_bar.reset()
@@ -50,8 +59,8 @@ test "Simple hierarchical routing", sinon.test ->
 
 	ok !foo.called, "foo not called again"
 	ok !foo_bar.called, "foo/bar not called again"
-	equal foo_bar_id.callCount, 1, "foo/bar/id called once"
-	deepEqual foo_bar_id.getCall(0).args, [{ id: "123" }], "foo/bar/id params"
+	calledOnce foo_bar_id, "foo/bar/id called once"
+	lastCalledWithExactly foo_bar_id, [{ id: "123" }], "foo/bar/id bindings"
 	foo_bar_id.reset()
 
 	Finch.call "/foo/bar/123"
@@ -72,7 +81,7 @@ test "Simple hierarchical routing", sinon.test ->
 	ok foo_baz.called, "foo/baz called"
 	ok foo_baz_id.called, "foo/baz/id called"
 	ok foo_baz.calledBefore(foo_baz_id), "foo/baz called before foo/baz/id"
-	deepEqual foo_baz_id.getCall(0).args, [{ id: "456" }], "foo/baz/id params"
+	lastCalledWithExactly foo_baz_id, [{ id: "456" }], "foo/baz/id bindings"
 	foo_baz.reset()
 	foo_baz_id.reset()
 
@@ -81,7 +90,7 @@ test "Simple hierarchical routing", sinon.test ->
 	ok quux.called, "quux called"
 	ok quux_id.called, "quux/id called"
 	ok quux.calledBefore(quux_id), "quux called before quux/id"
-	deepEqual quux_id.getCall(0).args, [{ id: "789" }], "quux/id params"
+	lastCalledWithExactly quux_id, [{ id: "789" }], "quux/id bindings"
 
 test "More hierarchical routing", sinon.test ->
 
@@ -107,35 +116,19 @@ test "More hierarchical routing", sinon.test ->
 	ok foo_bar.calledBefore(foo_bar_quux), "foo/bar called before foo/bar/quux"
 	ok !foo.called, "foo NOT called"
 
-test "Empty string params", sinon.test ->
+test "Hierarchical routing with /", sinon.test ->
 
-	Finch.route "quux",      	quux = @stub()
-	Finch.route "[quux]/:id",	quux_id = @stub()
-
-	# Test routes
-
-	Finch.call "/quux/123?x=&y="
-
-	ok quux.called, "quux called"
-	ok quux_id.called, "quux/id called"
-	ok quux.calledBefore(quux_id), "quux called before quux/id"
-	deepEqual quux_id.getCall(0).args[0], {
-		id: "123"
-	}, "quux params"
-
-test "Collision between inlined and query string params", sinon.test ->
-
-	Finch.route "foo/:bar/:baz", foo_bar_baz = @stub()
+	Finch.route "/",         	slash = @stub()
+	Finch.route "[/]foo",    	foo = @stub()
+	Finch.route "[/foo]/bar",	bar = @stub()
 
 	# Test routes
 
-	Finch.call "/foo/abc/def?bar=123&baz=456&quux=789"
+	Finch.call "/foo"
 
-	ok foo_bar_baz.called, "foo/bar/baz called"
-	deepEqual foo_bar_baz.getCall(0).args[0], {
-		bar: "abc"
-		baz: "def"
-	}, "foo/bar/baz params"
+	calledOnce slash,	"/ called once"
+	calledOnce foo,  	"foo called once"
+	calledOnce bar,  	"bar never called"
 
 test "Simple routing with setup/teardown", sinon.test ->
 
@@ -155,46 +148,46 @@ test "Simple routing with setup/teardown", sinon.test ->
 
 	Finch.call "/"
 
-	equal cb.setup_slash.callCount, 1,   	'/: / setup called once'
-	equal cb.teardown_slash.callCount, 0,	'/: / teardown not called'
+	calledOnce cb.setup_slash,    	'/: / setup called once'
+	neverCalled cb.teardown_slash,	'/: / teardown not called'
 	cb.reset()
 
 	Finch.call "/foo"
 
-	equal cb.setup_slash.callCount, 0,   	'/foo: / setup not called'
-	equal cb.teardown_slash.callCount, 1,	'/foo: / teardown called once'
-	equal cb.setup_foo.callCount, 1,     	'/foo: foo setup called once'
-	equal cb.teardown_foo.callCount, 0,  	'/foo: foo teardown not called'
+	neverCalled cb.setup_slash,  	'/foo: / setup not called'
+	calledOnce cb.teardown_slash,	'/foo: / teardown called once'
+	calledOnce cb.setup_foo,     	'/foo: foo setup called once'
+	neverCalled cb.teardown_foo, 	'/foo: foo teardown not called'
 	cb.reset()
 
 	Finch.call "/foo/bar"
 
-	equal cb.setup_slash.callCount, 0,     	'/foo/bar: / setup not called'
-	equal cb.teardown_slash.callCount, 0,  	'/foo/bar: / teardown not called'
-	equal cb.setup_foo.callCount, 0,       	'/foo/bar: foo setup not called'
-	equal cb.teardown_foo.callCount, 1,    	'/foo/bar: foo teardown called once'
-	equal cb.setup_foo_bar.callCount, 1,   	'/foo/bar: foo/bar setup called once'
-	equal cb.teardown_foo_bar.callCount, 0,	'/foo/bar: foo/bar teardown not called'
+	neverCalled cb.setup_slash,     	'/foo/bar: / setup not called'
+	neverCalled cb.teardown_slash,  	'/foo/bar: / teardown not called'
+	neverCalled cb.setup_foo,       	'/foo/bar: foo setup not called'
+	calledOnce cb.teardown_foo,            	'/foo/bar: foo teardown called once'
+	calledOnce cb.setup_foo_bar,           	'/foo/bar: foo/bar setup called once'
+	neverCalled cb.teardown_foo_bar,	'/foo/bar: foo/bar teardown not called'
 	cb.reset()
 
 	Finch.call "/foo/bar?baz=quux"
 
-	equal cb.setup_slash.callCount, 0,     	'/foo/bar?baz=quux: / setup not called'
-	equal cb.teardown_slash.callCount, 0,  	'/foo/bar?baz=quux: / teardown not called'
-	equal cb.setup_foo.callCount, 0,       	'/foo/bar?baz=quux: foo setup not called'
-	equal cb.teardown_foo.callCount, 0,    	'/foo/bar?baz=quux: foo teardown not called'
-	equal cb.setup_foo_bar.callCount, 0,   	'/foo/bar?baz=quux: foo/bar setup not called'
-	equal cb.teardown_foo_bar.callCount, 0,	'/foo/bar?baz=quux: foo/bar teardown not called'
+	neverCalled cb.setup_slash,     	'/foo/bar?baz=quux: / setup not called'
+	neverCalled cb.teardown_slash,  	'/foo/bar?baz=quux: / teardown not called'
+	neverCalled cb.setup_foo,       	'/foo/bar?baz=quux: foo setup not called'
+	neverCalled cb.teardown_foo,    	'/foo/bar?baz=quux: foo teardown not called'
+	neverCalled cb.setup_foo_bar,   	'/foo/bar?baz=quux: foo/bar setup not called'
+	neverCalled cb.teardown_foo_bar,	'/foo/bar?baz=quux: foo/bar teardown not called'
 	cb.reset()
 
 	Finch.call "/foo/bar?baz=xyzzy"
 
-	equal cb.setup_slash.callCount, 0,     	'/foo/bar?baz=xyzzy: / setup not called'
-	equal cb.teardown_slash.callCount, 0,  	'/foo/bar?baz=xyzzy: / teardown not called'
-	equal cb.setup_foo.callCount, 0,       	'/foo/bar?baz=xyzzy: foo setup not called'
-	equal cb.teardown_foo.callCount, 0,    	'/foo/bar?baz=xyzzy: foo teardown not called'
-	equal cb.setup_foo_bar.callCount, 0,   	'/foo/bar?baz=xyzzy: foo/bar setup not called'
-	equal cb.teardown_foo_bar.callCount, 0,	'/foo/bar?baz=xyzzy: foo/bar teardown not called'
+	neverCalled cb.setup_slash,     	'/foo/bar?baz=xyzzy: / setup not called'
+	neverCalled cb.teardown_slash,  	'/foo/bar?baz=xyzzy: / teardown not called'
+	neverCalled cb.setup_foo,       	'/foo/bar?baz=xyzzy: foo setup not called'
+	neverCalled cb.teardown_foo,    	'/foo/bar?baz=xyzzy: foo teardown not called'
+	neverCalled cb.setup_foo_bar,   	'/foo/bar?baz=xyzzy: foo/bar setup not called'
+	neverCalled cb.teardown_foo_bar,	'/foo/bar?baz=xyzzy: foo/bar teardown not called'
 	cb.reset()
 
 test "Hierarchical routing with setup/teardown", sinon.test ->
@@ -292,7 +285,7 @@ test "Calling with context", sinon.test ->
 
 	Finch.call "/foo"
 
-	equal setup_foo.callCount, 1, 'foo setup called once'
+	calledOnce setup_foo, 'foo setup called once'
 	context = setup_foo.getCall(0).thisValue
 
 	Finch.call "/bar"
@@ -312,20 +305,20 @@ test "Hierarchical calling with context", sinon.test ->
 
 	Finch.call "/foo"
 
-	equal setup_foo.callCount, 1, 'foo setup called once'
+	calledOnce setup_foo, 'foo setup called once'
 	foo_context = setup_foo.getCall(0).thisValue
 
 	Finch.call "/foo/bar"
 
-	equal setup_foo_bar.callCount, 1, 'foo/bar setup called once'
+	calledOnce setup_foo_bar, 'foo/bar setup called once'
 	foo_bar_context = setup_foo_bar.getCall(0).thisValue
 
 	notEqual foo_context, foo_bar_context, 'foo/bar should be called on a different context than foo'
 
 	Finch.call "/baz"
 
-	equal teardown_foo_bar.callCount, 1, 'foo/bar teardown called once'
-	equal teardown_foo.callCount, 1, 'foo teardown called once'
+	calledOnce teardown_foo_bar, 'foo/bar teardown called once'
+	calledOnce teardown_foo, 'foo teardown called once'
 	ok teardown_foo_bar.calledBefore(teardown_foo), 'foo/bar teardown called before foo teardown'
 
 	ok teardown_foo_bar.calledOn(foo_bar_context), 'foo/bar teardown called on same context as setup'
@@ -338,73 +331,73 @@ test "Route sanitation", sinon.test ->
 	Finch.route "/foo/bar", foo_bar = @stub()
 
 	Finch.call ""
-	equal slash.callCount, 1, "/ called once"
+	calledOnce slash, "/ called once"
 	slash.reset()
 
 	Finch.call "/"
-	equal slash.callCount, 0, "/ not called again"
+	neverCalled slash, "/ not called again"
 	slash.reset()
 
 	Finch.call ""
-	equal slash.callCount, 0, "/ not called again"
+	neverCalled slash, "/ not called again"
 	slash.reset()
 
 	Finch.call "//"
-	equal slash.callCount, 0, "/ not called again"
+	neverCalled slash, "/ not called again"
 	slash.reset()
 
 	Finch.call "foo"
-	equal slash.callCount, 0,	"/ not called again"
-	equal foo.callCount, 1,  	"foo called once"
+	neverCalled slash,	"/ not called again"
+	calledOnce foo,          	"foo called once"
 	slash.reset()
 	foo.reset()
 
 	Finch.call "/foo"
-	equal slash.callCount, 0,	"/ not called again"
-	equal foo.callCount, 0,  	"foo not called again"
+	neverCalled slash,	"/ not called again"
+	neverCalled foo,  	"foo not called again"
 	slash.reset()
 	foo.reset()
 
 	Finch.call "/foo/"
-	equal slash.callCount, 0,	"/ not called again"
-	equal foo.callCount, 0,  	"foo not called again"
+	neverCalled slash,	"/ not called again"
+	neverCalled foo,  	"foo not called again"
 	slash.reset()
 	foo.reset()
 
 	Finch.call "foo/"
-	equal slash.callCount, 0,	"/ not called again"
-	equal foo.callCount, 0,  	"foo not called again"
+	neverCalled slash,	"/ not called again"
+	neverCalled foo,  	"foo not called again"
 	slash.reset()
 	foo.reset()
 
 	Finch.call "foo/bar"
-	equal slash.callCount, 0,  	"/ not called again"
-	equal foo.callCount, 0,    	"foo not called again"
-	equal foo_bar.callCount, 1,	"foo/bar called once"
+	neverCalled slash,	"/ not called again"
+	neverCalled foo,  	"foo not called again"
+	calledOnce foo_bar,      	"foo/bar called once"
 	slash.reset()
 	foo.reset()
 	foo_bar.reset()
 
 	Finch.call "/foo/bar"
-	equal slash.callCount, 0,  	"/ not called again"
-	equal foo.callCount, 0,    	"foo not called again"
-	equal foo_bar.callCount, 0,	"foo/bar not called again"
+	neverCalled slash,  	"/ not called again"
+	neverCalled foo,    	"foo not called again"
+	neverCalled foo_bar,	"foo/bar not called again"
 	slash.reset()
 	foo.reset()
 	foo_bar.reset()
 
 	Finch.call "/foo/bar/"
-	equal slash.callCount, 0,  	"/ not called again"
-	equal foo.callCount, 0,    	"foo not called again"
-	equal foo_bar.callCount, 0,	"foo/bar not called again"
+	neverCalled slash,  	"/ not called again"
+	neverCalled foo,    	"foo not called again"
+	neverCalled foo_bar,	"foo/bar not called again"
 	slash.reset()
 	foo.reset()
 	foo_bar.reset()
 
 	Finch.call "foo/bar/"
-	equal slash.callCount, 0,  	"/ not called again"
-	equal foo.callCount, 0,    	"foo not called again"
-	equal foo_bar.callCount, 0,	"foo/bar not called again"
+	neverCalled slash,  	"/ not called again"
+	neverCalled foo,    	"foo not called again"
+	neverCalled foo_bar,	"foo/bar not called again"
 	slash.reset()
 	foo.reset()
 	foo_bar.reset()
@@ -414,15 +407,12 @@ test "Asynchronous setup/teardown", sinon.test ->
 	cb.setup_foo = @stub()
 	cb.teardown_foo = @stub()
 	cb.setup_foo_bar = @stub()
-	params =
-		name: "Bob the Unforgiving"
-		title: "Czar of the Universe"
 
 	Finch.route "foo",
-		setup: (params, callback) -> cb.setup_foo params, callback
-		teardown: (params, callback) -> cb.teardown_foo params, callback
+		setup: (bindings, callback) -> cb.setup_foo bindings, callback
+		teardown: (bindings, callback) -> cb.teardown_foo bindings, callback
 	Finch.route "foo/bar",
-		setup: (params, callback) -> cb.setup_foo_bar params, callback
+		setup: (bindings, callback) -> cb.setup_foo_bar bindings, callback
 		teardown: cb.teardown_foo_bar = @stub()
 	Finch.route "[foo/bar]/baz",
 		setup: cb.setup_foo_bar_baz = @stub()
@@ -433,35 +423,216 @@ test "Asynchronous setup/teardown", sinon.test ->
 	# Call /foo to start
 	Finch.call "/foo"
 
-	equal cb.setup_foo.callCount, 1,	"/foo (before /foo callback): foo setup called once"
+	calledOnce cb.setup_foo,	"/foo (before /foo callback): foo setup called once"
 
 	cb.setup_foo.callArg 1
-	equal cb.setup_foo.callCount, 1,	"/foo (after /foo callback): foo setup not called again"
+	calledOnce cb.setup_foo,	"/foo (after /foo callback): foo setup not called again"
 
 	cb.reset()
 
 	# Call /foo/bar/baz next
 	Finch.call "/foo/bar/baz"
 
-	equal cb.teardown_foo.callCount, 1, 	"/foo/bar/baz (before /foo teardown): foo teardown called once"
-	equal cb.setup_foo_bar.callCount, 0,	"/foo/bar/baz (before /foo teardown): foo/bar setup not called yet"
+	calledOnce cb.teardown_foo,         	"/foo/bar/baz (before /foo teardown): foo teardown called once"
+	neverCalled cb.setup_foo_bar,	"/foo/bar/baz (before /foo teardown): foo/bar setup not called yet"
 
 	cb.teardown_foo.callArg 1
 
-	equal cb.setup_foo_bar.callCount, 1,    	"/foo/bar/baz (before /foo/bar callback): foo/bar setup called once"
-	equal cb.setup_foo_bar_baz.callCount, 0,	"/foo/bar/baz (before /foo/bar callback): foo/bar/baz setup not called yet"
+	calledOnce cb.setup_foo_bar,            	"/foo/bar/baz (before /foo/bar callback): foo/bar setup called once"
+	neverCalled cb.setup_foo_bar_baz,	"/foo/bar/baz (before /foo/bar callback): foo/bar/baz setup not called yet"
 
 	# Call /quux before the call to /foo/bar/baz completes
 	Finch.call "/quux"
 
-	equal cb.setup_foo_bar.callCount, 1,    	"/quux (before /foo/bar callback): foo/bar setup not called again"
-	equal cb.setup_foo_bar_baz.callCount, 0,	"/quux (before /foo/bar callback): foo/bar/baz setup not called"
-	equal cb.setup_quux.callCount, 0,       	"/quux (before /foo/bar callback): quux setup not called yet"
+	calledOnce cb.setup_foo_bar,            	"/quux (before /foo/bar callback): foo/bar setup not called again"
+	neverCalled cb.setup_foo_bar_baz,	"/quux (before /foo/bar callback): foo/bar/baz setup not called"
+	neverCalled cb.setup_quux,       	"/quux (before /foo/bar callback): quux setup not called yet"
 
 	cb.setup_foo_bar.callArg 1
 
-	equal cb.setup_foo_bar.callCount, 1,       	"/quux (after /foo/bar callback): foo/bar setup not called again"
-	equal cb.teardown_foo_bar.callCount, 1,    	"/quux (after /foo/bar callback): foo/bar teardown called"
-	equal cb.setup_foo_bar_baz.callCount, 0,   	"/quux (after /foo/bar callback): foo/bar/baz setup not called"
-	equal cb.teardown_foo_bar_baz.callCount, 0,	"/quux (after /foo/bar callback): foo/bar/baz teardown not called"
-	equal cb.setup_quux.callCount, 1,          	"/quux (after /foo/bar callback): quux setup called"
+	calledOnce cb.setup_foo_bar,               	"/quux (after /foo/bar callback): foo/bar setup not called again"
+	calledOnce cb.teardown_foo_bar,            	"/quux (after /foo/bar callback): foo/bar teardown called"
+	neverCalled cb.setup_foo_bar_baz,   	"/quux (after /foo/bar callback): foo/bar/baz setup not called"
+	neverCalled cb.teardown_foo_bar_baz,	"/quux (after /foo/bar callback): foo/bar/baz teardown not called"
+	calledOnce cb.setup_quux,                  	"/quux (after /foo/bar callback): quux setup called"
+
+do ->
+	trivialObservableTest = (fn) ->
+		Finch.call "/foo"
+		calledOnce fn, "observable callback called once"
+		lastCalledWithExactly fn, [undefined, undefined], "called with given args"
+		fn.reset()
+
+		Finch.call "/foo?sort=asc"
+		calledOnce fn, "observable callback called once"
+		lastCalledWithExactly fn, ["asc", undefined], "called with given args"
+		fn.reset()
+
+		Finch.call "/foo"
+		calledOnce fn, "observable callback called once"
+		lastCalledWithExactly fn, [undefined, undefined], "called with given args"
+		fn.reset()
+
+		Finch.call "/foo?query=unicorn"
+		calledOnce fn, "observable callback called once"
+		lastCalledWithExactly fn, [undefined, "unicorn"], "called with given args"
+		fn.reset()
+
+		Finch.call "/foo?query=unicorn&sort=desc"
+		calledOnce fn, "observable callback called once"
+		lastCalledWithExactly fn, ["desc", "unicorn"], "called with given args"
+		fn.reset()
+
+		Finch.call "/foo?sort=desc&query=unicorn"
+		neverCalled fn, "observable callback not called"
+		fn.reset()
+
+		Finch.call "/foo"
+		calledOnce fn, "observable callback called once"
+		lastCalledWithExactly fn, [undefined, undefined], "called with given args"
+		fn.reset()
+
+		Finch.call "/foo?Unrelated=Parameter"
+		neverCalled fn, "observable callback not called"
+
+	test "Trivial observable test (accessor form)", sinon.test ->
+
+		fn = @stub()
+
+		Finch.route "foo", (bindings) ->
+			Finch.observe (params) ->
+				fn(params("sort"), params("query"))
+
+		trivialObservableTest(fn)
+
+	test "Trivial observable test (binding form)", sinon.test ->
+
+		fn = @stub()
+
+		Finch.route "foo", (bindings) ->
+			Finch.observe ["sort", "query"], (sort, query) ->
+				fn(sort, query)
+
+		trivialObservableTest(fn)
+
+# END trivial observable test
+
+test "Observable dependency tracking", sinon.test ->
+
+	bar_on = @stub()
+	bar_off = @stub()
+
+	Finch.route "bar", (bindings) ->
+		Finch.observe (params) ->
+			if params("flag") then bar_on params("on") else bar_off params("off")
+
+	Finch.call("/bar")
+
+	calledOnce bar_off, "off callback called once"
+	neverCalled bar_on, "on callback not called"
+	lastCalledWithExactly bar_off, [undefined], "called with given args"
+	bar_off.reset()
+
+	Finch.call("/bar?off=Grue")
+
+	calledOnce bar_off, "off callback called once"
+	neverCalled bar_on, "on callback not called"
+	lastCalledWithExactly bar_off, ["Grue"], "called with given args"
+	bar_off.reset()
+
+	Finch.call("/bar?off=Grue&on=Lantern")
+
+	neverCalled bar_off, "off callback not called"
+	neverCalled bar_on, "on callback not called"
+
+	Finch.call("/bar?flag=true&off=Grue&on=Lantern")
+
+	neverCalled bar_off, "off callback not called"
+	calledOnce bar_on, "on callback called once"
+	lastCalledWithExactly bar_on, ["Lantern"], "called with given args"
+	bar_on.reset()
+
+	Finch.call("/bar?flag=true&on=Lantern")
+
+	neverCalled bar_off, "off callback not called"
+	neverCalled bar_on, "on callback not called"
+
+test "Observable hierarchy 1", sinon.test ->
+
+	foo = @stub()
+	bar = @stub()
+	id = @stub()
+
+	Finch.route "foo", (bindings) ->
+		Finch.observe ["a"], (a) -> foo(a)
+	Finch.route "[foo]/bar", (bindings) ->
+		Finch.observe ["b"], (b) -> bar(b)
+	Finch.route "[foo/bar]/:id", (bindings) ->
+		Finch.observe ["c"], (c) -> id(c)
+
+	Finch.call "/foo/bar?&a=1&b=2&c=3"
+
+	calledOnce foo,                  	"foo callback called once"
+	lastCalledWithExactly foo, ["1"],	"foo callback args"
+	calledOnce bar,                  	"bar callback called once"
+	lastCalledWithExactly bar, ["2"],	"bar callback args"
+	neverCalled id,                  	"id callback not called"
+
+	foo.reset()
+	bar.reset()
+	id.reset()
+
+	Finch.call "/foo/bar?a=1&b=10&c=11"
+
+	neverCalled foo,	"foo callback not called"
+	neverCalled bar,	"bar callback not called"
+	neverCalled id, 	"id callback not called"
+
+	foo.reset()
+	bar.reset()
+	id.reset()
+
+	Finch.call "/foo?a=21&b=22&c=23"
+
+	calledOnce foo,                   	"foo callback called once"
+	lastCalledWithExactly foo, ["21"],	"foo callback args"
+	neverCalled bar,                  	"bar callback not called"
+	neverCalled id,                   	"id callback not called"
+
+test "Observable hierarchy 2", sinon.test ->
+
+	slash = @stub()
+	foo = @stub()
+	bar = @stub()
+	id = @stub()
+
+	Finch.route "/", (bindings) ->
+		Finch.observe ["x"], (x) -> slash(x)
+	Finch.route "[/]foo", (bindings) ->
+		Finch.observe ["a"], (a) -> foo(a)
+	Finch.route "[/foo]/bar", (bindings) ->
+		Finch.observe ["b"], (b) -> bar(b)
+	Finch.route "[/foo/bar]/:id", (bindings) ->
+		Finch.observe ["c"], (c) -> id(c)
+
+	Finch.call "/foo/bar?x=0&a=1&b=2&c=3"
+
+	calledOnce slash,                  	"/ callback called once"
+	lastCalledWithExactly slash, ["0"],	"/ callback args"
+	calledOnce foo,                    	"foo callback called once"
+	lastCalledWithExactly foo, ["1"],  	"foo callback args"
+	calledOnce bar,                    	"bar callback called once"
+	lastCalledWithExactly bar, ["2"],  	"bar callback args"
+	neverCalled id,                    	"id callback not called"
+
+	slash.reset()
+	foo.reset()
+	bar.reset()
+	id.reset()
+
+	Finch.call "/foo/bar?x=0&a=1&b=10&c=11"
+
+	neverCalled slash,	"/ callback not called"
+	neverCalled foo,  	"foo callback not called"
+	neverCalled bar,  	"bar callback not called"
+	neverCalled id,   	"id callback not called"
