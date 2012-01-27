@@ -545,7 +545,8 @@
             window.attachEvent("hashchange", hashChange);
             hashListening = true;
           }
-        } else {
+        }
+        if (!hashListening) {
           hashInterval = setInterval(hashChange, 33);
           hashListening = true;
         }

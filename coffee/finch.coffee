@@ -498,8 +498,8 @@ Finch = {
 					window.attachEvent("hashchange", hashChange)
 					hashListening = true
 			
-			#since there wasn't an onhashchange event, just use an interval
-			else
+			# if we're still nto listening fallback to a set interval
+			if not hashListening
 				hashInterval = setInterval(hashChange, 33)
 				hashListening = true
 			

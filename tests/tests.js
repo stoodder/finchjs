@@ -429,4 +429,67 @@
     return equal(cb.setup_quux.callCount, 1, "/quux (after /foo/bar callback): quux setup called");
   }));
 
+  test("Finch.list and Finch.ignore", sinon.test(function() {
+    var cb, clearWindowMethods;
+    if (window.hasOwnProperty == null) {
+      window.hasOwnProperty = function(prop) {
+        return prop in this;
+      };
+    }
+    cb = callbackGroup();
+    cb.call = this.stub(Finch, 'call');
+    cb.attachEvent = this.stub();
+    cb.detachEvent = this.stub();
+    cb.addEventListener = this.stub();
+    cb.removeEventListener = this.stub();
+    cb.setInterval = this.stub();
+    cb.clearInterval = this.stub();
+    clearWindowMethods = function() {
+      if ("attachEvent" in window) window.attachEvent = null;
+      if ("detachEvent" in window) window.detachEvent = null;
+      if ("addEventListener" in window) window.addEventListener = null;
+      if ("removeEventListener" in window) window.removeEventListener = null;
+      if ("setInterval" in window) window.setInterval = null;
+      if ("clearInterval" in window) return window.clearInterval = null;
+    };
+    clearWindowMethods();
+    window.setInterval = cb.setInterval;
+    window.clearInterval = cb.clearInterval;
+    cb.reset();
+    ok(Finch.listen(), "Finch successfully listening");
+    equal(cb.addEventListener.callCount, 0, "addEventListener not called");
+    equal(cb.attachEvent.callCount, 0, "attachEvent not called");
+    equal(cb.setInterval.callCount, 1, "setInterval called once");
+    ok(Finch.ignore(), "Finch successfuly ignoring");
+    equal(cb.removeEventListener.callCount, 0, "removeEventListener not called");
+    equal(cb.detachEvent.callCount, 0, "detachEvent not called");
+    equal(cb.clearInterval.callCount, 1, "clearInterval called once");
+    clearWindowMethods();
+    window.onhashchange = "defined";
+    window.addEventListener = cb.addEventListener;
+    window.removeEventListener = cb.removeEventListener;
+    cb.reset();
+    ok(Finch.listen(), "Finch successfully listening");
+    equal(cb.addEventListener.callCount, 1, "addEventListener Called once");
+    equal(cb.attachEvent.callCount, 0, "attachEvent not called");
+    equal(cb.setInterval.callCount, 0, "setInterval not called");
+    ok(Finch.ignore(), "Finch successfuly ignoring");
+    equal(cb.removeEventListener.callCount, 1, "removeEventListener Called once");
+    equal(cb.detachEvent.callCount, 0, "detachEvent not called");
+    equal(cb.clearInterval.callCount, 0, "clearInterval not called");
+    clearWindowMethods();
+    window.onhashchange = "defined";
+    window.attachEvent = cb.attachEvent;
+    window.detachEvent = cb.detachEvent;
+    cb.reset();
+    ok(Finch.listen(), "Finch successfully listening");
+    equal(cb.addEventListener.callCount, 0, "addEventListener not called");
+    equal(cb.attachEvent.callCount, 1, "attachEvent called once");
+    equal(cb.setInterval.callCount, 0, "setInterval not called");
+    ok(Finch.ignore(), "Finch successfuly ignoring");
+    equal(cb.removeEventListener.callCount, 0, "removeEventListener not called");
+    equal(cb.detachEvent.callCount, 1, "detachEvent called once");
+    return equal(cb.clearInterval.callCount, 0, "clearInterval not called");
+  }));
+
 }).call(this);

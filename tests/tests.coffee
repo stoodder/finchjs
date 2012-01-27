@@ -465,3 +465,76 @@ test "Asynchronous setup/teardown", sinon.test ->
 	equal cb.setup_foo_bar_baz.callCount, 0,   	"/quux (after /foo/bar callback): foo/bar/baz setup not called"
 	equal cb.teardown_foo_bar_baz.callCount, 0,	"/quux (after /foo/bar callback): foo/bar/baz teardown not called"
 	equal cb.setup_quux.callCount, 1,          	"/quux (after /foo/bar callback): quux setup called"
+
+test "Finch.list and Finch.ignore", sinon.test ->
+
+	#Default the necessary window methods, if they don't exist
+	window.hasOwnProperty ?= (prop) -> (prop of @)
+	
+	cb = callbackGroup()
+	cb.call = @stub Finch, 'call'
+	cb.attachEvent = @stub()
+	cb.detachEvent = @stub()
+	cb.addEventListener = @stub()
+	cb.removeEventListener = @stub()
+	cb.setInterval = @stub()
+	cb.clearInterval = @stub()
+
+	clearWindowMethods = ->
+		window.attachEvent = null if "attachEvent" of window
+		window.detachEvent = null if "detachEvent" of window
+		window.addEventListener = null if "addEventListener" of window
+		window.removeEventListener = null if "removeEventListener" of window
+		window.setInterval = null if "setInterval" of window
+		window.clearInterval = null if "clearInterval" of window
+
+	#Test the fallback set interval
+	clearWindowMethods()
+	window.setInterval = cb.setInterval
+	window.clearInterval = cb.clearInterval
+	cb.reset()
+
+	ok Finch.listen(), "Finch successfully listening"
+	equal cb.addEventListener.callCount, 0,"addEventListener not called"
+	equal cb.attachEvent.callCount, 0,"attachEvent not called"
+	equal cb.setInterval.callCount, 1,"setInterval called once"
+
+	ok Finch.ignore(), "Finch successfuly ignoring"
+	equal cb.removeEventListener.callCount, 0, "removeEventListener not called"
+	equal cb.detachEvent.callCount, 0, "detachEvent not called"
+	equal cb.clearInterval.callCount, 1, "clearInterval called once"
+
+	# Test the add/remove EventListener methods
+	clearWindowMethods()
+	window.onhashchange = "defined"
+	window.addEventListener = cb.addEventListener
+	window.removeEventListener = cb.removeEventListener
+	cb.reset()
+
+	ok Finch.listen(), "Finch successfully listening"
+	equal cb.addEventListener.callCount, 1,"addEventListener Called once"
+	equal cb.attachEvent.callCount, 0,"attachEvent not called"
+	equal cb.setInterval.callCount, 0,"setInterval not called"
+
+	ok Finch.ignore(), "Finch successfuly ignoring"
+	equal cb.removeEventListener.callCount, 1, "removeEventListener Called once"
+	equal cb.detachEvent.callCount, 0, "detachEvent not called"
+	equal cb.clearInterval.callCount, 0, "clearInterval not called"
+	
+	#Test the attach/detach Event methods
+	clearWindowMethods()
+	window.onhashchange = "defined"
+	window.attachEvent = cb.attachEvent
+	window.detachEvent = cb.detachEvent
+	cb.reset()
+
+	ok Finch.listen(), "Finch successfully listening"
+	equal cb.addEventListener.callCount, 0,"addEventListener not called"
+	equal cb.attachEvent.callCount, 1,"attachEvent called once"
+	equal cb.setInterval.callCount, 0,"setInterval not called"
+
+	ok Finch.ignore(), "Finch successfuly ignoring"
+	equal cb.removeEventListener.callCount, 0, "removeEventListener not called"
+	equal cb.detachEvent.callCount, 1, "detachEvent called once"
+	equal cb.clearInterval.callCount, 0, "clearInterval not called"
+
