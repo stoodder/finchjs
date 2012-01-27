@@ -31,12 +31,11 @@ arraysEqual = (arr1, arr2) ->
 		return false if arr2[index] isnt value
 	return true
 
-NodeType = {
-	Literal: 'Literal'
-	Variable: 'Variable'
-}
+#------------------
+# Classes
+#------------------
 
-class RouteTreeNode
+class RouteNode
 	constructor: ({name, nodeType, parent} = {}) ->
 		# The name property is not used by code; it is included
 		# for readability of the generated objects
@@ -49,9 +48,8 @@ class RouteTreeNode
 		@bindings = []
 
 class RouteSettings
-	constructor: ({setup, load, teardown, context} = {}) ->
+	constructor: ({setup, teardown, context} = {}) ->
 		@setup = if isFunction(setup) then setup else (->)
-		@load = if isFunction(load) then load else (->)
 		@teardown = if isFunction(teardown) then teardown else (->)
 		@context = if isObject(context) then context else {}
 
@@ -66,7 +64,7 @@ class RoutePath
 			bindings[binding] = @boundValues[index]
 		return bindings
 
-	isEqual: (routePath) -> routePath? and @node is routePath.node and arraysEqual(@boundValues, routePath.boundValues)
+	isEqual: (path) -> path? and @node is path.node and arraysEqual(@boundValues, path.boundValues)
 
 	isRoot: -> not @node.parent?
 
@@ -76,29 +74,35 @@ class RoutePath
 		boundValues = @boundValues.slice(0, bindingCount)
 		return new RoutePath(node: @node.parent, boundValues: boundValues)
 
-	getChild: (targetRoutePath) ->
-		# Find the immediate child of this route path towards the target route path
-		targetNode = targetRoutePath?.node
-		targetNode = targetNode.parent while targetNode? and targetNode.parent isnt @node
+	getChild: (targetPath) ->
+		while targetPath? and not @.isEqual(parent = targetPath.getParent())
+			targetPath = parent
+		return targetPath
 
-		# Return null if this route path node was not an ancestor of the target route path node
-		return null unless targetNode?
-
-		# Return null if this route path's bound values do not match the target route path's
-		return null unless arraysEqual(@boundValues, targetNode.boundValues[0..@boundValues.length])
-
-		boundvalues = @boundValues.slice(0)
-		boundValues.push(targetNode.boundValues[@boundValues.length]) if targetNode.nodeType is NodeType.Variable
-		return new RoutePath(node: targetNode, boundValues: boundValues)
-
-###
-# Globals
-###
+#------------------
+# Constants
+#------------------
 
 NullPath = new RoutePath(node: null)
-routeTreeRoot = new RouteTreeNode(name: "*")
-currentPath = NullPath
-currentParameters = {}
+NodeType = {
+	Literal: 'Literal'
+	Variable: 'Variable'
+}
+
+#------------------
+# Globals
+#------------------
+
+rootNode = currentPath = currentParameters = currentTargetPath = null
+do resetGlobals = ->
+	rootNode = new RouteNode(name: "*")
+	currentPath = NullPath
+	currentParameters = {}
+	currentTargetPath = null
+
+#------------------
+# Functions
+#------------------
 
 ###
 # Method: parseQueryString
@@ -226,10 +230,10 @@ getComponentName = (routeStringComponent) ->
 # Returns:
 #	Route - The added route
 ###
-addRoute = (routeTreeRoot, routeString, settings) ->
+addRoute = (rootNode, routeString, settings) ->
 	parentRouteComponents = splitRouteString( getParentRouteString( routeString ))
 	childRouteComponents = splitRouteString( getChildRouteString( routeString ))
-	parentNode = routeTreeRoot
+	parentNode = rootNode
 	bindings = []
 
 	(recur = (currentNode, name) ->
@@ -259,23 +263,24 @@ addRoute = (routeTreeRoot, routeString, settings) ->
 
 		switch componentType
 			when NodeType.Literal
-				nextNode = currentNode.childLiterals[componentName] ?= new RouteTreeNode(name: name, nodeType: componentType, parent: routeTreeRoot)
+				nextNode = currentNode.childLiterals[componentName] ?= new RouteNode(name: name, nodeType: componentType, parent: rootNode)
 			when NodeType.Variable
-				nextNode = currentNode.childVariable ?= new RouteTreeNode(name: name, nodeType: componentType)
+				nextNode = currentNode.childVariable ?= new RouteNode(name: name, nodeType: componentType)
 				# Push the variable name onto the end of the bindings list
 				bindings.push(componentName)
 
 		parentNode = nextNode if onParentNode
 		recur(nextNode, name)
-	)(routeTreeRoot, "")
+	)(rootNode, "")
 
 # END addRoute
 
 ###
-# Method: findRoutePath
+# Method: findPath
 #	Finds a route in the route tree, given a URI.
 #
 # Arguments:
+#	rootNode - The root node of the route tree.
 #	uri - The uri to parse and match against the route tree.
 #
 # Returns:
@@ -283,7 +288,7 @@ addRoute = (routeTreeRoot, routeString, settings) ->
 #	node - The node that matches the URI
 #	boundValues - An ordered list of values bound to each variable in the URI
 ###
-findRoutePath = (uri) ->
+findPath = (rootNode, uri) ->
 	uriComponents = splitRouteString(uri)
 	boundValues = []
 
@@ -308,33 +313,31 @@ findRoutePath = (uri) ->
 
 		# No matching route found in this traversal branch
 		return null
-	)(routeTreeRoot)
+	)(rootNode)
 
-# END findRoutePath
+# END findPath
 
 ###
 # Method: findNearestCommonAncestor
 #	Finds the nearest common ancestor route node of two routes.
 #
 # Arguments:
-#	route1, route2 - Objects representing the two routes to compare.
-#	-- node - The route node
-#	-- boundValues - An ordered list of values bound to the route bindings
+#	path1, path2 - The two paths to compare.
 #
 # Returns:
-#	RouteTreeNode - The nearest common ancestor node of the two routes, or
+#	RoutePath - The nearest common ancestor path of the two paths, or
 #	null if there is no common ancestor.
 ###
-findNearestCommonAncestor = (routePath1, routePath2) ->
-	# Enumerate all ancestors of routePath2 in order
+findNearestCommonAncestor = (path1, path2) ->
+	# Enumerate all ancestors of path2 in order
 	ancestors = []
-	currentRoute = routePath2
+	currentRoute = path2
 	while currentRoute?
 		ancestors.push currentRoute
 		currentRoute = currentRoute.getParent()
 
-	# Find the first ancestor of routePath1 that is also an ancestor of routePath2
-	currentRoute = routePath1
+	# Find the first ancestor of path1 that is also an ancestor of path2
+	currentRoute = path1
 	while currentRoute?
 		for ancestor in ancestors
 			return currentRoute if currentRoute.isEqual(ancestor)
@@ -346,91 +349,53 @@ findNearestCommonAncestor = (routePath1, routePath2) ->
 # END findNearestCommonAncestor
 
 ###
-# Method: setupRoute
-#	Recursively sets up a new route given an ancestor from which to start the setup.
-#
-# Arguments:
-#	ancestor - The ancestor node of the new route that represents the current state
-#	newRouteNode - The route node to set up to
-#	parameters - The parameters for the new route
+# Method: step
 ###
-setupRoute = (ancestorPath, newPath) ->
-	(recur = (currentPath, continuation) ->
+step = ->
+	if currentTargetPath.isEqual(currentPath)
+		# Run observables
+		console.log "RUN OBSERVABLES"
+
+		# End the step process
+		currentTargetPath = null
+
+	else
+		# Find the nearest common ancestor of the current and new path
+		ancestorPath = findNearestCommonAncestor(currentPath, currentTargetPath)
+
+		# If the current path is an ancestor of the new path, then setup towards the new path
+		nextPath = context = stepFunction = bindings = null
 		if currentPath.isEqual(ancestorPath)
-			return continuation()
+			nextPath = currentPath.getChild(currentTargetPath)
+			{context, setup:stepFunction} = nextPath.node.routeSettings ? {}
+			bindings = nextPath.getBindings()
 
-		else recur(currentPath.getParent(), ->
-			return continuation() unless currentPath.node.routeSettings?
-
+		# Otherwise, teardown towards the common ancestor
+		else
+			nextPath = currentPath.getParent()
+			{context, teardown:stepFunction} = currentPath.node.routeSettings ? {}
 			bindings = currentPath.getBindings()
-			{context, setup} = currentPath.node.routeSettings
 
-			# If the setup takes two parameters, then it is an asynchronous call
-			if setup.length is 2
-				return setup.call(context, bindings, ->
-					return continuation()
-				)
+		context ?= {}
+		stepFunction ?= (->)
+		recur = ->
+			currentPath = nextPath
+			step()
 
-			# Synchronous call
-			else
-				setup.call(context, bindings)
-				return continuation()
+		# If the setup/teardown takes two parameters, then it is an asynchronous call
+		if stepFunction.length is 2
+			stepFunction.call(context, bindings, recur)
 
-		) #END else recur
-	)(newPath, ->
-		{setup, load} = newPath.node.routeSettings
-		loadRoute(newPath) if setup isnt load
-	)
-
-# END setupRoute
-
-###
-# Method: loadRoute
-#	Loads a route with the given parameters.
-#
-# Arguments:
-#	routeNode- The route node to load
-#	parameters - The parameters for the route
-###
-loadRoute = (routePath) ->
-	{context, load} = routePath.node.routeSettings
-	load.call(context, currentParameters)
-
-# END loadRoute
-
-###
-# Method: teardownRoute
-#	Recursively tears down the current route given an ancestor to tear down to.
-#
-# Arguments:
-#	ancestor - The ancestor node to tear down to
-###
-teardownRoute = (ancestorPath) ->
-	(recur = (currentPath) ->
-		unless currentPath.isEqual(ancestorPath)
-
-			return recur(currentPath.getParent()) unless currentPath.node.routeSettings?
-
-			bindings = currentPath.getBindings()
-			{context, teardown} = currentPath.node.routeSettings
-
-			# If the setup takes two parameters, then it is an asynchronous call
-			if teardown.length is 2
-				teardown.call(context, bindings, ->
-					return recur(currentPath.getParent())
-				)
-
-			# Synchronous call
-			else
-				teardown.call(context, bindings)
-				return recur(currentPath.getParent())
-	)(currentPath)
-
-# END teardownRoute
+		# Otherwise it is a synchronous call
+		else
+			stepFunction.call(context, bindings)
+			recur()
+# END step
 
 ###
 # Class: Finch
 ###
+
 Finch = {
 
 	debug: true
@@ -447,14 +412,14 @@ Finch = {
 
 		#Check if the input parameter was a function, assign it to the setup method
 		#if it was
-		settings = {setup: settings, load: settings} if isFunction(settings)
+		settings = {setup: settings} if isFunction(settings)
 		settings = {} unless isObject(settings)
 
 		#Make sure we have valid inputs
 		pattern = "" unless isString(pattern)
 
 		# Add the new route to the route tree
-		addRoute(routeTreeRoot, pattern, settings)
+		addRoute(rootNode, pattern, settings)
 
 	#END Finch.route
 
@@ -474,7 +439,7 @@ Finch = {
 		[uri, queryString] = uri.split("?", 2)
 
 		# Find matching route in route tree
-		newPath = findRoutePath(uri)
+		newPath = findPath(rootNode, uri)
 
 		# Return false if there was no matching route
 		return false unless newPath?
@@ -483,20 +448,11 @@ Finch = {
 		bindings = newPath.getBindings()
 		currentParameters = extend(queryParameters, bindings)
 
-		# If we are still using the same route, call load
-		if newPath.isEqual(currentPath)
-			loadRoute(currentPath)
-		else
-			# Find the nearest common ancestor of the current and new route nodes
-			ancestorPath = findNearestCommonAncestor(currentPath, newPath)
+		previousTargetPath = currentTargetPath
+		currentTargetPath = newPath
 
-			# Tear down old route up to the common ancestor
-			teardownRoute(ancestorPath)
-
-			# Build up new route from the common ancestor
-			setupRoute(ancestorPath, newPath)
-
-		currentPath = newPath
+		# Start the process of teardowns/setups if we were not already doing so
+		step() unless previousTargetPath?
 
 		return true;
 
@@ -509,19 +465,16 @@ Finch = {
 	# Arguments:
 	#	none
 	###
-	reset: () ->
+	reset: ->
 		# Tear down the entire route
-		teardownRoute(NullPath)
-
-		# Reset the route tree
-		routeTreeRoot = new RouteTreeNode(name: "*")
-		currentPath = new RoutePath(node: null)
-		currentParameters = {}
+		currentTargetPath = NullPath
+		step()
+		resetGlobals()
 		return
 
 	#END Finch.reset()
 }
-
+###
 if Finch.debug
 	Finch.private = {
 		# utility
@@ -539,13 +492,14 @@ if Finch.debug
 		objectsEqual
 		arraysEqual
 
-		# enums
+		# constants
+		NullPath
 		NodeType
 
 		# classes
 		RouteSettings
 		RoutePath
-		RouteTreeNode
+		RouteNode
 
 		#functions
 		parseQueryString
@@ -555,18 +509,15 @@ if Finch.debug
 		getComponentType
 		getComponentName
 		addRoute
-		findRoutePath
+		findPath
 		findNearestCommonAncestor
-		setupRoute
-		loadRoute
-		teardownRoute
 
 		globals: -> return {
-			routeTreeRoot
+			rootNode
 			currentPath
 			currentParameters
 		}
 	}
-
+###
 #Expose Finch to the window
 @Finch = Finch
