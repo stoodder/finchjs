@@ -3,65 +3,36 @@
 	<head>
 		<script src="./scripts/finch.min.js" type="text/javascript" language="javascript"></script>
 		<script type="text/javascript" language="javascript">
-
-
-			Finch.route("home", {
-				setup: function(params, cb)
+			Finch.route("home", function(bindings)
+			{
+				console.log("Setup home");
+				Finch.observe(function(params)
 				{
-					console.log("Setup ---- home -----", params);
-					console.log(cb);
-					setTimeout(cb, 1000);
-				},
-
-				load: function(params)
-				{
-					console.log("Loading ---- home -----", params);
-				},
-
-				teardown: function()
-				{
-					console.log("Tearing down home")
-				}
+					console.log(params("hello"))
+				});
 			});
 
-			Finch.route("[home]/news", function(params)
+			Finch.route("[home]/news", function(bindings)
 			{
-				console.log("Called ---- home/news -----", params);
-			});
-
-			Finch.route("[home/news]/:id", function(params)
-			{
-				console.log("Called ---- home/news/:id -----", params);
-			});
-
-			Finch.route("[home/news/:id]/:name", 
-			{
-				setup: function(params, cb)
+				console.log("Setup home/news");
+				Finch.observe(function(params)
 				{
-					console.log("Setup ---- [home/news/:id]/:name -----", params);
-					cb()
-				},
-
-				teardown: function()
-				{
-					console.log("Teardown ---- [home/news/:id]/:name -----")
-				}
+					console.log("Well " + params('hello'));
+				});
 			});
-			
-			Finch.call("/home/news/33/Allen");
 
-			//Don't call these until the callback returns
-			Finch.call("/home/news/33/Rick");
-			Finch.call("/home/news/33/James");
-
-			setTimeout(function()
+			Finch.route("[home/news]/:id", function(bindings)
 			{
-				Finch.call("/home")
-				Finch.call("/home/news/66")
-				Finch.call("/home")
-				Finch.call("/home/news/66/Richard James Allen III")
-			},2000)
-			
+				console.log("loaded with id, " + bindings.id);
+
+				Finch.observe("hello", "foo", function(hello, foo)
+				{
+					console.log("HERE: ", foo, " ", hello)
+				});
+			});
+
+
+			Finch.listen()
 		</script>
 	</head>
 	<body>

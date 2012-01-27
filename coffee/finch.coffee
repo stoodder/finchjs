@@ -9,6 +9,7 @@ trimSlashes = (str) -> str.replace(/^\/+/, '').replace(/\/+$/, '')
 startsWith = (haystack, needle) -> haystack.indexOf(needle) is 0
 endsWith = (haystack, needle) ->  haystack.indexOf(needle, haystack.length - needle.length) isnt -1
 contains = (haystack, needle) -> haystack.indexOf(needle) isnt -1
+peek = (arr) -> arr[arr.length - 1]
 
 extend = (obj, extender) ->
 	obj = {} unless isObject(obj)
@@ -30,6 +31,11 @@ arraysEqual = (arr1, arr2) ->
 	for value, index in arr1
 		return false if arr2[index] isnt value
 	return true
+
+toArray = (obj) ->
+	arr = []
+	arr[arr.length] = value for key, value of obj ? {}
+	return arr
 
 #------------------
 # Classes
@@ -54,9 +60,10 @@ class RouteSettings
 		@context = if isObject(context) then context else {}
 
 class RoutePath
-	constructor: ({node, boundValues} = {}) ->
+	constructor: ({node, boundValues, parameterObservables} = {}) ->
 		@node = node ? null
 		@boundValues = boundValues ? []
+		@parameterObservables = parameterObservables ? []
 
 	getBindings: ->
 		bindings = {}
@@ -72,12 +79,31 @@ class RoutePath
 		return null unless @node?
 		bindingCount = @node.parent?.bindings.length ? 0
 		boundValues = @boundValues.slice(0, bindingCount)
-		return new RoutePath(node: @node.parent, boundValues: boundValues)
+		parameterObservables = @parameterObservables.slice(0,-1)
+		return new RoutePath(node: @node.parent, boundValues: boundValues, parameterObservables: parameterObservables)
 
 	getChild: (targetPath) ->
 		while targetPath? and not @.isEqual(parent = targetPath.getParent())
 			targetPath = parent
+		targetPath.parameterObservables = @parameterObservables.slice(0)
+		targetPath.parameterObservables.push([])
 		return targetPath
+
+class ParameterObservable
+	constructor: (callback) ->
+		@callback = callback
+		@callback = (->) unless isFunction(@callback)
+		@dependencies = []
+		@parameterAccessor = (key) =>
+			@dependencies.push(key) unless contains(@dependencies, key)
+			return CurrentParameters[key]
+
+	resetDependencies: ->
+		@dependencies = []
+
+	trigger: ->
+		@.resetDependencies()
+		@callback(@parameterAccessor)
 
 #------------------
 # Constants
@@ -88,19 +114,6 @@ NodeType = {
 	Literal: 'Literal'
 	Variable: 'Variable'
 }
-
-#------------------
-# Globals
-#------------------
-
-rootNode = currentPath = currentParameters = currentTargetPath = null
-hashInterval = currentHash = null
-hashListening = false
-do resetGlobals = ->
-	rootNode = new RouteNode(name: "*")
-	currentPath = NullPath
-	currentParameters = {}
-	currentTargetPath = null
 
 #------------------
 # Functions
@@ -351,48 +364,86 @@ findNearestCommonAncestor = (path1, path2) ->
 # END findNearestCommonAncestor
 
 ###
+# Globals
+###
+RootNode = CurrentPath = CurrentParameters = CurrentTargetPath = null
+HashInterval = CurrentHash = null
+HashListening = false
+do resetGlobals = ->
+	RootNode = new RouteNode(name: "*")
+	CurrentPath = NullPath
+	CurrentParameters = {}
+	CurrentTargetPath = null
+
+# END Globals
+
+###
 # Method: step
 ###
 step = ->
-	if currentTargetPath.isEqual(currentPath)
+	if CurrentTargetPath.isEqual(CurrentPath)
+
 		# Run observables
-		console.log "RUN OBSERVABLES"
+		# TODO: Only trigger on change
+		for observableList in CurrentPath.parameterObservables
+			for observable in observableList
+				observable.trigger()
 
 		# End the step process
-		currentTargetPath = null
+		CurrentTargetPath = null
 
 	else
 		# Find the nearest common ancestor of the current and new path
-		ancestorPath = findNearestCommonAncestor(currentPath, currentTargetPath)
+		ancestorPath = findNearestCommonAncestor(CurrentPath, CurrentTargetPath)
 
-		# If the current path is an ancestor of the new path, then setup towards the new path
-		nextPath = context = stepFunction = bindings = null
-		if currentPath.isEqual(ancestorPath)
-			nextPath = currentPath.getChild(currentTargetPath)
-			{context, setup:stepFunction} = nextPath.node.routeSettings ? {}
-			bindings = nextPath.getBindings()
+		# If the current path is an ancestor of the new path, then setup towards the new path;
+		# otherwise, teardown towards the common ancestor
+		if CurrentPath.isEqual(ancestorPath) then stepSetup() else stepTeardown()
 
-		# Otherwise, teardown towards the common ancestor
-		else
-			nextPath = currentPath.getParent()
-			{context, teardown:stepFunction} = currentPath.node.routeSettings ? {}
-			bindings = currentPath.getBindings()
-
-		context ?= {}
-		stepFunction ?= (->)
-		recur = ->
-			currentPath = nextPath
-			step()
-
-		# If the setup/teardown takes two parameters, then it is an asynchronous call
-		if stepFunction.length is 2
-			stepFunction.call(context, bindings, recur)
-
-		# Otherwise it is a synchronous call
-		else
-			stepFunction.call(context, bindings)
-			recur()
 # END step
+
+stepSetup = ->
+	# During setup and teardown, CurrentPath should always be the path to the
+	# node getting setup or torn down.
+	# In the setup case: CurrentPath must be set before the setup function is called.
+	CurrentPath = CurrentPath.getChild(CurrentTargetPath)
+
+	{context, setup} = CurrentPath.node.routeSettings ? {}
+	context ?= {}
+	setup ?= (->)
+	bindings = CurrentPath.getBindings()
+	recur = -> step()
+
+	# If the setup/teardown takes two parameters, then it is an asynchronous call
+	if setup.length is 2
+		setup.call(context, bindings, recur)
+
+	# Otherwise it is a synchronous call
+	else
+		setup.call(context, bindings)
+		recur()
+
+stepTeardown = ->
+	{context, teardown} = CurrentPath.node.routeSettings ? {}
+	context ?= {}
+	teardown ?= (->)
+	bindings = CurrentPath.getBindings()
+	recur = ->
+		# During setup and teardown, CurrentPath should always be the path to the
+		# node getting setup or torn down.
+		# In the setup case: CurrentPath must be set after the teardown function is called.
+		CurrentPath = CurrentPath.getParent()
+		step()
+
+	# If the setup/teardown takes two parameters, then it is an asynchronous call
+	if teardown.length is 2
+		teardown.call(context, bindings, recur)
+
+	# Otherwise it is a synchronous call
+	else
+		teardown.call(context, bindings)
+		recur()
+
 
 ###
 # Method: hashChange
@@ -408,9 +459,9 @@ hashChange = (event) ->
 		urlSplit = url.split("#", 2)
 		hash = (if urlSplit.length is 2 then urlSplit[1] else "")
 
-	if hash isnt currentHash
+	if hash isnt CurrentHash
 		Finch.call(hash)
-		currentHash = hash
+		CurrentHash = hash
 
 ###
 # Class: Finch
@@ -439,7 +490,7 @@ Finch = {
 		pattern = "" unless isString(pattern)
 
 		# Add the new route to the route tree
-		addRoute(rootNode, pattern, settings)
+		addRoute(RootNode, pattern, settings)
 
 	#END Finch.route
 
@@ -459,17 +510,17 @@ Finch = {
 		[uri, queryString] = uri.split("?", 2)
 
 		# Find matching route in route tree
-		newPath = findPath(rootNode, uri)
+		newPath = findPath(RootNode, uri)
 
 		# Return false if there was no matching route
 		return false unless newPath?
 
 		queryParameters = parseQueryString(queryString)
 		bindings = newPath.getBindings()
-		currentParameters = extend(queryParameters, bindings)
+		CurrentParameters = extend(queryParameters, bindings)
 
-		previousTargetPath = currentTargetPath
-		currentTargetPath = newPath
+		previousTargetPath = CurrentTargetPath
+		CurrentTargetPath = newPath
 
 		# Start the process of teardowns/setups if we were not already doing so
 		step() unless previousTargetPath?
@@ -477,6 +528,49 @@ Finch = {
 		return true;
 
 	#END Finch.call()
+
+	###
+	# Method: Finch.observe
+	#	Used to set up observers on the query string.
+	#
+	# Form 1:
+	# Arguments:
+	#	keys... - A List of keys to listen to
+	#	callback(keys...) - A callback function to execute with the values bound to each key in order.
+	#
+	# Form 2:
+	# Arguments:
+	#	keys[] - An array of param keys
+	#	callback(keys...) - A callback function to execute with the values bound to each key in order.
+	#
+	# Form 3:
+	# Arguments:
+	#	callback(params) - A callback function to execute with a params accessor.
+	###
+	observe: (args...) ->
+		# Handle argument form 1
+		if args.length > 2
+			callback = args.pop() 
+			return Finch.observe( toArray(args), callback )
+		
+		#Handle form 2
+		else if args.length is 2
+			[keys, callback] = args
+			keys = [keys] if isString(keys)
+			keys = [] unless isArray(keys)
+			callback = (->) unless isFunction(callback)
+
+			return Finch.observe (params) ->
+				values = (params(key) for key in keys)
+				callback(values...)
+		#Handle form 3
+		else 
+			callback = if isFunction(args[0]) then args[0] else (->)
+			observable = new ParameterObservable(callback)
+			peek(CurrentPath.parameterObservables).push(observable)
+
+
+	#END Finch.observe()
 
 	###
 	# Method: Finch.listen
@@ -487,26 +581,25 @@ Finch = {
 	###
 	listen: () ->
 		#Only do this if we're currently not listening
-		if not hashListening
+		if not HashListening
 			#Check if the window has an onhashcnage event
 			if "onhashchange" of window
 				if isFunction(window.addEventListener)
 					window.addEventListener("hashchange", hashChange, true)
-					hashListening = true
+					HashListening = true
 
 				else if isFunction(window.attachEvent)
 					window.attachEvent("hashchange", hashChange)
-					hashListening = true
+					HashListening = true
 			
 			# if we're still nto listening fallback to a set interval
-			if not hashListening
-				hashInterval = setInterval(hashChange, 33)
-				hashListening = true
-			
+			if not HashListening
+				HashInterval = setInterval(hashChange, 33)
+				HashListening = true
 			#Perform an initial hash change
 			hashChange()
-		
-		return hashListening
+
+		return HashListening
 
 	#END Finch.listen
 
@@ -519,27 +612,27 @@ Finch = {
 	###
 	ignore: () ->
 		#Only continue if we're listening
-		if hashListening
+		if HashListening
 
 			#Are we suing set interval? if so, clear it
-			if hashInterval isnt null
-				clearInterval(hashInterval)
-				hashInterval = null
-				hashListening = false
-			
+			if HashInterval isnt null
+				clearInterval(HashInterval)
+				HashInterval = null
+				HashListening = false
+
 			#Otherwise if the window has onhashchange, try to remove the event listener
 			else if "onhashchange" of window
 
 				if isFunction(window.removeEventListener)
 					window.removeEventListener("hashchange", hashChange, true)
-					hashListening = false
+					HashListening = false
 
 				else if isFunction(window.detachEvent)
 					window.detachEvent("hashchange", hashChange)
-					hashListening = false
-		
-		return not hashListening
-		
+					HashListening = false
+
+		return not HashListening
+
 	#END Finch.ignore
 
 	###
@@ -551,7 +644,7 @@ Finch = {
 	###
 	reset: ->
 		# Tear down the entire route
-		currentTargetPath = NullPath
+		CurrentTargetPath = NullPath
 		step()
 		resetGlobals()
 		return
@@ -598,9 +691,9 @@ if Finch.debug
 		findNearestCommonAncestor
 
 		globals: -> return {
-			rootNode
-			currentPath
-			currentParameters
+			RootNode
+			CurrentPath
+			CurrentParameters
 		}
 	}
 ###
