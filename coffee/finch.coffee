@@ -1,4 +1,4 @@
-isObject = (object) -> ( typeof object is typeof {} );
+isObject = (object) -> (typeof object) is (typeof {}) and object isnt null
 isFunction = (object) -> Object::toString.call( object ) is "[object Function]"
 isArray = (object) -> Object::toString.call( object ) is "[object Array]"
 isString = (object) -> Object::toString.call( object ) is "[object String]"
@@ -83,7 +83,7 @@ class RoutePath
 		return new RoutePath(node: @node.parent, boundValues: boundValues, parameterObservables: parameterObservables)
 
 	getChild: (targetPath) ->
-		while targetPath? and not @.isEqual(parent = targetPath.getParent())
+		while targetPath? and not @isEqual(parent = targetPath.getParent())
 			targetPath = parent
 		targetPath.parameterObservables = @parameterObservables.slice(0)
 		targetPath.parameterObservables.push([])
@@ -102,7 +102,7 @@ class ParameterObservable
 		@dependencies = []
 
 	trigger: ->
-		@.resetDependencies()
+		@resetDependencies()
 		@callback(@parameterAccessor)
 
 #------------------
@@ -119,7 +119,7 @@ NodeType = {
 # Functions
 #------------------
 
-###
+#---------------------------------------------------
 # Method: parseQueryString
 #	Used to parse and objectize a query string
 #
@@ -128,7 +128,7 @@ NodeType = {
 #
 # Returns:
 #	object - An object of the split apart query string
-###
+#---------------------------------------------------
 parseQueryString = (queryString) ->
 
 	#Make sure the query string is valid
@@ -149,7 +149,7 @@ parseQueryString = (queryString) ->
 #END parseQueryString
 
 
-###
+#---------------------------------------------------
 # Method: getParentRouteString
 #	Gets the parent route sub-string of a route string
 #
@@ -158,7 +158,7 @@ parseQueryString = (queryString) ->
 #
 # Returns:
 #	string - The parent route sub-string
-###
+#---------------------------------------------------
 getParentRouteString = (routeString) ->
 	# Return empty string if there is no parent route
 	return "" unless startsWith(routeString, "[")
@@ -172,7 +172,7 @@ getParentRouteString = (routeString) ->
 # END getParentRouteString
 
 
-###
+#---------------------------------------------------
 # Method: getChildRouteString
 #	Gets the child route sub-string of a route string
 #
@@ -181,7 +181,7 @@ getParentRouteString = (routeString) ->
 #
 # Returns:
 #	string - The child route sub-string
-###
+#---------------------------------------------------
 getChildRouteString = (routeString) ->
 	# Return entire string if there is no parent route
 	return routeString unless startsWith(routeString, "[")
@@ -194,7 +194,7 @@ getChildRouteString = (routeString) ->
 
 # END getChildRouteString
 
-###
+#---------------------------------------------------
 # Method: splitRouteString
 #	Splits a route string into its components.
 #
@@ -213,7 +213,7 @@ getChildRouteString = (routeString) ->
 #		-> ["foo"]
 #	splitRouteString("/foo/bar/")
 #		-> ["foo", "bar"]
-###
+#---------------------------------------------------
 splitRouteString = (routeString) ->
 	return [] if routeString is ""
 
@@ -225,16 +225,27 @@ splitRouteString = (routeString) ->
 
 # END splitRouteString
 
+
+#---------------------------------------------------
+# Method: getComponentType
+#---------------------------------------------------
 getComponentType = (routeStringComponent) ->
 	return NodeType.Variable if startsWith(routeStringComponent, ":")
 	return NodeType.Literal
 
+#END getComponentType
+
+#---------------------------------------------------
+# Method: getComponentName
+#---------------------------------------------------
 getComponentName = (routeStringComponent) ->
 	switch getComponentType(routeStringComponent)
 		when NodeType.Literal then routeStringComponent
 		when NodeType.Variable then routeStringComponent[1..]
 
-###
+#END getComponentName
+
+#---------------------------------------------------
 # Method: addRoute
 #	Adds a new route node to the route tree, given a route string.
 #
@@ -244,7 +255,7 @@ getComponentName = (routeStringComponent) ->
 #
 # Returns:
 #	Route - The added route
-###
+#---------------------------------------------------
 addRoute = (rootNode, routeString, settings) ->
 	parentRouteComponents = splitRouteString( getParentRouteString( routeString ))
 	childRouteComponents = splitRouteString( getChildRouteString( routeString ))
@@ -290,7 +301,7 @@ addRoute = (rootNode, routeString, settings) ->
 
 # END addRoute
 
-###
+#---------------------------------------------------
 # Method: findPath
 #	Finds a route in the route tree, given a URI.
 #
@@ -302,7 +313,7 @@ addRoute = (rootNode, routeString, settings) ->
 #	RoutePath
 #	node - The node that matches the URI
 #	boundValues - An ordered list of values bound to each variable in the URI
-###
+#---------------------------------------------------
 findPath = (rootNode, uri) ->
 	uriComponents = splitRouteString(uri)
 	boundValues = []
@@ -332,7 +343,7 @@ findPath = (rootNode, uri) ->
 
 # END findPath
 
-###
+#---------------------------------------------------
 # Method: findNearestCommonAncestor
 #	Finds the nearest common ancestor route node of two routes.
 #
@@ -342,7 +353,7 @@ findPath = (rootNode, uri) ->
 # Returns:
 #	RoutePath - The nearest common ancestor path of the two paths, or
 #	null if there is no common ancestor.
-###
+#---------------------------------------------------
 findNearestCommonAncestor = (path1, path2) ->
 	# Enumerate all ancestors of path2 in order
 	ancestors = []
@@ -363,9 +374,9 @@ findNearestCommonAncestor = (path1, path2) ->
 
 # END findNearestCommonAncestor
 
-###
+#---------------------------------------------------
 # Globals
-###
+#---------------------------------------------------
 RootNode = CurrentPath = CurrentParameters = CurrentTargetPath = null
 HashInterval = CurrentHash = null
 HashListening = false
@@ -377,9 +388,9 @@ do resetGlobals = ->
 
 # END Globals
 
-###
+#---------------------------------------------------
 # Method: step
-###
+#---------------------------------------------------
 step = ->
 	if CurrentTargetPath.isEqual(CurrentPath)
 
@@ -402,6 +413,10 @@ step = ->
 
 # END step
 
+#---------------------------------------------------
+# Method: stepSetup
+#	Used to execute a setup method on a node
+#---------------------------------------------------
 stepSetup = ->
 	# During setup and teardown, CurrentPath should always be the path to the
 	# node getting setup or torn down.
@@ -423,6 +438,12 @@ stepSetup = ->
 		setup.call(context, bindings)
 		recur()
 
+#END stepSetup
+
+#---------------------------------------------------
+# Method: stepTeardown
+#	Used to execute a teardown method on a node
+#---------------------------------------------------
 stepTeardown = ->
 	{context, teardown} = CurrentPath.node.routeSettings ? {}
 	context ?= {}
@@ -444,41 +465,37 @@ stepTeardown = ->
 		teardown.call(context, bindings)
 		recur()
 
+#END stepTeardown
 
-###
-# Method: hashChange
+#---------------------------------------------------
+# Method: hashChangeListener
 #	Used to respond to hash changes
-###
-hashChange = (event) ->
-	hash = ""
-	if "hash" of window.location
-		hash = window.location.hash
-		hash = hash.slice(1) if  startsWith(hash, "#")
-	else
-		url = window.location.href
-		urlSplit = url.split("#", 2)
-		hash = (if urlSplit.length is 2 then urlSplit[1] else "")
+#---------------------------------------------------
+hashChangeListener = (event) ->
+	hash = window.location.hash
+	hash = hash.slice(1) if  startsWith(hash, "#")
+	hash = unescape(hash)
 
 	if hash isnt CurrentHash
 		Finch.call(hash)
 		CurrentHash = hash
 
-###
+#---------------------------------------------------
 # Class: Finch
-###
+#---------------------------------------------------
 
 Finch = {
 
 	debug: true
 
-	###
+	#---------------------------------------------------
 	# Mathod: Finch.route
 	#	Used to setup a new route
 	#
 	# Arguments:
 	#	pattern - The pattern to add
 	#	callback - The callback to assign to the pattern
-	###
+	#---------------------------------------------------
 	route: (pattern, settings) ->
 
 		#Check if the input parameter was a function, assign it to the setup method
@@ -494,12 +511,12 @@ Finch = {
 
 	#END Finch.route
 
-	###
+	#---------------------------------------------------
 	# Method: Finch.call
 	#
 	# Arguments:
 	#	route - The route to try and call
-	###
+	#---------------------------------------------------
 	call: (uri) ->
 
 		#Make sure we have valid arguments
@@ -529,7 +546,7 @@ Finch = {
 
 	#END Finch.call()
 
-	###
+	#---------------------------------------------------
 	# Method: Finch.observe
 	#	Used to set up observers on the query string.
 	#
@@ -546,7 +563,7 @@ Finch = {
 	# Form 3:
 	# Arguments:
 	#	callback(params) - A callback function to execute with a params accessor.
-	###
+	#---------------------------------------------------
 	observe: (args...) ->
 		# Handle argument form 1
 		if args.length > 2
@@ -572,44 +589,45 @@ Finch = {
 
 	#END Finch.observe()
 
-	###
+	#---------------------------------------------------
 	# Method: Finch.listen
 	#	Used to listen to changes in the window hash, will respond with Finch.call
 	#
 	# Returns:
 	#	boolean - Is Finch listening?
-	###
+	#---------------------------------------------------
 	listen: () ->
 		#Only do this if we're currently not listening
 		if not HashListening
 			#Check if the window has an onhashcnage event
 			if "onhashchange" of window
 				if isFunction(window.addEventListener)
-					window.addEventListener("hashchange", hashChange, true)
+					window.addEventListener("hashchange", hashChangeListener, true)
 					HashListening = true
 
 				else if isFunction(window.attachEvent)
-					window.attachEvent("hashchange", hashChange)
+					window.attachEvent("hashchange", hashChangeListener)
 					HashListening = true
 			
 			# if we're still nto listening fallback to a set interval
 			if not HashListening
-				HashInterval = setInterval(hashChange, 33)
+				HashInterval = setInterval(hashChangeListener, 33)
 				HashListening = true
+
 			#Perform an initial hash change
-			hashChange()
+			hashChangeListener()
 
 		return HashListening
 
 	#END Finch.listen
 
-	###
+	#---------------------------------------------------
 	# Method: Finch.ignore
 	#	Used to stop listening to changes in the hash
 	#
 	# Returns:
 	#	boolean - Is Finch done listening?
-	###
+	#---------------------------------------------------
 	ignore: () ->
 		#Only continue if we're listening
 		if HashListening
@@ -624,24 +642,77 @@ Finch = {
 			else if "onhashchange" of window
 
 				if isFunction(window.removeEventListener)
-					window.removeEventListener("hashchange", hashChange, true)
+					window.removeEventListener("hashchange", hashChangeListener, true)
 					HashListening = false
 
 				else if isFunction(window.detachEvent)
-					window.detachEvent("hashchange", hashChange)
+					window.detachEvent("hashchange", hashChangeListener)
 					HashListening = false
 
 		return not HashListening
 
-	#END Finch.ignore
+	#---------------------------------------------------
+	# Method: Finch.navigate
+	#	Method to 'navigate' to a new hash route
+	#
+	# Form 1:
+	# Arguments:
+	#	uri (string) - string of a uri to browse to, if uri is null, the current uri will be used
+	#	queryParams (object) - The query parameters to add the to the uri
+	#
+	# Form 2:
+	# Arguments:
+	#	queryParams (object) - An object to UPDATE the current list of query parameters (won't delete parameters from the list, only add and/or update current)use Finch.navigate(null, {params}) to change the list of query parameters
+	#---------------------------------------------------
+	navigate: (uri, queryParams) ->
 
-	###
+		#if the uri is an object, we'll assume we're just updating the hash
+		if isObject(uri)
+			queryParams = uri
+			uri = null
+			currentQueryString = window.location.hash.split("?", 2)[1] ? ""
+			currentQueryParams = parseQueryString(currentQueryString)
+
+			#Unescape things fromthe current query params
+			for key, value of currentQueryParams
+				currentQueryParams[unescape(key)] = unescape(value)
+
+			#udpate the query params
+			queryParams = extend(currentQueryParams, queryParams)
+		
+		#otherwise assume they're trying to browser to a completely new route
+		else
+			uri = null unless isString(uri)
+			queryParams = {} unless isObject(queryParams)
+		
+		#Generate a query string
+		queryString = (escape(key) + "=" + escape(value) for key, value of queryParams).join("&")
+		
+		#if the uri is null, use the current uri
+		if uri is null
+			uri = window.location.hash.split("?", 2)[0] ? ""
+			uri = uri.slice(1) if uri.slice(0,1) is "#"
+
+		#escape the uri
+		uri = escape(uri)
+
+		#try to attach the query string
+		if queryString.length > 0
+			uri += if uri.indexOf("?") > -1 then "&" else "?"
+			uri += queryString
+
+		#update the hash
+		window.location.hash = uri
+
+	#END Finch.navigate
+
+	#---------------------------------------------------
 	# Method: Finch.reset
 	#   Tears down the current stack and resets the routes
 	#
 	# Arguments:
 	#	none
-	###
+	#---------------------------------------------------
 	reset: ->
 		# Tear down the entire route
 		CurrentTargetPath = NullPath
