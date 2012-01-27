@@ -450,7 +450,6 @@
   };
 
   Finch = {
-    debug: true,
     route: function(pattern, settings) {
       if (isFunction(settings)) {
         settings = {
@@ -586,50 +585,49 @@
     }
   };
 
-  /*
-  if Finch.debug
-  	Finch.private = {
-  		# utility
-  		isObject
-  		isFunction
-  		isArray
-  		isString
-  		isNumber
-  		trim
-  		trimSlashes
-  		startsWith
-  		endsWith
-  		contains
-  		extend
-  		objectsEqual
-  		arraysEqual
+  /* FOR NOW, we'll just comment this out instead of having a debug flag
+  Finch.private = {
+  	# utility
+  	isObject
+  	isFunction
+  	isArray
+  	isString
+  	isNumber
+  	trim
+  	trimSlashes
+  	startsWith
+  	endsWith
+  	contains
+  	extend
+  	objectsEqual
+  	arraysEqual
   
-  		# constants
-  		NullPath
-  		NodeType
+  	# constants
+  	NullPath
+  	NodeType
   
-  		# classes
-  		RouteSettings
-  		RoutePath
-  		RouteNode
+  	# classes
+  	RouteSettings
+  	RoutePath
+  	RouteNode
   
-  		#functions
-  		parseQueryString
-  		getParentRouteString
-  		getChildRouteString
-  		splitRouteString
-  		getComponentType
-  		getComponentName
-  		addRoute
-  		findPath
-  		findNearestCommonAncestor
+  	#functions
+  	parseQueryString
+  	getParentRouteString
+  	getChildRouteString
+  	splitRouteString
+  	getComponentType
+  	getComponentName
+  	addRoute
+  	findPath
+  	findNearestCommonAncestor
   
-  		globals: -> return {
-  			RootNode
-  			CurrentPath
-  			CurrentParameters
-  		}
+  	globals: -> return {
+  		RootNode
+  		CurrentPath
+  		CurrentParameters
   	}
+  }
   */
 
   this.Finch = Finch;
