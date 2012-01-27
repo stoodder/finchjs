@@ -94,6 +94,8 @@ NodeType = {
 #------------------
 
 rootNode = currentPath = currentParameters = currentTargetPath = null
+hashInterval = currentHash = null
+hashListening = false
 do resetGlobals = ->
 	rootNode = new RouteNode(name: "*")
 	currentPath = NullPath
@@ -393,6 +395,24 @@ step = ->
 # END step
 
 ###
+# Method: hashChange
+#	Used to respond to hash changes
+###
+hashChange = (event) ->
+	hash = ""
+	if "hash" of window.location
+		hash = window.location.hash
+		hash = hash.slice(1) if  startsWith(hash, "#")
+	else
+		url = window.location.href
+		urlSplit = url.split("#", 2)
+		hash = (if urlSplit.length is 2 then urlSplit[1] else "")
+
+	if hash isnt currentHash
+		Finch.call(hash)
+		currentHash = hash
+
+###
 # Class: Finch
 ###
 
@@ -459,6 +479,70 @@ Finch = {
 	#END Finch.call()
 
 	###
+	# Method: Finch.listen
+	#	Used to listen to changes in the window hash, will respond with Finch.call
+	#
+	# Returns:
+	#	boolean - Is Finch listening?
+	###
+	listen: () ->
+		#Only do this if we're currently not listening
+		if not hashListening
+			#Check if the window has an onhashcnage event
+			if "onhashchange" of window
+				if isFunction(window.addEventListener)
+					window.addEventListener("hashchange", hashChange, true)
+					hashListening = true
+
+				else if isFunction(window.attachEvent)
+					window.attachEvent("hashchange", hashChange)
+					hashListening = true
+			
+			#since there wasn't an onhashchange event, just use an interval
+			else
+				hashInterval = setInterval(hashChange, 33)
+				hashListening = true
+			
+			#Perform an initial hash change
+			hashChange()
+		
+		return hashListening
+
+	#END Finch.listen
+
+	###
+	# Method: Finch.ignore
+	#	Used to stop listening to changes in the hash
+	#
+	# Returns:
+	#	boolean - Is Finch done listening?
+	###
+	ignore: () ->
+		#Only continue if we're listening
+		if hashListening
+
+			#Are we suing set interval? if so, clear it
+			if hashInterval isnt null
+				clearInterval(hashInterval)
+				hashInterval = null
+				hashListening = false
+			
+			#Otherwise if the window has onhashchange, try to remove the event listener
+			else if "onhashchange" of window
+
+				if isFunction(window.removeEventListener)
+					window.removeEventListener("hashchange", hashChange, true)
+					hashListening = false
+
+				else if isFunction(window.detachEvent)
+					window.detachEvent("hashchange", hashChange)
+					hashListening = false
+		
+		return not hashListening
+		
+	#END Finch.ignore
+
+	###
 	# Method: Finch.reset
 	#   Tears down the current stack and resets the routes
 	#
@@ -474,71 +558,6 @@ Finch = {
 
 	#END Finch.reset()
 }
-
-# Add the listen and ignore methods
-( ->
-	interval = null
-	listening = false
-	hashChange = ( ->
-		currentHash = null
-		return (event) ->
-			hash = ""
-			if "hash" of window.location
-				hash = window.location.hash
-				hash = hash.slice(1) if  startsWith(hash, "#")
-			else
-				url = window.location.href
-				urlSplit = url.split("#", 2)
-				hash = (if urlSplit.length is 2 then urlSplit[1] else "")
-
-			if hash isnt currentHash
-				Finch.call(hash)
-				currentHash = hash
-	)()
-
-	Finch.listen = () ->
-		if not listening
-			if "onhashchange" of window
-				if isFunction(window.addEventListener)
-					window.addEventListener("hashchange", hashChange, true)
-					listening = true
-
-				else if isFunction(window.attachEvent)
-					window.attachEvent("hashchange", hashChange)
-					listening = true
-			
-			console.log( "listening #{listening}" )
-			if not listening
-				interval = setInterval(hashChange, 33)
-				listening = true
-
-			hashChange()
-		
-		return listening
-
-	#END Finch.listen
-
-	Finch.ignore = () ->
-		if listening
-
-			if interval isnt null
-				clearInterval(interval)
-				interval = null
-				listening = false
-
-			if listening and "onhashchange" of window
-				if isFunction(window.removeEventListener)
-					window.removeEventListener("hashchange", hashChange, true)
-					listening = false
-
-				if listening and isFunction(window.detachEvent)
-					window.detachEvent("hashchange", hashChange)
-					listening = false
-		
-		return not listening
-		
-	#END Finch.ignore
-)()
 
 ###
 if Finch.debug
