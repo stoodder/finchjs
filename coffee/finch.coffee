@@ -8,6 +8,7 @@ trim = (str) -> str.replace(/^\s+/, '').replace(/\s+$/, '')
 trimSlashes = (str) -> str.replace(/^\/+/, '').replace(/\/+$/, '')
 startsWith = (haystack, needle) -> haystack.indexOf(needle) is 0
 endsWith = (haystack, needle) ->  haystack.indexOf(needle, haystack.length - needle.length) isnt -1
+contains = (haystack, needle) -> haystack.indexOf(needle) isnt -1
 
 extend = (obj, extender) ->
 	obj = {} unless isObject(obj)
@@ -24,112 +25,84 @@ objectsEqual = (obj1, obj2) ->
 		return false if obj1[key] isnt value
 	return true
 
-##################################################
-#
-# Declare some private, state variables for Finch
-#
-##################################################
-assignedPatterns = {}
-currentRouteStack = []
-currentCallStack = []
+arraysEqual = (arr1, arr2) ->
+	return false if arr1.length isnt arr2.length
+	for value, index in arr1
+		return false if arr2[index] isnt value
+	return true
 
-currentCall = null
-currentQueryParams = ""
+#------------------
+# Classes
+#------------------
 
-###
-# Method used to standardize a route so we can better parse through it
-###
-standardizeRoute = (route) ->
-	#Get a valid rotue
-	route = if isString(route) then trim(route) else ""
+class RouteNode
+	constructor: ({name, nodeType, parent} = {}) ->
+		# The name property is not used by code; it is included
+		# for readability of the generated objects
+		@name = name ? ""
+		@nodeType = nodeType ? null
+		@parent = parent ? null
+		@routeSettings = null
+		@childLiterals = {}
+		@childVariable = null
+		@bindings = []
 
-	#Check for a leading bracket
-	if startsWith(route, "[")
+class RouteSettings
+	constructor: ({setup, teardown, context} = {}) ->
+		@setup = if isFunction(setup) then setup else (->)
+		@teardown = if isFunction(teardown) then teardown else (->)
+		@context = if isObject(context) then context else {}
 
-		#Find the index of the closing bracket
-		closingBracketIndex = route.indexOf("]")
+class RoutePath
+	constructor: ({node, boundValues} = {}) ->
+		@node = node ? null
+		@boundValues = boundValues ? []
 
-		# if the closing bracket is in a spot where it would have other chacters (a parent route)
-		# remove the bracket and pin the two route pieces together
-		if closingBracketIndex > 1
-			route = route.slice(1, closingBracketIndex) + route.slice(closingBracketIndex+1)
+	getBindings: ->
+		bindings = {}
+		for binding, index in @node.bindings
+			bindings[binding] = @boundValues[index]
+		return bindings
 
-		#Otherwise just strip of anything before (including) the closing bracket
-		else
-			route = route.slice( Math.max(1, closingBracketIndex+1) )
+	isEqual: (path) -> path? and @node is path.node and arraysEqual(@boundValues, path.boundValues)
 
-	#Remove any leading or trailing '/'
-	route = trimSlashes(route)
+	isRoot: -> not @node.parent?
 
-	return route
+	getParent: ->
+		return null unless @node?
+		bindingCount = @node.parent?.bindings.length ? 0
+		boundValues = @boundValues.slice(0, bindingCount)
+		return new RoutePath(node: @node.parent, boundValues: boundValues)
 
-###
-# Method: getParentPattern
-# 	Used to extract the parent pattern out of a given pattern
-#	- A parent pattern is specified within brackets, ex: [/home]/news
-#		'/home' would be the parent pattern
-#	- Useful for identifying and calling the parent pattern's callback
-#
-# Arguments:
-#	pattern - The pattern to dig into and find a parent pattern, if one exisst
-#
-# Returns
-#	string - The idenfitfied parent pattern
-###
-getParentPattern = (pattern) ->
-	#Initialzie the parameters
-	pattern = if isString(pattern) then trim(pattern) else ""
-	parentPattern = null
+	getChild: (targetPath) ->
+		while targetPath? and not @.isEqual(parent = targetPath.getParent())
+			targetPath = parent
+		return targetPath
 
-	#Check if we're starting with a bracket if startsWith(pattern, "[")
-	if startsWith(pattern, "[")
+#------------------
+# Constants
+#------------------
 
-		#find the closing bracket
-		closingBracketIndex = pattern.indexOf("]")
+NullPath = new RoutePath(node: null)
+NodeType = {
+	Literal: 'Literal'
+	Variable: 'Variable'
+}
 
-		#If we found one with a route inside, get the parentPattern
-		if closingBracketIndex > 1
-			parentPattern = pattern.slice(1, closingBracketIndex)
+#------------------
+# Globals
+#------------------
 
-	return parentPattern
+rootNode = currentPath = currentParameters = currentTargetPath = null
+do resetGlobals = ->
+	rootNode = new RouteNode(name: "*")
+	currentPath = NullPath
+	currentParameters = {}
+	currentTargetPath = null
 
-#END getParentPattern
-
-###
-# Method: getParameters
-# 	Used to extract the parameters out of a route (from within the route's path, not query string)
-#
-# Arguments:
-#	pattern - The pattern to use as a reference for finding parameters
-#	route - The given route to extract parameters from
-#
-# Returns:
-#	object - An object of the route's parameters
-#
-# See Also:
-#	parseQueryString
-###
-getParameters = (pattern, route) ->
-	route = "" unless isString(route)
-	pattern = "" unless isString(pattern)
-
-	route = standardizeRoute(route)
-	pattern = standardizeRoute(pattern)
-
-	routeSplit = route.split("/")
-	patternSplit = pattern.split("/")
-
-	return {} if routeSplit.length isnt patternSplit.length
-
-	parameters = {}
-
-	for index, patternPiece of patternSplit
-		if startsWith(patternPiece, ":")
-			parameters[patternPiece.slice(1)] = routeSplit[index]
-
-	return parameters
-
-#END getParameters
+#------------------
+# Functions
+#------------------
 
 ###
 # Method: parseQueryString
@@ -146,325 +119,286 @@ parseQueryString = (queryString) ->
 	#Make sure the query string is valid
 	queryString = if isString(queryString) then trim(queryString) else ""
 
-	#setup the return params
-	queryParams = {}
+	#setup the return parameters
+	queryParameters = {}
 
 	#iterate through the pieces of the query string
 	if queryString != ""
 		for piece in queryString.split("&")
 			[key, value] = piece.split("=", 2)
-			queryParams[key] = value
+			queryParameters[key] = value
 
 	#return the result
-	return queryParams
+	return queryParameters
 
 #END parseQueryString
 
+
 ###
-# Method: matchPattern
-#	Method used to determine if a route matches a pattern
+# Method: getParentRouteString
+#	Gets the parent route sub-string of a route string
 #
 # Arguments:
-#	route - The route to check
-#	pattern - The pattern to compare the route against
+#	routeString - The route string to parse
 #
 # Returns:
-#	boolean - Did the route match the pattern?
+#	string - The parent route sub-string
 ###
-matchPattern = (route, pattern) ->
-	route = standardizeRoute(route)
-	pattern = standardizeRoute(pattern)
+getParentRouteString = (routeString) ->
+	# Return empty string if there is no parent route
+	return "" unless startsWith(routeString, "[")
 
-	routeSplit = route.split("/")
-	patternSplit = pattern.split("/")
+	#Find the index of the closing bracket
+	closingBracketIndex = routeString.indexOf("]")
 
-	#if the lengths aren't the same, this isn't valid
-	return false if routeSplit.length isnt patternSplit.length
+	#Slice the string between the brackets
+	return routeString[1..closingBracketIndex-1]
 
-	for index, patternPiece of patternSplit
-		return false unless patternPiece is routeSplit[index] or startsWith(patternPiece, ":")
+# END getParentRouteString
 
-	return true
-
-#END matchPattern
 
 ###
-# Method: buildCallStack
-#	Used to build up a callstack for a given patterrn
+# Method: getChildRouteString
+#	Gets the child route sub-string of a route string
 #
 # Arguments:
-#	pattern - The route pattern to try and call
+#	routeString - The route string to parse
+#
+# Returns:
+#	string - The child route sub-string
 ###
-buildCallStack = (pattern) ->
+getChildRouteString = (routeString) ->
+	# Return entire string if there is no parent route
+	return routeString unless startsWith(routeString, "[")
 
-	pattern = standardizeRoute(pattern)
-	callStack = []
+	#Find the index of the closing bracket
+	closingBracketIndex = routeString.indexOf("]")
 
-	#Next build the callstack
-	(stackAdd = (pattern) ->
-		assignedPattern = assignedPatterns[pattern]
+	#Slice the string after brackets
+	return routeString[closingBracketIndex+1..]
 
-		if isObject(assignedPattern)
-			callStack.unshift(assignedPattern) if isFunction(assignedPattern.setup)
-			stackAdd(assignedPattern.parentPattern) if assignedPattern.parentPattern? and assignedPattern.parentPattern isnt ""
-	)(pattern)
-
-	return callStack
-#END buildCallStack
-
-
+# END getChildRouteString
 
 ###
-# Method: runSetupCallStack
-#	Used to execute a callstack from a route starting at it's top most parent
+# Method: splitRouteString
+#	Splits a route string into its components.
 #
 # Arguments:
-#	callStack - The stack to iterate through (calls each item's setup method)
-#	routeStack - The route stack that is similar to the call stack
-#	staffDiffIndex - The point where the stack should start calling from
-#	parameters - The parameters to extend onto the list of parameters to send onward
+#	routeString - The route string to split up into an array
+#
+# Returns:
+#	array - An array of the split apart route string
+#
+# Examples:
+#	splitRouteString("")
+#		-> []
+#	splitRouteString("/")
+#		-> [""]
+#	splitRouteString("/foo")
+#		-> ["foo"]
+#	splitRouteString("/foo/bar/")
+#		-> ["foo", "bar"]
 ###
-runSetupCallStack = (callStack, routeStack, stackDiffIndex, parameters) ->
-	#First setup the variables
-	callStack = [] unless isArray(callStack)
-	routeStack = [] unless isArray(routeStack)
-	stackDiffIndex = if isNumber(stackDiffIndex) and stackDiffIndex > 0 then parseInt(stackDiffIndex) else 0
-	parameters = {} unless isObject(parameters)
+splitRouteString = (routeString) ->
+	return [] if routeString is ""
 
-	#Don't do anything if the call stack is empty
-	return if callStack.length <= 0
+	# Remove trailing and leading '/'
+	routeString = trimSlashes(routeString)
 
-	# Get the last item off the stack, we'll try to call its load method
-	# at the end of the call stack if it wasn't already called (as a setup method)
-	lastItem = callStack[callStack.length-1]
-	callback = if isFunction(lastItem.load) then lastItem.load else (->)
+	# Split the route string by '/'
+	return routeString.split('/')
 
-	#Setup the current call object, this is a bit messy,
-	#but is used for aborting calls and keeping everything in sync
-	currentCall = {
-		aborted: false
-		abortedCallback: (->)
-		abort: (cb) ->
-			cb = (->) unless isFunction(cb)
-			this.aborted = true
-			this.abortedCallback = () ->
-				currentCall = null
-				cb()
-		#END abort()
-	}
+# END splitRouteString
 
-	#Slice the stack to only call after the given stackDiffIndex
-	callStack = callStack.slice(stackDiffIndex)
-	routeStack = routeStack.slice(stackDiffIndex)
+getComponentType = (routeStringComponent) ->
+	return NodeType.Variable if startsWith(routeStringComponent, ":")
+	return NodeType.Literal
 
-	#Lastly execute the callstack, taking into account methods that request for the child callback
-	(callSetup = (callStack, routeStack, parameters) ->
-		return currentCall.abortedCallback() if currentCall.aborted
-		if callStack.length <= 0
-			currentCall = null
-			return callback.call(lastItem.context, parameters, (->))
+getComponentName = (routeStringComponent) ->
+	switch getComponentType(routeStringComponent)
+		when NodeType.Literal then routeStringComponent
+		when NodeType.Variable then routeStringComponent[1..]
 
-		#Get the next pieces off the stacks
-		callItem = callStack.shift()
-		routeItem = routeStack.shift()
+###
+# Method: addRoute
+#	Adds a new route node to the route tree, given a route string.
+#
+# Arguments:
+#	routeString - The route string to parse and add to the route tree.
+#	settings - The settings for the new route
+#
+# Returns:
+#	Route - The added route
+###
+addRoute = (rootNode, routeString, settings) ->
+	parentRouteComponents = splitRouteString( getParentRouteString( routeString ))
+	childRouteComponents = splitRouteString( getChildRouteString( routeString ))
+	parentNode = rootNode
+	bindings = []
 
-		#validate the items
-		callItem = {} unless isObject(callItem)
-		routeItem = "" unless isString(routeItem)
+	(recur = (currentNode, name) ->
+		component = null
+		onParentNode = false
+		nextNode = null
 
-		#Make sure we have a setup method
-		callItem.setup = (->) unless isFunction(callItem.setup)
+		# Are we done traversing the route string?
+		if parentRouteComponents.length <= 0 and childRouteComponents.length <= 0
+			currentNode.parent = parentNode
+			currentNode.bindings = bindings
+			return currentNode.routeSettings = new RouteSettings(settings)
 
-		#Clear the callback if it's part of the stack
-		callback = (->) if callback is callItem.setup
+		# Are we still parsing through the parent route?
+		if parentRouteComponents.length > 0
+			component = parentRouteComponents.shift()
 
-		#If the length is 2, then this is an asynchronous call
-		if callItem.setup.length is 2
-
-			#Call the method asynchronously
-			callItem.setup.call(callItem.context, parameters, (p) ->
-
-				#push the internal stacks
-				currentCallStack.push(callItem)
-				currentRouteStack.push(routeItem)
-
-				#Extend the parameters if they gave us any aditional
-				p = {} unless isObject(p)
-				extend(parameters, p)
-
-				#Call the next method in the chain
-				callSetup.call( callSetup, callStack, routeStack, parameters )
-			)
-
-		#Synchronous call
+			# If this was the last component on the parent node list, then the next node
+			# is the parent node.
+			onParentNode = true if parentRouteComponents.length is 0
 		else
-			#Execute this item's setup method
-			callItem.setup.call(callItem.context, parameters)
+			component = childRouteComponents.shift()
 
-			#push the internal stacks
-			currentCallStack.push(callItem)
-			currentRouteStack.push(routeItem)
+		componentType = getComponentType(component)
+		componentName = getComponentName(component)
+		name = "#{name}/#{component}"
 
-			#recurse to the next call
-			callSetup(callStack, routeStack, parameters)
+		switch componentType
+			when NodeType.Literal
+				nextNode = currentNode.childLiterals[componentName] ?= new RouteNode(name: name, nodeType: componentType, parent: rootNode)
+			when NodeType.Variable
+				nextNode = currentNode.childVariable ?= new RouteNode(name: name, nodeType: componentType)
+				# Push the variable name onto the end of the bindings list
+				bindings.push(componentName)
 
-	)(callStack, routeStack, parameters)
+		parentNode = nextNode if onParentNode
+		recur(nextNode, name)
+	)(rootNode, "")
 
-	#Reutrn nothing
-	return
-#END runSetupCallStack
-
-
+# END addRoute
 
 ###
-# Method: runTeardownCallStack
+# Method: findPath
+#	Finds a route in the route tree, given a URI.
 #
 # Arguments:
-#	callStack
-#	routeStack
-#	stackDiffIndex
-###
-# TODO: we really do not need the first and second arguments
-runTeardownCallStack = (callStack, routeStack, stackDiffIndex) ->
-	#First setup the variables
-	callStack = [] unless isArray(callStack)
-	routeStack = [] unless isArray(routeStack)
-	stackDiffIndex = if isNumber(stackDiffIndex) and stackDiffIndex > 0 then parseInt(stackDiffIndex) else 0
-
-	#Don't execute anything if the diff index is larger than any index in the callStack
-	return if callStack.length <= stackDiffIndex
-
-	#Use a recursive loop (for now) to iterate over the teardown methods
-	#in reverse order
-	(callTeardown = (callStack, routeStack) ->
-		return if callStack.length <= stackDiffIndex
-
-		#Get the last most piece off the stacks
-		callItem = callStack.pop()
-		routeItem = routeStack.pop()
-
-		#Make sure they're valid
-		callItem = {} unless isObject(callItem)
-		routeItem = "" unless isString(routeItem)
-
-		#get the associated tear down method
-		callItem.teardown = (->) unless isFunction(callItem.teardown)
-
-		#Call the teardown method
-		callItem.teardown.call(callItem.context)
-
-		#execute the next step
-		callTeardown(callStack, routeStack)
-
-	)(callStack, routeStack)
-
-	#Return nothing
-	return
-
-#END runSetupCallStack
-
-
-
-###
-# Method: findStackDiffIndex
-#	Used to find the index between two stacks where they first differentiate
-#
-# Arguments:
-#	oldRouteStack - The old route stack to compate against
-#	newRouteStack - The new route stack to compare with
+#	rootNode - The root node of the route tree.
+#	uri - The uri to parse and match against the route tree.
 #
 # Returns:
-#	int - The first index where the two stacks aren't equal
+#	RoutePath
+#	node - The node that matches the URI
+#	boundValues - An ordered list of values bound to each variable in the URI
 ###
-findStackDiffIndex = (oldRouteStack, newRouteStack) ->
-	#Make sure we have valid parameters
-	oldRouteStack = [] unless isArray(oldRouteStack)
-	newRouteStack = [] unless isArray(newRouteStack)
-	stackIndex = 0
+findPath = (rootNode, uri) ->
+	uriComponents = splitRouteString(uri)
+	boundValues = []
 
-	#Iterate over each of the stacks while in their ranges and check the values
-	while oldRouteStack.length > stackIndex and newRouteStack.length > stackIndex
+	(recur = (currentNode) ->
+		# Are we done traversing the uri?
+		if uriComponents.length <= 0
+			return new RoutePath( node: currentNode, boundValues: boundValues )
 
-		#Stop looping if we found our first different value
-		break if oldRouteStack[stackIndex] isnt newRouteStack[stackIndex]
+		component = uriComponents.shift()
 
-		#increment the index
-		stackIndex++
+		# Try to find a matching literal component
+		if currentNode.childLiterals[component]?
+			result = recur(currentNode.childLiterals[component])
+			return result if result?
 
-	#END while
+		# Try to find a matching variable component
+		if currentNode.childVariable?
+			boundValues.push(component)
+			result = recur(currentNode.childVariable)
+			return result if result?
+			boundValues.pop()
 
-	#Return the differentiation point
-	return stackIndex
-#END findStackDiffIndex
+		# No matching route found in this traversal branch
+		return null
+	)(rootNode)
 
-
+# END findPath
 
 ###
-# Method: buildRouteStack
-#	Used to build a stack of routes that will
-#	be called with the given route (full routes, not patterns)
+# Method: findNearestCommonAncestor
+#	Finds the nearest common ancestor route node of two routes.
 #
 # Arguments:
-#	pattern - The pattern to reference
-#	route - The route to extrpolate from
+#	path1, path2 - The two paths to compare.
+#
+# Returns:
+#	RoutePath - The nearest common ancestor path of the two paths, or
+#	null if there is no common ancestor.
 ###
-buildRouteStack = (pattern, route) ->
-	#Setup the parameters
-	pattern = standardizeRoute(pattern)
-	route = standardizeRoute(route)
-	routeSplit = route.split("/")
-	routeStack = []
+findNearestCommonAncestor = (path1, path2) ->
+	# Enumerate all ancestors of path2 in order
+	ancestors = []
+	currentRoute = path2
+	while currentRoute?
+		ancestors.push currentRoute
+		currentRoute = currentRoute.getParent()
 
-	#return the blank stack if no route was given
-	return routeStack if routeSplit.length <= 0
+	# Find the first ancestor of path1 that is also an ancestor of path2
+	currentRoute = path1
+	while currentRoute?
+		for ancestor in ancestors
+			return currentRoute if currentRoute.isEqual(ancestor)
+		currentRoute = currentRoute.getParent()
 
-	#Recursive callback to build up the route stack
-	(buildRoute = (pattern) ->
+	# No common ancestors. (Do these nodes belong to different trees?)
+	return null
 
-		#split up the pattern
-		patternSplit = pattern.split("/")
-		builtRoute = ""
-		matches = true
-		splitIndex = 0
+# END findNearestCommonAncestor
 
-		#Iterate over the pieces to build the extrpolated route
-		while matches and patternSplit.length > splitIndex and routeSplit.length > splitIndex
+###
+# Method: step
+###
+step = ->
+	if currentTargetPath.isEqual(currentPath)
+		# Run observables
+		console.log "RUN OBSERVABLES"
 
-			#Get the two pieces
-			patternPiece = patternSplit[splitIndex]
-			routePiece = routeSplit[splitIndex]
+		# End the step process
+		currentTargetPath = null
 
-			#Should we add the route to the extrpolated route
-			if startsWith(patternPiece, ":") or patternPiece is routePiece
-				builtRoute += "#{routePiece}/"
-			else
-				matches = false
+	else
+		# Find the nearest common ancestor of the current and new path
+		ancestorPath = findNearestCommonAncestor(currentPath, currentTargetPath)
 
-			#Increment the counter
-			splitIndex++
-		#END while
+		# If the current path is an ancestor of the new path, then setup towards the new path
+		nextPath = context = stepFunction = bindings = null
+		if currentPath.isEqual(ancestorPath)
+			nextPath = currentPath.getChild(currentTargetPath)
+			{context, setup:stepFunction} = nextPath.node.routeSettings ? {}
+			bindings = nextPath.getBindings()
 
-		#Remove the last '/'
-		builtRoute = builtRoute.slice(0,-1) if endsWith(builtRoute, "/")
+		# Otherwise, teardown towards the common ancestor
+		else
+			nextPath = currentPath.getParent()
+			{context, teardown:stepFunction} = currentPath.node.routeSettings ? {}
+			bindings = currentPath.getBindings()
 
-		#Get the assigned pattern
-		assignedPattern = assignedPatterns[pattern]
+		context ?= {}
+		stepFunction ?= (->)
+		recur = ->
+			currentPath = nextPath
+			step()
 
-		#call to extrpolate the parent route, if we extrpolated something in he child route
-		routeStack.unshift(builtRoute)
-		buildRoute(assignedPattern.parentPattern, route) if assignedPattern?.parentPattern? and assignedPattern.parentPattern isnt ""
+		# If the setup/teardown takes two parameters, then it is an asynchronous call
+		if stepFunction.length is 2
+			stepFunction.call(context, bindings, recur)
 
-	)(pattern)
-
-	return routeStack
-#END buildRouteStack
-
-
+		# Otherwise it is a synchronous call
+		else
+			stepFunction.call(context, bindings)
+			recur()
+# END step
 
 ###
 # Class: Finch
 ###
+
 Finch = {
+
+	debug: true
 
 	###
 	# Mathod: Finch.route
@@ -478,27 +412,14 @@ Finch = {
 
 		#Check if the input parameter was a function, assign it to the setup method
 		#if it was
-		settings = {setup: settings, load: settings} if isFunction(settings)
+		settings = {setup: settings} if isFunction(settings)
+		settings = {} unless isObject(settings)
 
 		#Make sure we have valid inputs
 		pattern = "" unless isString(pattern)
-		settings = {} unless isObject(settings)
-		settings.context = {} unless isObject(settings.context)
-		settings.setup = (->) unless isFunction(settings.setup)
-		settings.load = (->) unless isFunction(settings.load)
-		settings.teardown = (->) unless isFunction(settings.teardown)
 
-		#initialize the parent route to call
-		parentPattern = getParentPattern(pattern)
-
-		#Standardize the rotues
-		settings.pattern = standardizeRoute(pattern)
-		settings.parentPattern = standardizeRoute(parentPattern)
-
-		#Store the action for later
-		assignedPatterns[settings.pattern] = settings
-
-		#END assignedPatterns[route]
+		# Add the new route to the route tree
+		addRoute(rootNode, pattern, settings)
 
 	#END Finch.route
 
@@ -507,77 +428,33 @@ Finch = {
 	#
 	# Arguments:
 	#	route - The route to try and call
-	#	parameters (optional) - The initial prameters to send
 	###
-	call: (uri, parameters) ->
+	call: (uri) ->
 
 		#Make sure we have valid arguments
-		uri = "" unless isString(uri)
-		parameters = {} unless isObject(parameters)
+		uri = "/" unless isString(uri)
+		uri = "/" if uri is ""
 
-		#Extract the route and query string from the uri
-		[route, queryString] = uri.split("?", 2)
-		route = standardizeRoute(route)
-		queryParams = parseQueryString(queryString)
+		#Extract the route and query parameters from the uri
+		[uri, queryString] = uri.split("?", 2)
 
-		#Extend the parameters with those found in the query string
-		extend(parameters, queryParams)
+		# Find matching route in route tree
+		newPath = findPath(rootNode, uri)
 
-		# Iterate over each of the assigned routes and try to find a match
-		for pattern, config of assignedPatterns
+		# Return false if there was no matching route
+		return false unless newPath?
 
-			#Check if this route matches the input routpatterne
-			if matchPattern(route, pattern)
+		queryParameters = parseQueryString(queryString)
+		bindings = newPath.getBindings()
+		currentParameters = extend(queryParameters, bindings)
 
-				#Abort the current call if one exists
-				return currentCall.abort( -> Finch.call(uri, parameters) ) if currentCall?
+		previousTargetPath = currentTargetPath
+		currentTargetPath = newPath
 
-				#Get the parameters of the route
-				extend(parameters, getParameters(pattern, route))
+		# Start the process of teardowns/setups if we were not already doing so
+		step() unless previousTargetPath?
 
-				#Get the assigned pattern
-				assignedPattern = assignedPatterns[pattern]
-
-				#Create the necessary callstacks
-				callStack = buildCallStack(pattern)
-				routeStack = buildRouteStack(pattern, route)
-
-				#Get the differentiating index between the previous route stack
-				#and the new route stack
-				stackDiffIndex = findStackDiffIndex(currentRouteStack, routeStack)
-
-				#Quit if the stacks are the same size as the stackDiffIndex
-				if currentCallStack.length is callStack.length is stackDiffIndex
-
-					#only execute further if the query string has changed
-					if not objectsEqual(queryParams, currentQueryParams)
-
-						#Get the  last item if it exists
-						lastItem = currentCallStack[currentCallStack.length-1]
-
-						#Check if the parameters are different
-						lastItem?.load.call(lastItem.context, parameters)
-
-				#Otherwise run the teardown and setup stacks
-				else
-					#Execute the teardown callstack from the given index
-					runTeardownCallStack(currentCallStack, currentRouteStack, stackDiffIndex)
-
-					#Execute the setup callstack from the given index
-					runSetupCallStack(callStack, routeStack, stackDiffIndex, parameters)
-
-				#Store the current query string
-				currentQueryParams = queryParams
-
-				#return true
-				return true
-
-			#END if match
-
-		#END for pattern in assignedPatterns
-
-		#return false, we coudln't find a route
-		return false
+		return true;
 
 	#END Finch.call()
 
@@ -588,12 +465,11 @@ Finch = {
 	# Arguments:
 	#	none
 	###
-	reset: () ->
-		runTeardownCallStack(currentCallStack, currentRouteStack, 0)
-		assignedPatterns = {}
-		currentRouteStack = []
-		currentCallStack = []
-		currentCall = null
+	reset: ->
+		# Tear down the entire route
+		currentTargetPath = NullPath
+		step()
+		resetGlobals()
 		return
 
 	#END Finch.reset()
@@ -663,5 +539,52 @@ Finch = {
 		
 	#END Finch.ignore
 )()
+
+###
+if Finch.debug
+	Finch.private = {
+		# utility
+		isObject
+		isFunction
+		isArray
+		isString
+		isNumber
+		trim
+		trimSlashes
+		startsWith
+		endsWith
+		contains
+		extend
+		objectsEqual
+		arraysEqual
+
+		# constants
+		NullPath
+		NodeType
+
+		# classes
+		RouteSettings
+		RoutePath
+		RouteNode
+
+		#functions
+		parseQueryString
+		getParentRouteString
+		getChildRouteString
+		splitRouteString
+		getComponentType
+		getComponentName
+		addRoute
+		findPath
+		findNearestCommonAncestor
+
+		globals: -> return {
+			rootNode
+			currentPath
+			currentParameters
+		}
+	}
+###
+
 #Expose Finch to the window
 @Finch = Finch
