@@ -409,9 +409,10 @@ test "Route sanitation", sinon.test ->
 	foo.reset()
 	foo_bar.reset()
 
-test "Asynchronous setup", sinon.test ->
+test "Asynchronous setup/teardown", sinon.test ->
 	cb = callbackGroup()
 	cb.setup_foo = @stub()
+	cb.teardown_foo = @stub()
 	cb.setup_foo_bar = @stub()
 	params =
 		name: "Bob the Unforgiving"
@@ -419,52 +420,48 @@ test "Asynchronous setup", sinon.test ->
 
 	Finch.route "foo",
 		setup: (params, callback) -> cb.setup_foo params, callback
-		load: cb.load_foo = @stub()
+		teardown: (params, callback) -> cb.teardown_foo params, callback
 	Finch.route "foo/bar",
 		setup: (params, callback) -> cb.setup_foo_bar params, callback
-		load: cb.load_foo_bar = @stub()
 		teardown: cb.teardown_foo_bar = @stub()
 	Finch.route "[foo/bar]/baz",
 		setup: cb.setup_foo_bar_baz = @stub()
-		load: cb.load_foo_bar_baz = @stub()
 		teardown: cb.teardown_foo_bar_baz = @stub()
 	Finch.route "quux",
 		setup: cb.setup_quux = @stub()
-		load: cb.load_quux = @stub()
 
+	# Call /foo to start
 	Finch.call "/foo"
 
 	equal cb.setup_foo.callCount, 1,	"/foo (before /foo callback): foo setup called once"
-	equal cb.load_foo.callCount, 0, 	"/foo (before /foo callback): foo load not called yet"
 
-	cb.setup_foo.callArg 1, params
-	equal cb.setup_foo.callCount, 1,                 	"/foo (after /foo callback): foo setup not called again"
-	equal cb.load_foo.callCount, 1,                  	"/foo (after /foo callback): foo load called once"
-	deepEqual cb.load_foo.getCall(0).args[0], params,	"/foo (after /foo callback): foo load called with new params"
+	cb.setup_foo.callArg 1
+	equal cb.setup_foo.callCount, 1,	"/foo (after /foo callback): foo setup not called again"
 
 	cb.reset()
 
+	# Call /foo/bar/baz next
 	Finch.call "/foo/bar/baz"
 
-	equal cb.setup_foo_bar.callCount, 1,    	"/foo/bar/baz (before /foo/bar callback): foo/bar setup called once"
-	equal cb.load_foo_bar.callCount, 0,     	"/foo/bar/baz (before /foo/bar callback): foo/bar load not called"
-	equal cb.setup_foo_bar_baz.callCount, 0,	"/foo/bar/baz (before /foo/bar callback): foo/bar/baz setup not called yet"
-	equal cb.load_foo_bar_baz.callCount, 0, 	"/foo/bar/baz (before /foo/bar callback): foo/bar/baz load not called yet"
+	equal cb.teardown_foo.callCount, 1, 	"/foo/bar/baz (before /foo teardown): foo teardown called once"
+	equal cb.setup_foo_bar.callCount, 0,	"/foo/bar/baz (before /foo teardown): foo/bar setup not called yet"
 
+	cb.teardown_foo.callArg 1
+
+	equal cb.setup_foo_bar.callCount, 1,    	"/foo/bar/baz (before /foo/bar callback): foo/bar setup called once"
+	equal cb.setup_foo_bar_baz.callCount, 0,	"/foo/bar/baz (before /foo/bar callback): foo/bar/baz setup not called yet"
+
+	# Call /quux before the call to /foo/bar/baz completes
 	Finch.call "/quux"
 
-	equal cb.setup_foo_bar.callCount, 1,	"/quux (before /foo/bar callback): foo/bar setup not called again"
-	equal cb.load_foo_bar.callCount, 0, 	"/quux (before /foo/bar callback): foo/bar load not called"
-	equal cb.setup_quux.callCount, 0,   	"/quux (before /foo/bar callback): quux setup not called yet"
-	equal cb.load_quux.callCount, 0,    	"/quux (before /foo/bar callback): quux load not called yet"
+	equal cb.setup_foo_bar.callCount, 1,    	"/quux (before /foo/bar callback): foo/bar setup not called again"
+	equal cb.setup_foo_bar_baz.callCount, 0,	"/quux (before /foo/bar callback): foo/bar/baz setup not called"
+	equal cb.setup_quux.callCount, 0,       	"/quux (before /foo/bar callback): quux setup not called yet"
 
-	cb.setup_foo_bar.callArg 1, params
+	cb.setup_foo_bar.callArg 1
 
 	equal cb.setup_foo_bar.callCount, 1,       	"/quux (after /foo/bar callback): foo/bar setup not called again"
-	equal cb.load_foo_bar.callCount, 0,        	"/quux (after /foo/bar callback): foo/bar load not called"
 	equal cb.teardown_foo_bar.callCount, 1,    	"/quux (after /foo/bar callback): foo/bar teardown called"
 	equal cb.setup_foo_bar_baz.callCount, 0,   	"/quux (after /foo/bar callback): foo/bar/baz setup not called"
-	equal cb.load_foo_bar_baz.callCount, 0,    	"/quux (after /foo/bar callback): foo/bar/baz load not called"
 	equal cb.teardown_foo_bar_baz.callCount, 0,	"/quux (after /foo/bar callback): foo/bar/baz teardown not called"
 	equal cb.setup_quux.callCount, 1,          	"/quux (after /foo/bar callback): quux setup called"
-	equal cb.load_quux.callCount, 1,           	"/quux (after /foo/bar callback): quux load called"
