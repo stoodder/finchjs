@@ -1,6 +1,6 @@
 /*
 	Finch.js - Powerfully simple javascript routing
-	by Rick Allen and Greg Smith
+	by Rick Allen (stoodder) and Greg Smith (smrq)
 
 	Version 0.2.0
 	Full source at https://github.com/stoodder/finchjs
