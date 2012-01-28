@@ -148,7 +148,7 @@
     Finch.call("/foo");
     calledOnce(slash, "/ called once");
     calledOnce(foo, "foo called once");
-    return calledOnce(bar, "bar never called");
+    return neverCalled(bar, "bar never called");
   }));
 
   test("Simple routing with setup/teardown", sinon.test(function() {

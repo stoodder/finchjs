@@ -5,11 +5,13 @@ isString = (object) -> Object::toString.call( object ) is "[object String]"
 isNumber = (object) -> Object::toString.call( object ) is "[object Number]"
 
 trim = (str) -> str.replace(/^\s+/, '').replace(/\s+$/, '')
-trimSlashes = (str) -> str.replace(/^\/+/, '').replace(/\/+$/, '')
+trimSlashes = (str) -> str.replace(/^\//, '').replace(/\/$/, '')
 startsWith = (haystack, needle) -> haystack.indexOf(needle) is 0
 endsWith = (haystack, needle) ->  haystack.indexOf(needle, haystack.length - needle.length) isnt -1
 contains = (haystack, needle) -> haystack.indexOf(needle) isnt -1
 peek = (arr) -> arr[arr.length - 1]
+
+countSubstrings = (str, substr) -> str.split(substr).length - 1
 
 objectKeys = (obj) -> (key for key of obj)
 objectValues = (obj) -> (value for key, value of obj)
@@ -46,6 +48,11 @@ diffObjects = (oldObject = {}, newObject = {}) ->
 #------------------
 # Classes
 #------------------
+
+class ParsedRouteString
+	constructor: ({components, childIndex}) ->
+		@components = components ? []
+		@childIndex = childIndex ? 0
 
 class RouteNode
 	constructor: ({name, nodeType, parent} = {}) ->
@@ -161,82 +168,92 @@ parseQueryString = (queryString) ->
 
 #END parseQueryString
 
+
 #---------------------------------------------------
-# Method: getParentRouteString
-#	Gets the parent route sub-string of a route string
+# Method: splitUri
+#	Splits a uri string into its components.
 #
 # Arguments:
-#	routeString - The route string to parse
+#	uri - The uri to split
 #
 # Returns:
-#	string - The parent route sub-string
-#---------------------------------------------------
-getParentRouteString = (routeString) ->
-	# Return empty string if there is no parent route
-	return "" unless startsWith(routeString, "[")
-
-	#Find the index of the closing bracket
-	closingBracketIndex = routeString.indexOf("]")
-
-	#Slice the string between the brackets
-	return routeString[1..closingBracketIndex-1]
-
-# END getParentRouteString
-
-
-#---------------------------------------------------
-# Method: getChildRouteString
-#	Gets the child route sub-string of a route string
-#
-# Arguments:
-#	routeString - The route string to parse
-#
-# Returns:
-#	string - The child route sub-string
-#---------------------------------------------------
-getChildRouteString = (routeString) ->
-	# Return entire string if there is no parent route
-	return routeString unless startsWith(routeString, "[")
-
-	#Find the index of the closing bracket
-	closingBracketIndex = routeString.indexOf("]")
-
-	#Slice the string after brackets
-	return routeString[closingBracketIndex+1..]
-
-# END getChildRouteString
-
-#---------------------------------------------------
-# Method: splitRouteString
-#	Splits a route string into its components.
-#
-# Arguments:
-#	routeString - The route string to split up into an array
-#
-# Returns:
-#	array - An array of the split apart route string
+#	array - The components of the uri
 #
 # Examples:
-#	splitRouteString("")
-#		-> []
-#	splitRouteString("/")
-#		-> [""]
-#	splitRouteString("/foo")
-#		-> ["foo"]
-#	splitRouteString("/foo/bar/")
-#		-> ["foo", "bar"]
+#	splitUri("")         	=> ["/"]
+#	splitUri("/")        	=> ["/"]
+#	splitUri("foo")      	=> ["/", "foo"]
+#	splitUri("/foo/bar/")	=> ["/", "foo", "bar"]
 #---------------------------------------------------
-splitRouteString = (routeString) ->
-	return [] if routeString is ""
+splitUri = (uri) ->
+	uri = trimSlashes(uri)
+	components = if uri is "" then [] else uri.split("/")
+	components.unshift("/")
+	return components
 
-	# Remove trailing and leading '/'
-	routeString = trimSlashes(routeString)
+#---------------------------------------------------
+# Method: parseRouteString
+#	Validates and parses a route string.
+#
+# Arguments:
+#	routeString - The route string to parse
+#
+# Returns:
+#	ParsedRouteString -the parsed route string,
+#	or null if the route string was malformed.
+#---------------------------------------------------
+parseRouteString = (routeString) ->
 
-	# Split the route string by '/'
-	return routeString.split('/')
+	hasParent = contains(routeString, "[") or contains(routeString, "]")
 
-# END splitRouteString
+	if hasParent then do ->
+		# Validate []s match
+		startCount = countSubstrings(routeString, "[")
+		unless startCount is 1
+			console.warn "Parsing failed on \"#{routeString}\": Extra [" if startCount > 1
+			console.warn "Parsing failed on \"#{routeString}\": Missing [" if startCount < 1
+			return null
 
+		endCount = countSubstrings(routeString, "]")
+		unless endCount is 1
+			console.warn "Parsing failed on \"#{routeString}\": Extra ]" if endCount > 1
+			console.warn "Parsing failed on \"#{routeString}\": Missing ]" if endCount < 1
+			return null
+
+		# Validate the string starts with [
+		unless startsWith(routeString, "[")
+			console.warn "Parsing failed on \"#{routeString}\": [ not at beginning"
+			return null
+
+	# Remove [] from string
+	flatRouteString = routeString.replace(/[\[\]]/g, "")
+
+	# Separate string into individual components
+	if flatRouteString is "" then components = []
+	else components = splitUri(flatRouteString)
+
+	# Validate individual components
+	for component in components
+		if component is ""
+			console.warn "Parsing failed on \"#{routeString}\": Blank component"
+			return null
+
+	# Find the index into the components list where the child route starts
+	childIndex = 0
+	if hasParent
+		[parentString] = routeString.split("]")
+		parentComponents = splitUri(parentString.replace("[", ""))
+		if parentComponents[parentComponents.length-1] isnt components[parentComponents.length-1]
+			console.warn "Parsing failed on \"#{routeString}\": ] in the middle of a component"
+			return null
+		if parentComponents.length is components.length
+			console.warn "Parsing failed on \"#{routeString}\": No child components"
+			return null
+		childIndex = parentComponents.length
+
+	return new ParsedRouteString({components, childIndex})
+
+#END parseRouteString
 
 #---------------------------------------------------
 # Method: getComponentType
@@ -263,56 +280,43 @@ getComponentName = (routeStringComponent) ->
 #
 # Arguments:
 #	rootNode - The root node of the route tree.
-#	routeString - The route string to parse and add to the route tree.
+#	parsedRouteString - The parsed route string to add to the route tree.
 #	settings - The settings for the new route
 #
 # Returns:
-#	Route - The added route
+#	RouteSettings - The settings of the added route
 #---------------------------------------------------
-addRoute = (rootNode, routeString, settings) ->
-	parentRouteComponents = splitRouteString( getParentRouteString( routeString ))
-	childRouteComponents = splitRouteString( getChildRouteString( routeString ))
+addRoute = (rootNode, parsedRouteString, settings) ->
+
+	{components, childIndex} = parsedRouteString
 	parentNode = rootNode
 	bindings = []
 
-	(recur = (currentNode, name) ->
-		component = null
-		onParentNode = false
-		nextNode = null
+	(recur = (currentNode, currentIndex) ->
+		parentNode = currentNode if currentIndex is childIndex
 
 		# Are we done traversing the route string?
-		if parentRouteComponents.length <= 0 and childRouteComponents.length <= 0
+		if parsedRouteString.components.length <= 0
 			currentNode.parent = parentNode
 			currentNode.bindings = bindings
 			return currentNode.routeSettings = new RouteSettings(settings)
 
-		# Are we still parsing through the parent route?
-		if parentRouteComponents.length > 0
-			component = parentRouteComponents.shift()
-
-			# If this was the last component on the parent node list, then the next node
-			# is the parent node.
-			onParentNode = true if parentRouteComponents.length is 0
-		else
-			component = childRouteComponents.shift()
-
+		component = components.shift()
 		componentType = getComponentType(component)
 		componentName = getComponentName(component)
-		name = "#{name}/#{component}"
 
 		switch componentType
 			when NodeType.Literal
-				nextNode = currentNode.childLiterals[componentName] ?= new RouteNode(name: name, nodeType: componentType, parent: rootNode)
+				nextNode = currentNode.childLiterals[componentName] ?= new RouteNode(name: "#{currentNode.name}#{component}/", nodeType: componentType, parent: rootNode)
 			when NodeType.Variable
-				nextNode = currentNode.childVariable ?= new RouteNode(name: name, nodeType: componentType)
+				nextNode = currentNode.childVariable ?= new RouteNode(name: "#{currentNode.name}#{component}/", nodeType: componentType, parent: rootNode)
 				# Push the variable name onto the end of the bindings list
 				bindings.push(componentName)
 
-		parentNode = nextNode if onParentNode
-		recur(nextNode, name)
-	)(rootNode, "")
+		recur(nextNode, currentIndex+1)
+	)(rootNode, 0)
 
-# END addRoute
+#END addRoute
 
 #---------------------------------------------------
 # Method: findPath
@@ -328,7 +332,7 @@ addRoute = (rootNode, routeString, settings) ->
 #	boundValues - An ordered list of values bound to each variable in the URI
 #---------------------------------------------------
 findPath = (rootNode, uri) ->
-	uriComponents = splitRouteString(uri)
+	uriComponents = splitUri(uri)
 	boundValues = []
 
 	(recur = (currentNode) ->
@@ -354,7 +358,7 @@ findPath = (rootNode, uri) ->
 		return null
 	)(rootNode)
 
-# END findPath
+#END findPath
 
 #---------------------------------------------------
 # Method: findNearestCommonAncestor
@@ -385,7 +389,7 @@ findNearestCommonAncestor = (path1, path2) ->
 	# No common ancestors. (Do these nodes belong to different trees?)
 	return null
 
-# END findNearestCommonAncestor
+#END findNearestCommonAncestor
 
 #---------------------------------------------------
 # Globals
@@ -401,7 +405,7 @@ do resetGlobals = ->
 	CurrentParameters = {}
 	CurrentTargetPath = null
 
-# END Globals
+#END Globals
 
 #---------------------------------------------------
 # Method: step
@@ -427,7 +431,7 @@ step = ->
 		# otherwise, teardown towards the common ancestor
 		if CurrentPath.isEqual(ancestorPath) then stepSetup() else stepTeardown()
 
-# END step
+#END step
 
 #---------------------------------------------------
 # Method: stepSetup
@@ -516,11 +520,17 @@ Finch = {
 		settings = {setup: settings} if isFunction(settings)
 		settings = {} unless isObject(settings)
 
-		#Make sure we have valid inputs
+		# Make sure we have valid inputs
 		pattern = "" unless isString(pattern)
 
+		# Parse the route, and return false if it was invalid
+		parsedRouteString = parseRouteString(pattern)
+		return false unless parsedRouteString?
+
 		# Add the new route to the route tree
-		addRoute(RootNode, pattern, settings)
+		addRoute(RootNode, parsedRouteString, settings)
+
+		return true
 
 	#END Finch.route
 
@@ -539,10 +549,8 @@ Finch = {
 		#Extract the route and query parameters from the uri
 		[uri, queryString] = uri.split("?", 2)
 
-		# Find matching route in route tree
+		# Find matching route in route tree, returning false if there is none
 		newPath = findPath(RootNode, uri)
-
-		# Return false if there was no matching route
 		return false unless newPath?
 
 		queryParameters = parseQueryString(queryString)
@@ -694,15 +702,15 @@ Finch = {
 
 			#udpate the query params
 			queryParams = extend(currentQueryParams, queryParams)
-		
+
 		#otherwise assume they're trying to browser to a completely new route
 		else
 			uri = null unless isString(uri)
 			queryParams = {} unless isObject(queryParams)
-		
+
 		#Generate a query string
 		queryString = (escape(key) + "=" + escape(value) for key, value of queryParams).join("&")
-		
+
 		#if the uri is null, use the current uri
 		if uri is null
 			uri = window.location.hash.split("?", 2)[0] ? ""
@@ -738,7 +746,7 @@ Finch = {
 	#END Finch.reset()
 }
 
-### FOR NOW, we'll just comment this out instead of having a debug flag
+# FOR NOW, we'll just comment this out instead of having a debug flag
 Finch.private = {
 	# utility
 	isObject
@@ -766,9 +774,8 @@ Finch.private = {
 
 	#functions
 	parseQueryString
-	getParentRouteString
-	getChildRouteString
-	splitRouteString
+	splitUri
+	parseRouteString
 	getComponentType
 	getComponentName
 	addRoute
@@ -781,7 +788,6 @@ Finch.private = {
 		CurrentParameters
 	}
 }
-###
 
 #Expose Finch to the window
 @Finch = Finch

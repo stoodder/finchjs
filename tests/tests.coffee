@@ -128,7 +128,7 @@ test "Hierarchical routing with /", sinon.test ->
 
 	calledOnce slash,	"/ called once"
 	calledOnce foo,  	"foo called once"
-	calledOnce bar,  	"bar never called"
+	neverCalled bar, 	"bar never called"
 
 test "Simple routing with setup/teardown", sinon.test ->
 
