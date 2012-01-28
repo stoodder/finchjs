@@ -690,44 +690,54 @@
       CurrentTargetPath = NullPath;
       step();
       resetGlobals();
+      Finch.ignore();
     }
   };
 
+  /*
+  # FOR NOW, we'll just comment this out instead of having a debug flag
   Finch.private = {
-    isObject: isObject,
-    isFunction: isFunction,
-    isArray: isArray,
-    isString: isString,
-    isNumber: isNumber,
-    trim: trim,
-    trimSlashes: trimSlashes,
-    startsWith: startsWith,
-    endsWith: endsWith,
-    contains: contains,
-    extend: extend,
-    objectsEqual: objectsEqual,
-    arraysEqual: arraysEqual,
-    NullPath: NullPath,
-    NodeType: NodeType,
-    RouteSettings: RouteSettings,
-    RoutePath: RoutePath,
-    RouteNode: RouteNode,
-    parseQueryString: parseQueryString,
-    splitUri: splitUri,
-    parseRouteString: parseRouteString,
-    getComponentType: getComponentType,
-    getComponentName: getComponentName,
-    addRoute: addRoute,
-    findPath: findPath,
-    findNearestCommonAncestor: findNearestCommonAncestor,
-    globals: function() {
-      return {
-        RootNode: RootNode,
-        CurrentPath: CurrentPath,
-        CurrentParameters: CurrentParameters
-      };
-    }
-  };
+  	# utility
+  	isObject
+  	isFunction
+  	isArray
+  	isString
+  	isNumber
+  	trim
+  	trimSlashes
+  	startsWith
+  	endsWith
+  	contains
+  	extend
+  	objectsEqual
+  	arraysEqual
+  
+  	# constants
+  	NullPath
+  	NodeType
+  
+  	# classes
+  	RouteSettings
+  	RoutePath
+  	RouteNode
+  
+  	#functions
+  	parseQueryString
+  	splitUri
+  	parseRouteString
+  	getComponentType
+  	getComponentName
+  	addRoute
+  	findPath
+  	findNearestCommonAncestor
+  
+  	globals: -> return {
+  		RootNode
+  		CurrentPath
+  		CurrentParameters
+  	}
+  }
+  */
 
   this.Finch = Finch;
 

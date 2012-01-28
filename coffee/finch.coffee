@@ -1,3 +1,7 @@
+#------------------
+# Utility
+#------------------
+
 isObject = (object) -> (typeof object) is (typeof {}) and object isnt null
 isFunction = (object) -> Object::toString.call( object ) is "[object Function]"
 isArray = (object) -> Object::toString.call( object ) is "[object Array]"
@@ -493,7 +497,7 @@ stepTeardown = ->
 #---------------------------------------------------
 hashChangeListener = (event) ->
 	hash = window.location.hash
-	hash = hash.slice(1) if  startsWith(hash, "#")
+	hash = hash.slice(1) if startsWith(hash, "#")
 	hash = unescape(hash)
 
 	if hash isnt CurrentHash
@@ -502,11 +506,18 @@ hashChangeListener = (event) ->
 
 #---------------------------------------------------
 # Class: Finch
+#
+# Methods:
+#	Finch.route - Assigns a new route pattern
+#	Finch.call - Calls a specific route and operates accordingly
+#	Finch.listen - Listens to changes in the hash portion of the window.location
+#	Finch.ignore - Ignored hash responses
+#	Finch.navigate - Navigates the page (updates the hash)
+#	Finch.reset - resets Finch
 #---------------------------------------------------
-
 Finch = {
 	#---------------------------------------------------
-	# Mathod: Finch.route
+	# Method: Finch.route
 	#	Used to setup a new route
 	#
 	# Arguments:
@@ -676,14 +687,18 @@ Finch = {
 
 	#---------------------------------------------------
 	# Method: Finch.navigate
-	#	Method to 'navigate' to a new hash route
+	#	Method used to 'navigate' to a new/update the existing hash route
 	#
 	# Form 1:
+	#	Finch.navigate('/my/favorite/route', {hello: 'world'})
+	#	- or -
+	#	Finch.navigate(null, {hello: 'world'})
 	# Arguments:
 	#	uri (string) - string of a uri to browse to, if uri is null, the current uri will be used
 	#	queryParams (object) - The query parameters to add the to the uri
 	#
 	# Form 2:
+	#	Finch.navigate({hello: 'world', foo: 'bar'})
 	# Arguments:
 	#	queryParams (object) - An object to UPDATE the current list of query parameters (won't delete parameters from the list, only add and/or update current)use Finch.navigate(null, {params}) to change the list of query parameters
 	#---------------------------------------------------
@@ -741,11 +756,13 @@ Finch = {
 		CurrentTargetPath = NullPath
 		step()
 		resetGlobals()
+		Finch.ignore()
 		return
 
 	#END Finch.reset()
 }
 
+###
 # FOR NOW, we'll just comment this out instead of having a debug flag
 Finch.private = {
 	# utility
@@ -788,6 +805,7 @@ Finch.private = {
 		CurrentParameters
 	}
 }
+###
 
 #Expose Finch to the window
 @Finch = Finch
