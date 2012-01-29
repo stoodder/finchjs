@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<script src="./scripts/finch.min.js" type="text/javascript" language="javascript"></script>
+		<script src="./scripts/finch.js" type="text/javascript" language="javascript"></script>
 		<script type="text/javascript" language="javascript">
 			Finch.route("home", function(bindings)
 			{
@@ -12,13 +12,28 @@
 				});
 			});
 
-			Finch.route("[home]/news", function(bindings)
-			{
-				console.log("Setup home/news");
-				Finch.observe(function(params)
+			Finch.route("[home]/news", {
+				setup: function(bindings)
 				{
-					console.log("Well " + params('hello'));
-				});
+					this.interval = "Some interval"
+					console.log("Setup home/news");
+					Finch.observe(function(params)
+					{
+						console.log("Well " + params('hello'));
+					});
+				},
+
+				load: function(bindings)
+				{
+					console.log("Loaded home, " + this.interval);
+				},
+
+				teardown: function(bindings, cb)
+				{
+					console.log("Home is being torn down, " + this.interval);
+
+					cb();
+				}
 			});
 
 			Finch.route("[home/news]/:id", function(bindings)

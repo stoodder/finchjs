@@ -50,6 +50,13 @@ diffObjects = (oldObject = {}, newObject = {}) ->
 	return result
 
 #------------------
+# Ensure that console exists (for non-compatible browsers)
+#------------------
+console ?= {}
+console.log ?= (->)
+console.warn ?= (->)
+
+#------------------
 # Classes
 #------------------
 
@@ -71,9 +78,10 @@ class RouteNode
 		@bindings = []
 
 class RouteSettings
-	constructor: ({setup, teardown, context} = {}) ->
+	constructor: ({setup, teardown, load, context} = {}) ->
 		@setup = if isFunction(setup) then setup else (->)
 		@teardown = if isFunction(teardown) then teardown else (->)
+		@load = if isFunction(load) then load else (->)
 		@context = if isObject(context) then context else {}
 
 class RoutePath
@@ -415,18 +423,19 @@ do resetGlobals = ->
 # Method: step
 #---------------------------------------------------
 step = ->
+	#If we're at our destination. run the observables
 	if CurrentTargetPath.isEqual(CurrentPath)
 
-		# Run observables
-		keys = objectKeys( diffObjects( PreviousParameters, CurrentParameters ))
-		PreviousParameters = CurrentParameters
-		for observableList in CurrentPath.parameterObservables
-			for observable in observableList
-				observable.notify(keys)
+		#Execute this path's load method
+		stepLoad()
+
+		#Execute the observables
+		stepObservables()
 
 		# End the step process
 		CurrentTargetPath = null
-
+	
+	#Otherwise step through a teardown/setup
 	else
 		# Find the nearest common ancestor of the current and new path
 		ancestorPath = findNearestCommonAncestor(CurrentPath, CurrentTargetPath)
@@ -465,6 +474,36 @@ stepSetup = ->
 #END stepSetup
 
 #---------------------------------------------------
+# Method: stepObservables
+#	Used to iterate through the observables
+#---------------------------------------------------
+stepObservables = ->
+	# Run observables
+	keys = objectKeys( diffObjects( PreviousParameters, CurrentParameters ))
+	PreviousParameters = CurrentParameters
+	for observableList in CurrentPath.parameterObservables
+		for observable in observableList
+			observable.notify(keys)
+
+#END stepObservables
+
+#---------------------------------------------------
+# Method: stepLoad
+#	Used to execute a load method on a node
+#---------------------------------------------------
+stepLoad = ->
+	#Stop executing if we don't ahve a current ndoe
+	return unless CurrentPath?.node?
+
+	{context, setup, load} = CurrentPath.node.routeSettings ? {}
+	context ?= {}
+	load ?= (->)
+	bindings = CurrentPath.getBindings()
+	load.call(context, bindings)
+
+#END stepLoad
+
+#---------------------------------------------------
 # Method: stepTeardown
 #	Used to execute a teardown method on a node
 #---------------------------------------------------
@@ -500,9 +539,18 @@ hashChangeListener = (event) ->
 	hash = hash.slice(1) if startsWith(hash, "#")
 	hash = unescape(hash)
 
+	#Only try to run Finch.call if the hash actually changed
 	if hash isnt CurrentHash
-		Finch.call(hash)
-		CurrentHash = hash
+
+		#Run Finch.call, if successful save the current hash
+		if Finch.call(hash)
+			CurrentHash = hash
+		
+		#If not successful revert
+		else
+			window.location.hash = CurrentHash ? ""
+
+#END hashChangeListener
 
 #---------------------------------------------------
 # Class: Finch
@@ -522,7 +570,7 @@ Finch = {
 	#
 	# Arguments:
 	#	pattern - The pattern to add
-	#	callback - The callback to assign to the pattern
+	#	settings - The settings for when this route is executed
 	#---------------------------------------------------
 	route: (pattern, settings) ->
 
@@ -543,7 +591,7 @@ Finch = {
 
 		return true
 
-	#END Finch.route
+	#END Finch.route()
 
 	#---------------------------------------------------
 	# Method: Finch.call
@@ -620,7 +668,6 @@ Finch = {
 			observable = new ParameterObservable(callback)
 			peek(CurrentPath.parameterObservables).push(observable)
 
-
 	#END Finch.observe()
 
 	#---------------------------------------------------
@@ -653,7 +700,7 @@ Finch = {
 
 		return HashListening
 
-	#END Finch.listen
+	#END Finch.listen()
 
 	#---------------------------------------------------
 	# Method: Finch.ignore
@@ -684,6 +731,8 @@ Finch = {
 					HashListening = false
 
 		return not HashListening
+	
+	#END Finch.ignore()
 
 	#---------------------------------------------------
 	# Method: Finch.navigate
@@ -742,7 +791,7 @@ Finch = {
 		#update the hash
 		window.location.hash = uri
 
-	#END Finch.navigate
+	#END Finch.navigate()
 
 	#---------------------------------------------------
 	# Method: Finch.reset
