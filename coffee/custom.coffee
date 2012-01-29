@@ -2,38 +2,71 @@
 #	Utility Methods
 #------------------------------------
 isString = (object) -> Object::toString.call(object) is "[object String]"
+isFunction = (object) -> Object::toString.call(object) is "[object Function]"
+makeCallback = (func, cb) ->
+	return (args...) ->
+		func(args...) if isFunction(func)
+		cb() if isFunction(cb)
 
 #------------------------------------
 # Viewmodels
 #------------------------------------
 class LayoutViewModel
+	@instance = null
+
 	constructor: () ->
-		@ContentViewModel = ko.observable()
+		LayoutViewModel.instance = this
+
+		@ContentViewModel = ko.observable({})
 		@ContentTemplate = ko.observable()
-	
-	@instance = new LayoutViewModel
+
+class DocsViewModel
+	@instance = null
+
+	constructor: () ->
+		DocsViewModel.instance = this
+
+		@ArticleViewModel = ko.observable({})
+		@ArticleTemplate = ko.observable()
 
 #------------------------------------
 # Finch Routes
 #------------------------------------
-Finch.route "/", -> Finch.call("/Home")
+Finch.route "/", -> Finch.call("home")
 
 Finch.route "/:page", ({page}, callback) ->
-	Layout = LayoutViewModel.instance
-	page = "Home" unless isString(page)
-	tmpl = page.toLowerCase()
+	page = "home" unless isString(page)
+	page = page.toLowerCase()
 
-	$.get "./pages/#{tmpl}.tmpl", (data) ->
-		Layout.ContentTemplate( data )
+	$.get "./pages/#{page}.tmpl", (html) ->
+		Layout = LayoutViewModel.instance
+		Layout.ContentViewModel({})
+		Layout.ContentTemplate(html)
 
 		callback()
+
+Finch.route "/docs", (bindings, callback) ->
+
+	$.get "./pages/docs.tmpl", (data) ->
+		Layout = LayoutViewModel.instance
+		Layout.ContentViewModel(new DocsViewModel)
+		Layout.ContentTemplate(data)
+
+		callback()
+
+Finch.route "[/docs]/:article", ({article}, callback) ->
+	
+	$.get "./pages/docs/#{article}.md", (data) ->
+		Docs = DocsViewModel.instance
+		Docs.ArticleTemplate(markdown.toHTML(data))
+
+		callback()
+
 
 #------------------------------------
 # Initialize the page
 #------------------------------------
 $ ->
-	Layout = LayoutViewModel.instance
-	Layout.ContentViewModel( {} )
-	ko.applyBindings( Layout )
+	ko.applyBindings( new LayoutViewModel )
 
 	Finch.listen()
