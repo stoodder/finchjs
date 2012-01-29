@@ -3,10 +3,6 @@
 #------------------------------------
 isString = (object) -> Object::toString.call(object) is "[object String]"
 isFunction = (object) -> Object::toString.call(object) is "[object Function]"
-makeCallback = (func, cb) ->
-	return (args...) ->
-		func(args...) if isFunction(func)
-		cb() if isFunction(cb)
 
 #------------------------------------
 # Viewmodels
