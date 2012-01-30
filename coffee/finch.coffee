@@ -80,8 +80,8 @@ class RouteNode
 class RouteSettings
 	constructor: ({setup, teardown, load, context} = {}) ->
 		@setup = if isFunction(setup) then setup else (->)
-		@teardown = if isFunction(teardown) then teardown else (->)
 		@load = if isFunction(load) then load else (->)
+		@teardown = if isFunction(teardown) then teardown else (->)
 		@context = if isObject(context) then context else {}
 
 class RoutePath
@@ -127,7 +127,7 @@ class ParameterObservable
 			for key in @dependencies
 				return true if contains(updatedKeys, key)
 			return false
-		@.trigger() if shouldTrigger
+		@trigger() if shouldTrigger
 
 	trigger: ->
 		@dependencies = []
@@ -410,12 +410,19 @@ RootNode = CurrentPath = CurrentTargetPath = null
 PreviousParameters = CurrentParameters = null
 HashInterval = CurrentHash = null
 HashListening = false
+IgnoreObservables = SetupCalled = false # Used to handle cases of same load/setup methods
+
 do resetGlobals = ->
 	RootNode = new RouteNode(name: "*")
 	CurrentPath = NullPath
 	PreviousParameters = {}
 	CurrentParameters = {}
 	CurrentTargetPath = null
+	HashInterval = null
+	CurrentHash = null
+	HashListening = false
+	IgnoreObservables = false
+	SetupCalled = false
 
 #END Globals
 
@@ -423,17 +430,17 @@ do resetGlobals = ->
 # Method: step
 #---------------------------------------------------
 step = ->
-	#If we're at our destination. run the observables
-	if CurrentTargetPath.isEqual(CurrentPath)
+	#If there is no current target path, only step through the observables
+	if CurrentTargetPath is null
+
+		#Execute the observables
+		runObservables()
+
+	#If we're at our destination. run the load method
+	else if CurrentTargetPath.isEqual(CurrentPath)
 
 		#Execute this path's load method
 		stepLoad()
-
-		#Execute the observables
-		stepObservables()
-
-		# End the step process
-		CurrentTargetPath = null
 	
 	#Otherwise step through a teardown/setup
 	else
@@ -451,14 +458,17 @@ step = ->
 #	Used to execute a setup method on a node
 #---------------------------------------------------
 stepSetup = ->
+	SetupCalled = true
+
 	# During setup and teardown, CurrentPath should always be the path to the
 	# node getting setup or torn down.
 	# In the setup case: CurrentPath must be set before the setup function is called.
 	CurrentPath = CurrentPath.getChild(CurrentTargetPath)
 
-	{context, setup} = CurrentPath.node.routeSettings ? {}
+	{context, setup, load} = CurrentPath.node.routeSettings ? {}
 	context ?= {}
 	setup ?= (->)
+	load ?= (->)
 	bindings = CurrentPath.getBindings()
 	recur = -> step()
 
@@ -474,32 +484,31 @@ stepSetup = ->
 #END stepSetup
 
 #---------------------------------------------------
-# Method: stepObservables
-#	Used to iterate through the observables
-#---------------------------------------------------
-stepObservables = ->
-	# Run observables
-	keys = objectKeys( diffObjects( PreviousParameters, CurrentParameters ))
-	PreviousParameters = CurrentParameters
-	for observableList in CurrentPath.parameterObservables
-		for observable in observableList
-			observable.notify(keys)
-
-#END stepObservables
-
-#---------------------------------------------------
 # Method: stepLoad
 #	Used to execute a load method on a node
 #---------------------------------------------------
 stepLoad = ->
-	#Stop executing if we don't ahve a current ndoe
-	return unless CurrentPath?.node?
+	# End the step process
+	CurrentTargetPath = null
+	recur = -> step()
+
+	#Stop executing if we don't have a current node
+	return recur() unless CurrentPath.node?
 
 	{context, setup, load} = CurrentPath.node.routeSettings ? {}
 	context ?= {}
+	setup ?= (->)
 	load ?= (->)
 	bindings = CurrentPath.getBindings()
-	load.call(context, bindings)
+
+	#Is the load method asynchronous?
+	if load.length is 2
+		load.call(context, bindings, recur)
+	
+	#Execute it synchronously
+	else
+		load.call(context, bindings)
+		recur()
 
 #END stepLoad
 
@@ -508,6 +517,8 @@ stepLoad = ->
 #	Used to execute a teardown method on a node
 #---------------------------------------------------
 stepTeardown = ->
+	SetupCalled = false
+
 	{context, teardown} = CurrentPath.node.routeSettings ? {}
 	context ?= {}
 	teardown ?= (->)
@@ -529,6 +540,20 @@ stepTeardown = ->
 		recur()
 
 #END stepTeardown
+
+#---------------------------------------------------
+# Method: runObservables
+#	Used to iterate through the observables
+#---------------------------------------------------
+runObservables = ->
+	# Run observables
+	keys = objectKeys( diffObjects( PreviousParameters, CurrentParameters ))
+	PreviousParameters = CurrentParameters
+	for observableList in CurrentPath.parameterObservables
+		for observable in observableList
+			observable.notify(keys)
+
+#END runObservables
 
 #---------------------------------------------------
 # Method: hashChangeListener
@@ -576,7 +601,26 @@ Finch = {
 
 		#Check if the input parameter was a function, assign it to the setup method
 		#if it was
-		settings = {setup: settings} if isFunction(settings)
+		if isFunction(settings)
+
+			#Store some scoped variables
+			cb = settings
+			settings = {setup: cb}
+
+			#if the callback was asynchronous, setup the setting as such
+			if cb.length is 2
+				settings.load = (bindings, callback) ->
+					if not SetupCalled
+						IgnoreObservables = true
+						cb(bindings, callback)
+			
+			#Otherwise set them up synchronously
+			else
+				settings.load = (bindings) ->
+					if not SetupCalled
+						IgnoreObservables = true
+						cb(bindings)
+
 		settings = {} unless isObject(settings)
 
 		# Make sure we have valid inputs
@@ -616,11 +660,19 @@ Finch = {
 		bindings = newPath.getBindings()
 		CurrentParameters = extend(queryParameters, bindings)
 
-		previousTargetPath = CurrentTargetPath
-		CurrentTargetPath = newPath
+		#If we're not in the middle of executing and the current path is the same
+		#as the one we're trying to go to, just execute the observables so we
+		#avoid calling the load method again
+		if CurrentTargetPath is null and CurrentPath.isEqual(newPath)
+			step()
+		
+		#Otherwise, start stepping towards our target
+		else
+			previousTargetPath = CurrentTargetPath
+			CurrentTargetPath = newPath
 
-		# Start the process of teardowns/setups if we were not already doing so
-		step() unless previousTargetPath?
+			# Start the process of teardowns/setups if we were not already doing so
+			step() unless previousTargetPath?
 
 		return true;
 
@@ -648,6 +700,10 @@ Finch = {
 	#	callback(accessor) - A callback function to execute with a parameter accessor.
 	#---------------------------------------------------
 	observe: (args...) ->
+		#Don't worry about this if we're ignoring the params
+		if IgnoreObservables
+			return IgnoreObservables = false
+
 		# The callback is alwaysthe last parameter
 		callback = args.pop()
 		callback = (->) unless isFunction(callback)
@@ -804,8 +860,8 @@ Finch = {
 		# Tear down the entire route
 		CurrentTargetPath = NullPath
 		step()
-		resetGlobals()
 		Finch.ignore()
+		resetGlobals()
 		return
 
 	#END Finch.reset()
