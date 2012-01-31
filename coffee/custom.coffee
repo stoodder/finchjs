@@ -3,6 +3,13 @@
 #------------------------------------
 isString = (object) -> Object::toString.call(object) is "[object String]"
 isFunction = (object) -> Object::toString.call(object) is "[object Function]"
+trim = (str) -> str.replace(/^\s+/, '').replace(/\s+$/, '')
+defer = (callback) ->
+	callback = (->) unless isFunction(callback)
+	setTimeout(callback, 1)
+
+# Just some helper methods
+sectionize = (input) -> trim(input ? "").toLowerCase().replace(/[^a-z0-9]+/g,"")
 
 #------------------------------------
 # Viewmodels
@@ -30,7 +37,8 @@ class DocsViewModel
 #------------------------------------
 Finch.route "/", -> Finch.call("home")
 
-Finch.route "/:page", ({page}, callback) ->
+
+Finch.route ":page", ({page}, callback) ->
 	page = "home" unless isString(page)
 	page = page.toLowerCase()
 
@@ -39,25 +47,55 @@ Finch.route "/:page", ({page}, callback) ->
 		Layout.ContentViewModel({})
 		Layout.ContentTemplate(html)
 
-		callback()
+		defer callback
 
-Finch.route "/docs", (bindings, callback) ->
 
+Finch.route "docs", ({}, callback) ->
+	
 	$.get "./pages/docs.tmpl", (data) ->
 		Layout = LayoutViewModel.instance
 		Layout.ContentViewModel(new DocsViewModel)
 		Layout.ContentTemplate(data)
 
-		callback()
+		defer callback
 
-Finch.route "[/docs]/:article", ({article}, callback) ->
+
+Finch.route "[docs]/:article", 
+	setup: ({article}, callback) ->
 	
-	$.get "./pages/docs/#{article}.md", (data) ->
-		Docs = DocsViewModel.instance
-		Docs.ArticleTemplate(markdown.toHTML(data))
+		$.get "./pages/docs/#{article}.md", (data) ->
+			Docs = DocsViewModel.instance
+			Docs.ArticleViewModel({})
+			Docs.ArticleTemplate(marked(data))
 
-		callback()
+			defer callback
+	
+	load: ({article}) ->
+		article = sectionize(article)
 
+		for elm in $("h1")
+			elm = $(elm) 
+			if sectionize(elm.text()) is article
+				return $.scrollTo(elm, duration: 1000)
+
+
+Finch.route "[docs/:article]/:section", 
+	load: ({section}) ->
+		section = sectionize(section)
+		console.log section
+		for elm in $("h2")
+			elm = $(elm) 
+			if sectionize(elm.text()) is section
+				return $.scrollTo(elm, duration: 1000)
+
+Finch.route "[docs/:article/:section]/:subsection", 
+	load: ({subsection}) ->
+		subsection = sectionize(subsection)
+
+		for elm in $("h3")
+			elm = $(elm) 
+			if sectionize(elm.text()) is subsection
+				return $.scrollTo(elm, duration: 1000)
 
 #------------------------------------
 # Initialize the page
