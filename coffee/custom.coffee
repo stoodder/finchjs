@@ -11,10 +11,6 @@ defer = (callback) ->
 # Just some helper methods
 sectionize = (input) -> trim(input ? "").toLowerCase().replace(/[^a-z0-9]+/g,"")
 
-
-#Some settings
-SyntaxHighlighter.defaults.toolbar = false
-
 #------------------------------------
 # Viewmodels
 #------------------------------------
@@ -54,15 +50,17 @@ Finch.route ":page", ({page}, callback) ->
 		defer callback
 
 
-Finch.route "docs", ({}, callback) ->
+Finch.route "docs", 
+	setup: ({}, callback) ->
 	
-	$.get "./pages/docs.tmpl", (data) ->
-		Layout = LayoutViewModel.instance
-		Layout.ContentViewModel(new DocsViewModel)
-		Layout.ContentTemplate(data)
+		$.get "./pages/docs.tmpl", (data) ->
+			Layout = LayoutViewModel.instance
+			Layout.ContentViewModel(new DocsViewModel)
+			Layout.ContentTemplate(data)
 
-		defer -> SyntaxHighlighter.highlight()
-		defer callback
+			defer callback
+	
+	load: () -> Finch.call("docs/introduction")
 
 
 Finch.route "[docs]/:article", 
@@ -73,13 +71,6 @@ Finch.route "[docs]/:article",
 			Docs.ArticleViewModel({})
 			Docs.ArticleTemplate(marked(data))
 
-			defer -> 
-				$("code").each (index, element) ->
-					element = $(element)
-					brush = "brush: " + (if element.attr('class') then element.attr('class') else "coffee")
-					script = $("<script>").attr(type:"syntaxhighlighter",class:brush).html("<![CDATA[" + element.html() + "]]>")
-					element.before(script).remove()
-				SyntaxHighlighter.highlight()
 			defer callback
 	
 	load: ({article}) ->
@@ -88,7 +79,7 @@ Finch.route "[docs]/:article",
 		for elm in $("h1")
 			elm = $(elm) 
 			if sectionize(elm.text()) is article
-				return $.scrollTo(elm, duration: 1000)
+				return $.scrollTo(elm, {duration: 1000, offset: -$("header").height()-30})
 
 
 Finch.route "[docs/:article]/:section", 
@@ -98,7 +89,7 @@ Finch.route "[docs/:article]/:section",
 		for elm in $("h2")
 			elm = $(elm) 
 			if sectionize(elm.text()) is section
-				return $.scrollTo(elm, duration: 1000)
+				return $.scrollTo(elm, {duration: 1000, offset: -$("header").height()-30})
 
 Finch.route "[docs/:article/:section]/:subsection", 
 	load: ({subsection}) ->
@@ -107,7 +98,7 @@ Finch.route "[docs/:article/:section]/:subsection",
 		for elm in $("h3")
 			elm = $(elm) 
 			if sectionize(elm.text()) is subsection
-				return $.scrollTo(elm, duration: 1000)
+				return $.scrollTo(elm, {duration: 1000, offset: -$("header").height()-30})
 
 #------------------------------------
 # Initialize the page

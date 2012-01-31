@@ -22,8 +22,6 @@
     return trim(input != null ? input : "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   };
 
-  SyntaxHighlighter.defaults.toolbar = false;
-
   LayoutViewModel = (function() {
 
     LayoutViewModel.instance = null;
@@ -70,18 +68,20 @@
     });
   });
 
-  Finch.route("docs", function(_arg, callback) {
-    _arg;
-    return $.get("./pages/docs.tmpl", function(data) {
-      var Layout;
-      Layout = LayoutViewModel.instance;
-      Layout.ContentViewModel(new DocsViewModel);
-      Layout.ContentTemplate(data);
-      defer(function() {
-        return SyntaxHighlighter.highlight();
+  Finch.route("docs", {
+    setup: function(_arg, callback) {
+      _arg;
+      return $.get("./pages/docs.tmpl", function(data) {
+        var Layout;
+        Layout = LayoutViewModel.instance;
+        Layout.ContentViewModel(new DocsViewModel);
+        Layout.ContentTemplate(data);
+        return defer(callback);
       });
-      return defer(callback);
-    });
+    },
+    load: function() {
+      return Finch.call("docs/introduction");
+    }
   });
 
   Finch.route("[docs]/:article", {
@@ -93,19 +93,6 @@
         Docs = DocsViewModel.instance;
         Docs.ArticleViewModel({});
         Docs.ArticleTemplate(marked(data));
-        defer(function() {
-          $("code").each(function(index, element) {
-            var brush, script;
-            element = $(element);
-            brush = "brush: " + (element.attr('class') ? element.attr('class') : "coffee");
-            script = $("<script>").attr({
-              type: "syntaxhighlighter",
-              "class": brush
-            }).html("<![CDATA[" + element.html() + "]]>");
-            return element.before(script).remove();
-          });
-          return SyntaxHighlighter.highlight();
-        });
         return defer(callback);
       });
     },
@@ -119,7 +106,8 @@
         elm = $(elm);
         if (sectionize(elm.text()) === article) {
           return $.scrollTo(elm, {
-            duration: 1000
+            duration: 1000,
+            offset: -$("header").height() - 30
           });
         }
       }
@@ -138,7 +126,8 @@
         elm = $(elm);
         if (sectionize(elm.text()) === section) {
           return $.scrollTo(elm, {
-            duration: 1000
+            duration: 1000,
+            offset: -$("header").height() - 30
           });
         }
       }
@@ -156,7 +145,8 @@
         elm = $(elm);
         if (sectionize(elm.text()) === subsection) {
           return $.scrollTo(elm, {
-            duration: 1000
+            duration: 1000,
+            offset: -$("header").height() - 30
           });
         }
       }
