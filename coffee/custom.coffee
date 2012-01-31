@@ -11,6 +11,10 @@ defer = (callback) ->
 # Just some helper methods
 sectionize = (input) -> trim(input ? "").toLowerCase().replace(/[^a-z0-9]+/g,"")
 
+
+#Some settings
+SyntaxHighlighter.defaults.toolbar = false
+
 #------------------------------------
 # Viewmodels
 #------------------------------------
@@ -57,6 +61,7 @@ Finch.route "docs", ({}, callback) ->
 		Layout.ContentViewModel(new DocsViewModel)
 		Layout.ContentTemplate(data)
 
+		defer -> SyntaxHighlighter.highlight()
 		defer callback
 
 
@@ -68,6 +73,13 @@ Finch.route "[docs]/:article",
 			Docs.ArticleViewModel({})
 			Docs.ArticleTemplate(marked(data))
 
+			defer -> 
+				$("code").each (index, element) ->
+					element = $(element)
+					brush = "brush: " + (if element.attr('class') then element.attr('class') else "coffee")
+					script = $("<script>").attr(type:"syntaxhighlighter",class:brush).html("<![CDATA[" + element.html() + "]]>")
+					element.before(script).remove()
+				SyntaxHighlighter.highlight()
 			defer callback
 	
 	load: ({article}) ->

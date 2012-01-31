@@ -22,6 +22,8 @@
     return trim(input != null ? input : "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   };
 
+  SyntaxHighlighter.defaults.toolbar = false;
+
   LayoutViewModel = (function() {
 
     LayoutViewModel.instance = null;
@@ -75,6 +77,9 @@
       Layout = LayoutViewModel.instance;
       Layout.ContentViewModel(new DocsViewModel);
       Layout.ContentTemplate(data);
+      defer(function() {
+        return SyntaxHighlighter.highlight();
+      });
       return defer(callback);
     });
   });
@@ -88,6 +93,19 @@
         Docs = DocsViewModel.instance;
         Docs.ArticleViewModel({});
         Docs.ArticleTemplate(marked(data));
+        defer(function() {
+          $("code").each(function(index, element) {
+            var brush, script;
+            element = $(element);
+            brush = "brush: " + (element.attr('class') ? element.attr('class') : "coffee");
+            script = $("<script>").attr({
+              type: "syntaxhighlighter",
+              "class": brush
+            }).html("<![CDATA[" + element.html() + "]]>");
+            return element.before(script).remove();
+          });
+          return SyntaxHighlighter.highlight();
+        });
         return defer(callback);
       });
     },

@@ -86,7 +86,7 @@ Would yield the following:
 Again, simple.  We can repeat the pattern above, and extend a new parent route for a news article to get its comments:
 
 	Finch.route "[/home/news/:newsId]/comments", (bindings) ->
-		console.log("Showing comments for #{params.newsId}")
+		console.log("Showing comments for #{bindings.newsId}")
 
 Calling this would give us (again, still using our examples)
 

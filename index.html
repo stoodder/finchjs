@@ -5,18 +5,39 @@
 
 	<title>Finch.js - Powerfully simple javascript routing</title>
 
+	<link href="./styles/foundation.css" type="text/css" rel="stylesheet" />
+	<link href="./styles/SyntaxHighlighter.css" type="text/css" rel="stylesheet" />
+	<link href="./styles/shThemeMidnight.css" type="text/css" rel="stylesheet" />
+
+	<!--[if lt IE 9]>
+		<link rel="stylesheet" href="../../stylesheets/ie.css">
+	<![endif]-->
+
+	<!-- IE Fix for HTML5 Tags -->
+	<!--[if lt IE 9]>
+		<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
 	<script src="./scripts/jquery.min-1.7.1.js" type="text/javascript"></script>
 	<script src="./scripts/jquery.scrollto.min.js" type="text/javascript"></script>
 	<script src="./scripts/knockout.min-2.0.0.js" type="text/javascript"></script>
-	<script src="https://raw.github.com/stoodder/finchjs/master/scripts/finch.min.js" type="text/javascript"></script>
 	<script src="./scripts/knockout.view.js" type="text/javascript"></script>
 	<script src="./scripts/marked.js" type="text/javascript"></script>
+	<script src="./scripts/foundation.js"></script>
+	<script src="./scripts/modernizr.foundation.js"></script>
+
+	<script src="./scripts/SyntaxHighlighter/XRegExp.js"></script>
+	<script src="./scripts/SyntaxHighlighter/shCore.js"></script>
+	<script src="./scripts/SyntaxHighlighter/shBrushXML.js"></script>
+	<script src="./scripts/SyntaxHighlighter/shBrushCoffeeScript.js"></script>
+
+	<script src="https://raw.github.com/stoodder/finchjs/master/scripts/finch.min.js" type="text/javascript"></script>
 	<script src="./scripts/custom.js" type="text/javascript"></script>
 
 <body>
 	<a href="https://github.com/stoodder/finchjs"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
 
-	<div id="header">
+	<header>
 		<ul>
 			<li>
 				<a href="#">Home</a>
@@ -31,8 +52,8 @@
 				<a href="#about">About</a>
 			</li>
 		</ul>
-	</div>
-	<div data-bind="view: {viewModel: ContentViewModel, template: ContentTemplate}">
-	</div>
+	</header>
+	<section data-bind="view: {viewModel: ContentViewModel, template: ContentTemplate}">
+	</section>
 </body>
 </html>
