@@ -107,7 +107,7 @@
         if (sectionize(elm.text()) === article) {
           return $.scrollTo(elm, {
             duration: 1000,
-            offset: -$("header").height() - 30
+            offset: -$("#header").height() - 30
           });
         }
       }
@@ -127,7 +127,7 @@
         if (sectionize(elm.text()) === section) {
           return $.scrollTo(elm, {
             duration: 1000,
-            offset: -$("header").height() - 30
+            offset: -$("#header").height() - 30
           });
         }
       }
@@ -146,7 +146,7 @@
         if (sectionize(elm.text()) === subsection) {
           return $.scrollTo(elm, {
             duration: 1000,
-            offset: -$("header").height() - 30
+            offset: -$("#header").height() - 30
           });
         }
       }

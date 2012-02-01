@@ -79,7 +79,7 @@ Finch.route "[docs]/:article",
 		for elm in $("h1")
 			elm = $(elm) 
 			if sectionize(elm.text()) is article
-				return $.scrollTo(elm, {duration: 1000, offset: -$("header").height()-30})
+				return $.scrollTo(elm, {duration: 1000, offset: -$("#header").height()-30})
 
 
 Finch.route "[docs/:article]/:section", 
@@ -89,7 +89,7 @@ Finch.route "[docs/:article]/:section",
 		for elm in $("h2")
 			elm = $(elm) 
 			if sectionize(elm.text()) is section
-				return $.scrollTo(elm, {duration: 1000, offset: -$("header").height()-30})
+				return $.scrollTo(elm, {duration: 1000, offset: -$("#header").height()-30})
 
 Finch.route "[docs/:article/:section]/:subsection", 
 	load: ({subsection}) ->
@@ -98,7 +98,7 @@ Finch.route "[docs/:article/:section]/:subsection",
 		for elm in $("h3")
 			elm = $(elm) 
 			if sectionize(elm.text()) is subsection
-				return $.scrollTo(elm, {duration: 1000, offset: -$("header").height()-30})
+				return $.scrollTo(elm, {duration: 1000, offset: -$("#header").height()-30})
 
 #------------------------------------
 # Initialize the page
