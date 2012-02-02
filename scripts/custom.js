@@ -22,10 +22,6 @@
     return trim(input != null ? input : "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   };
 
-  $.ajaxSetup({
-    cache: false
-  });
-
   LayoutViewModel = (function() {
 
     LayoutViewModel.instance = null;
@@ -57,15 +53,22 @@
   Finch.route("/", function(_arg, callback) {
     _arg;
     return mpq.track("Viewing Home", {}, function() {
-      return $("#content").fadeTo('fast', 0, function() {
-        return $.get("./pages/home.tmpl", function(data) {
-          var Layout;
-          Layout = LayoutViewModel.instance;
-          Layout.ContentViewModel(new DocsViewModel);
-          Layout.ContentTemplate(data);
-          console.log(data);
-          return $("#content").fadeTo('fast', 1, callback);
-        });
+      return $("#content").animate({
+        'opacity': 0
+      }, {
+        complete: function() {
+          return $.get("./pages/home.tmpl", function(data) {
+            var Layout;
+            Layout = LayoutViewModel.instance;
+            Layout.ContentViewModel(new DocsViewModel);
+            Layout.ContentTemplate(data);
+            return $("#content").animate({
+              'opacity': 1
+            }, {
+              complete: callback
+            });
+          });
+        }
       });
     });
   });
@@ -73,14 +76,22 @@
   Finch.route("download", function(_arg, callback) {
     _arg;
     return mpq.track("Viewing Download", {}, function() {
-      return $("#content").fadeTo('fast', 0, function() {
-        return $.get("./pages/download.tmpl", function(data) {
-          var Layout;
-          Layout = LayoutViewModel.instance;
-          Layout.ContentViewModel({});
-          Layout.ContentTemplate(data);
-          return $("#content").fadeTo('fast', 1, callback);
-        });
+      return $("#content").animate({
+        'opacity': 0
+      }, {
+        complete: function() {
+          return $.get("./pages/download.tmpl", function(data) {
+            var Layout;
+            Layout = LayoutViewModel.instance;
+            Layout.ContentViewModel({});
+            Layout.ContentTemplate(data);
+            return $("#content").animate({
+              'opacity': 1
+            }, {
+              complete: callback
+            });
+          });
+        }
       });
     });
   });
@@ -89,14 +100,18 @@
     setup: function(_arg, callback) {
       _arg;
       return mpq.track("Viewing Documentation", {}, function() {
-        return $("#content").fadeTo('fast', 0, function() {
-          return $.get("./pages/docs.tmpl", function(data) {
-            var Layout;
-            Layout = LayoutViewModel.instance;
-            Layout.ContentViewModel(new DocsViewModel);
-            Layout.ContentTemplate(data);
-            return defer(callback);
-          });
+        return $("#content").animate({
+          'opacity': 0
+        }, {
+          complete: function() {
+            return $.get("./pages/docs.tmpl", function(data) {
+              var Layout;
+              Layout = LayoutViewModel.instance;
+              Layout.ContentViewModel(new DocsViewModel);
+              Layout.ContentTemplate(data);
+              return defer(callback);
+            });
+          }
         });
       });
     },
@@ -114,7 +129,11 @@
         Docs = DocsViewModel.instance;
         Docs.ArticleViewModel({});
         Docs.ArticleTemplate(marked(data));
-        return $("#content").fadeTo('fast', 1, callback);
+        return $("#content").animate({
+          'opacity': 1
+        }, {
+          complete: callback
+        });
       });
     },
     load: function(_arg) {

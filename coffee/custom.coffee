@@ -12,7 +12,7 @@ defer = (callback) ->
 sectionize = (input) -> trim(input ? "").toLowerCase().replace(/[^a-z0-9]+/g,"")
 
 #Setup some jquery stuff
-$.ajaxSetup( cache: false )
+#$.ajaxSetup( cache: false )
 
 #------------------------------------
 # Viewmodels
@@ -41,13 +41,13 @@ class DocsViewModel
 Finch.route "/", ({}, callback) -> 
 	
 	mpq.track "Viewing Home", {}, ->
-		$("#content").fadeTo 'fast', 0, ->
+		$("#content").animate {'opacity':0}, complete: ->
 			$.get "./pages/home.tmpl", (data) ->
 				Layout = LayoutViewModel.instance
 				Layout.ContentViewModel(new DocsViewModel)
 				Layout.ContentTemplate(data)
-				console.log data
-				$("#content").fadeTo 'fast', 1, callback
+
+				$("#content").animate({'opacity':1},{complete:callback})
 			# END get
 		#END fade
 	#END track
@@ -56,13 +56,13 @@ Finch.route "/", ({}, callback) ->
 Finch.route "download", ({}, callback) ->
 	
 	mpq.track "Viewing Download", {}, ->
-		$("#content").fadeTo 'fast', 0, ->
+		$("#content").animate {'opacity':0}, complete: ->
 			$.get "./pages/download.tmpl", (data) ->
 				Layout = LayoutViewModel.instance
 				Layout.ContentViewModel({})
 				Layout.ContentTemplate(data)
 
-				$("#content").fadeTo 'fast', 1, callback
+				$("#content").animate({'opacity':1},{complete:callback})
 			# END get
 		#END fade
 	#END track
@@ -71,7 +71,7 @@ Finch.route "docs",
 	setup: ({}, callback) ->
 	
 		mpq.track "Viewing Documentation", {}, ->
-			$("#content").fadeTo 'fast', 0, ->
+			$("#content").animate {'opacity':0}, complete: ->
 				$.get "./pages/docs.tmpl", (data) ->
 					Layout = LayoutViewModel.instance
 					Layout.ContentViewModel(new DocsViewModel)
@@ -93,7 +93,7 @@ Finch.route "[docs]/:article",
 			Docs.ArticleViewModel({})
 			Docs.ArticleTemplate(marked(data))
 
-			$("#content").fadeTo 'fast', 1, callback
+			$("#content").animate({'opacity':1},{complete:callback})
 	
 	load: ({article}) ->
 		article = sectionize(article)

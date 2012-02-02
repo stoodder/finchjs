@@ -42,6 +42,7 @@ pre
 
 body
 	background-color: #000622
+	background-image: url('../images/shade.png')
 	color: #ffffff
 	font-size: 11pt
 	text-shadow: 1px 1px 1px #000000
@@ -89,27 +90,38 @@ body
 	z-index: 100
 	top: 60px
 	left: 100%
-	margin-left: -120px
-	height: 120px
-	width: 120px
+	margin-left: -130px
+	height: 130px
+	width: 130px
 	border: 0px
 
 #content
+	.row
+		background-image: url('../images/shade.png')
+
 	#home
 		margin-top: 120px
 
-		p
+		p#whatIsIt
 			font-size: 13pt
-			padding: 10px 30px
-			margin: 10px 0px 15px 0px
+			padding: 10px 0px
+			width: 520px
+			margin: 10px auto 15px auto
+		
+		#downloadNow
+			margin-top: 20px
 		
 		#showMe
-			padding-top: 60px
+			padding-top: 30px
 			
 			.question
 				padding-top: 25px
-				font-size: 13pt
-				line-height: 1.5em
+
+				p
+					margin: 0px
+					padding: 0px 0px 0px 10px
+					font-size: 13pt
+					line-height: 1.5em
 
 			.answer
 				position: relative
