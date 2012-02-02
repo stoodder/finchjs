@@ -35,15 +35,15 @@ class DocsViewModel
 #------------------------------------
 # Finch Routes
 #------------------------------------
-Finch.route "/", -> 
+Finch.route "/", ({}, callback) -> 
 	
 	mpq.track "Viewing Home", {}, ->
 		$("#content").fadeTo 'fast', 0, ->
-			$.get "./pages/home.tmpl", (html) ->
+			$.get "./pages/home.tmpl", (data) ->
 				Layout = LayoutViewModel.instance
-				Layout.ContentViewModel({})
-				Layout.ContentTemplate(html)
-
+				Layout.ContentViewModel(new DocsViewModel)
+				Layout.ContentTemplate(data)
+				console.log data
 				$("#content").fadeTo 'fast', 1, callback
 			# END get
 		#END fade
@@ -56,7 +56,7 @@ Finch.route "download", ({}, callback) ->
 		$("#content").fadeTo 'fast', 0, ->
 			$.get "./pages/download.tmpl", (data) ->
 				Layout = LayoutViewModel.instance
-				Layout.ContentViewModel(new DocsViewModel)
+				Layout.ContentViewModel({})
 				Layout.ContentTemplate(data)
 
 				$("#content").fadeTo 'fast', 1, callback
@@ -90,43 +90,35 @@ Finch.route "[docs]/:article",
 			Docs.ArticleViewModel({})
 			Docs.ArticleTemplate(marked(data))
 
-			defer callback
+			$("#content").fadeTo 'fast', 1, callback
 	
-	load: ({article}, callback) ->
-		$("#content").fadeTo 'fast', 1, ->
-			article = sectionize(article)
+	load: ({article}) ->
+		article = sectionize(article)
 
-			for elm in $("h1")
-				elm = $(elm) 
-				if sectionize(elm.text()) is article
-					return $.scrollTo(elm, {duration: 1000, offset: -$("#header").height()-30})
-
-			callback()
+		for elm in $("h1")
+			elm = $(elm) 
+			if sectionize(elm.text()) is article
+				return $.scrollTo(elm, {duration: 1000, offset: -$("#header").height()-30})
 
 
 Finch.route "[docs/:article]/:section", 
-	load: ({section}, callback) ->
-		$("#content").fadeTo 'fast', 1, ->
-			section = sectionize(section)
+	load: ({section}) ->
+		section = sectionize(section)
 
-			for elm in $("h2")
-				elm = $(elm) 
-				if sectionize(elm.text()) is section
-					return $.scrollTo(elm, {duration: 1000, offset: -$("#header").height()-30})
+		for elm in $("h2")
+			elm = $(elm) 
+			if sectionize(elm.text()) is section
+				return $.scrollTo(elm, {duration: 1000, offset: -$("#header").height()-30})
 
-			callback()
 
 Finch.route "[docs/:article/:section]/:subsection", 
-	load: ({subsection}, callback) ->
-		$("#content").fadeTo 'fast', 1, ->
-			subsection = sectionize(subsection)
+	load: ({subsection}) ->
+		subsection = sectionize(subsection)
 
-			for elm in $("h3")
-				elm = $(elm) 
-				if sectionize(elm.text()) is subsection
-					return $.scrollTo(elm, {duration: 1000, offset: -$("#header").height()-30})
-
-			callback()
+		for elm in $("h3")
+			elm = $(elm) 
+			if sectionize(elm.text()) is subsection
+				return $.scrollTo(elm, {duration: 1000, offset: -$("#header").height()-30})
 
 #------------------------------------
 # Initialize the page

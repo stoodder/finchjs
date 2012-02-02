@@ -1,1 +1,116 @@
-Home
+<div id="home">
+	<div class="row">
+		<div class="eight columns offset-by-two" style="text-align: justify">
+			<h2 style="text-align: center">Powerfully Simple Javascript Routing</h2>
+			<p>
+				Finch.js is a whole new take on handling routes in javascript web apps.
+				It utilizes the natural hierarchy of routes, simplified pattern matching,
+				and powerful parameter dependencies in order to speed up and organize
+				web apps that rely highly on interecting with the browser's url.
+			</p>
+			<h2 style="text-align: center">
+				<a href="#download" alt="download">Download Now!</a>
+			</h2>
+		</div>
+	</div>
+	<div id="showMe">
+
+
+		<div class="row">
+			<div class="question four columns">
+				Alright, show me some Finch...
+			</div>
+			<div class="answer eight columns">
+
+<pre class="script">
+Finch.route "/Some/Route/:someId", ({someId}) ->
+    console.log "Woohoo! Here's Some Id: #{someId}"</pre>
+ <pre class="console">
+ >> Calling '/Some/Route/33'
+ "Woohoo! Here's Some Id: 33"</pre>
+ 
+			<div class="readMore">
+				<a href="#docs/introduction">Introduction &rarr;</a>
+			</div>
+
+			</div>
+		</div>
+
+
+		<div class="row">
+			<div class="question four columns">
+				Well, that's not very revolutionary, what's all this about 
+				<em>"utilizing route hierarchy"</em>?
+			</div>
+			<div class="answer eight columns">
+
+<pre class="script">
+Finch.route "/Home", ->
+    console.log "Hey! We called home!"
+
+Finch.route "[/Home]/News", ->
+    console.log "Now we're on Home/News!"</pre>
+ <pre class="console">
+ >> Calling '/Home/News'
+ "Hey! We called Home!"
+ "Now we're on Home/News!"</pre>
+
+			<div class="readMore">
+				<a href="#docs/parentRoutes">Parent Routes &rarr;</a>
+			</div>
+
+			</div>
+		</div>
+
+
+		<div class="row">
+			<div class="question four columns">
+				Hmm, nifty.  How do I get at the query string parameters?  Do I
+				Just assume that they are passed into the callback argument, or no?
+			</div>
+			<div class="answer eight columns">
+
+<pre class="script">
+Finch.route "Home", ->
+    Finch.observe "sort", (sort) ->
+        console.log "Sorting by #{sort}"
+
+    Finch.observe (params) ->
+        if params('greatSuccess')
+            console.log params('successMessage')
+        else
+            console.log params('errorMessage')</pre>
+ <pre class="console">
+>> Calling /Home?sort=Ascending
+            &greatSuccess=true
+            &successMessage=Great Success!
+            &errorMessage=Never Gonna Give You Up
+
+"Sorting by Ascending"
+"Great Success"
+
+>> Calling /Home?sort=Ascending
+            &greatSuccess=true
+            &successMessage=Great Success!
+            <span class="change">&errorMessage=You've been Roll'd</span>
+
+... nothing happens
+
+>> Calling /Home?sort=Ascending
+            <span class="change">&greatSuccess=false</span>
+            &successMessage=Great Success!
+            &errorMessage=You've been Roll'd
+
+"You've been Roll'd"</pre>
+
+			<div class="readMore">
+				<a href="#docs/parameters">Parameters &rarr;</a>
+			</div>
+
+			</div>
+		</div>
+
+
+	</div>
+</div>
+<div></div>

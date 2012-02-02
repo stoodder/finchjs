@@ -95,6 +95,58 @@ body
 	border: 0px
 
 #content
+	#home
+		margin-top: 120px
+
+		p
+			font-size: 13pt
+			padding: 10px 30px
+			margin: 10px 0px 15px 0px
+		
+		#showMe
+			padding-top: 60px
+			
+			.question
+				padding-top: 25px
+				font-size: 13pt
+				line-height: 1.5em
+
+			.answer
+				position: relative
+				padding-top: 15px
+				font-size: 12pt
+
+				.readMore
+					position: absolute
+					top: 100%
+					left: 0%
+					text-align: right
+					width: 300px
+					margin-left: -320px
+					margin-top: -65px
+			
+			pre
+				padding: 15px 20px
+
+			pre.script
+				@include border-top-radius(6px)
+				@include border-bottom-radius(0px)
+				margin-bottom: 0px
+				border-bottom: 1px solid #001122
+					
+			pre.console
+				@include border-top-radius(0px)
+				@include border-bottom-radius(6px)
+				margin-top: 0px
+				border-top: 0px
+
+				background-color: #000009
+				color: #7788AA
+				
+				.change
+					color: #AACCFF
+					font-style: italic
+		
 	#download
 		margin-top: 120px
 

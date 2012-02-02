@@ -104,6 +104,69 @@ body {
   border: 0px;
 }
 
+#content #home {
+  margin-top: 120px;
+}
+#content #home p {
+  font-size: 13pt;
+  padding: 10px 30px;
+  margin: 10px 0px 15px 0px;
+}
+#content #home #showMe {
+  padding-top: 60px;
+}
+#content #home #showMe .question {
+  padding-top: 25px;
+  font-size: 13pt;
+  line-height: 1.5em;
+}
+#content #home #showMe .answer {
+  position: relative;
+  padding-top: 15px;
+  font-size: 12pt;
+}
+#content #home #showMe .answer .readMore {
+  position: absolute;
+  top: 100%;
+  left: 0%;
+  text-align: right;
+  width: 300px;
+  margin-left: -320px;
+  margin-top: -65px;
+}
+#content #home #showMe pre {
+  padding: 15px 20px;
+}
+#content #home #showMe pre.script {
+  border-top-left-radius: 6px;
+  -moz-border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  -moz-border-top-right-radius: 6px;
+  border-bottom-left-radius: 0px;
+  -moz-border-bottom-left-radius: 0px;
+  border-bottom-right-radius: 0px;
+  -moz-border-bottom-right-radius: 0px;
+  margin-bottom: 0px;
+  border-bottom: 1px solid #001122;
+}
+#content #home #showMe pre.console {
+  border-top-left-radius: 0px;
+  -moz-border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
+  -moz-border-top-right-radius: 0px;
+  border-bottom-left-radius: 6px;
+  -moz-border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  -moz-border-bottom-right-radius: 6px;
+  margin-top: 0px;
+  border-top: 0px;
+  background-color: #000009;
+  color: #7788aa;
+}
+#content #home #showMe pre.console .change {
+  color: #aaccff;
+  font-style: italic;
+}
 #content #download {
   margin-top: 120px;
 }

@@ -50,14 +50,16 @@
 
   })();
 
-  Finch.route("/", function() {
+  Finch.route("/", function(_arg, callback) {
+    _arg;
     return mpq.track("Viewing Home", {}, function() {
       return $("#content").fadeTo('fast', 0, function() {
-        return $.get("./pages/home.tmpl", function(html) {
+        return $.get("./pages/home.tmpl", function(data) {
           var Layout;
           Layout = LayoutViewModel.instance;
-          Layout.ContentViewModel({});
-          Layout.ContentTemplate(html);
+          Layout.ContentViewModel(new DocsViewModel);
+          Layout.ContentTemplate(data);
+          console.log(data);
           return $("#content").fadeTo('fast', 1, callback);
         });
       });
@@ -71,7 +73,7 @@
         return $.get("./pages/download.tmpl", function(data) {
           var Layout;
           Layout = LayoutViewModel.instance;
-          Layout.ContentViewModel(new DocsViewModel);
+          Layout.ContentViewModel({});
           Layout.ContentTemplate(data);
           return $("#content").fadeTo('fast', 1, callback);
         });
@@ -108,74 +110,62 @@
         Docs = DocsViewModel.instance;
         Docs.ArticleViewModel({});
         Docs.ArticleTemplate(marked(data));
-        return defer(callback);
+        return $("#content").fadeTo('fast', 1, callback);
       });
     },
-    load: function(_arg, callback) {
-      var article;
+    load: function(_arg) {
+      var article, elm, _i, _len, _ref;
       article = _arg.article;
-      return $("#content").fadeTo('fast', 1, function() {
-        var elm, _i, _len, _ref;
-        article = sectionize(article);
-        _ref = $("h1");
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          elm = _ref[_i];
-          elm = $(elm);
-          if (sectionize(elm.text()) === article) {
-            return $.scrollTo(elm, {
-              duration: 1000,
-              offset: -$("#header").height() - 30
-            });
-          }
+      article = sectionize(article);
+      _ref = $("h1");
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        elm = _ref[_i];
+        elm = $(elm);
+        if (sectionize(elm.text()) === article) {
+          return $.scrollTo(elm, {
+            duration: 1000,
+            offset: -$("#header").height() - 30
+          });
         }
-        return callback();
-      });
+      }
     }
   });
 
   Finch.route("[docs/:article]/:section", {
-    load: function(_arg, callback) {
-      var section;
+    load: function(_arg) {
+      var elm, section, _i, _len, _ref;
       section = _arg.section;
-      return $("#content").fadeTo('fast', 1, function() {
-        var elm, _i, _len, _ref;
-        section = sectionize(section);
-        _ref = $("h2");
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          elm = _ref[_i];
-          elm = $(elm);
-          if (sectionize(elm.text()) === section) {
-            return $.scrollTo(elm, {
-              duration: 1000,
-              offset: -$("#header").height() - 30
-            });
-          }
+      section = sectionize(section);
+      _ref = $("h2");
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        elm = _ref[_i];
+        elm = $(elm);
+        if (sectionize(elm.text()) === section) {
+          return $.scrollTo(elm, {
+            duration: 1000,
+            offset: -$("#header").height() - 30
+          });
         }
-        return callback();
-      });
+      }
     }
   });
 
   Finch.route("[docs/:article/:section]/:subsection", {
-    load: function(_arg, callback) {
-      var subsection;
+    load: function(_arg) {
+      var elm, subsection, _i, _len, _ref;
       subsection = _arg.subsection;
-      return $("#content").fadeTo('fast', 1, function() {
-        var elm, _i, _len, _ref;
-        subsection = sectionize(subsection);
-        _ref = $("h3");
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          elm = _ref[_i];
-          elm = $(elm);
-          if (sectionize(elm.text()) === subsection) {
-            return $.scrollTo(elm, {
-              duration: 1000,
-              offset: -$("#header").height() - 30
-            });
-          }
+      subsection = sectionize(subsection);
+      _ref = $("h3");
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        elm = _ref[_i];
+        elm = $(elm);
+        if (sectionize(elm.text()) === subsection) {
+          return $.scrollTo(elm, {
+            duration: 1000,
+            offset: -$("#header").height() - 30
+          });
         }
-        return callback();
-      });
+      }
     }
   });
 
