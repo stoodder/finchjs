@@ -12,7 +12,7 @@ defer = (callback) ->
 sectionize = (input) -> trim(input ? "").toLowerCase().replace(/[^a-z0-9]+/g,"")
 
 #Setup some jquery stuff
-#$.ajaxSetup( cache: false )
+$.ajaxSetup( cache: false )
 
 #------------------------------------
 # Viewmodels

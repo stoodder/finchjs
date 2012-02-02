@@ -22,6 +22,10 @@
     return trim(input != null ? input : "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   };
 
+  $.ajaxSetup({
+    cache: false
+  });
+
   LayoutViewModel = (function() {
 
     LayoutViewModel.instance = null;
