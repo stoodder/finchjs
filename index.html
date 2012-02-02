@@ -45,6 +45,14 @@
 				});
 			});
 
+			Finch.route("bool", function()
+			{
+				Finch.observe('val', function(val)
+				{
+					alert(typeof val + " " + val);
+				});
+			});
+
 			Finch.listen()
 		</script>
 	</head>

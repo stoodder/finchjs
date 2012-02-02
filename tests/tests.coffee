@@ -678,11 +678,11 @@ test "Observable hierarchy 1", sinon.test ->
 
 	Finch.call "/foo/bar?&a=1&b=2&c=3"
 
-	calledOnce foo,                  	"foo callback called once"
-	lastCalledWithExactly foo, ["1"],	"foo callback args"
-	calledOnce bar,                  	"bar callback called once"
-	lastCalledWithExactly bar, ["2"],	"bar callback args"
-	neverCalled id,                  	"id callback not called"
+	calledOnce foo,                	"foo callback called once"
+	lastCalledWithExactly foo, [1],	"foo callback args"
+	calledOnce bar,                	"bar callback called once"
+	lastCalledWithExactly bar, [2],	"bar callback args"
+	neverCalled id,                	"id callback not called"
 
 	foo.reset()
 	bar.reset()
@@ -700,10 +700,10 @@ test "Observable hierarchy 1", sinon.test ->
 
 	Finch.call "/foo?a=21&b=2&c=23"
 
-	calledOnce foo,                   	"foo callback called once"
-	lastCalledWithExactly foo, ["21"],	"foo callback args"
-	neverCalled bar,                  	"bar callback not called"
-	neverCalled id,                   	"id callback not called"
+	calledOnce foo,                 	"foo callback called once"
+	lastCalledWithExactly foo, [21],	"foo callback args"
+	neverCalled bar,                	"bar callback not called"
+	neverCalled id,                 	"id callback not called"
 
 	foo.reset()
 	bar.reset()
@@ -711,10 +711,10 @@ test "Observable hierarchy 1", sinon.test ->
 
 	Finch.call "/foo?a=31&b=32&c=23"
 
-	calledOnce foo,                   	"foo callback called once"
-	lastCalledWithExactly foo, ["31"],	"foo callback args"
-	neverCalled bar,                  	"bar callback not called"
-	neverCalled id,                   	"id callback not called"
+	calledOnce foo,                 	"foo callback called once"
+	lastCalledWithExactly foo, [31],	"foo callback args"
+	neverCalled bar,                	"bar callback not called"
+	neverCalled id,                 	"id callback not called"
 
 test "Observable hierarchy 2", sinon.test ->
 
@@ -734,13 +734,13 @@ test "Observable hierarchy 2", sinon.test ->
 
 	Finch.call "/foo/bar?x=0&a=1&b=2&c=3"
 
-	calledOnce slash,                  	"/ callback called once"
-	lastCalledWithExactly slash, ["0"],	"/ callback args"
-	calledOnce foo,                    	"foo callback called once"
-	lastCalledWithExactly foo, ["1"],  	"foo callback args"
-	calledOnce bar,                    	"bar callback called once"
-	lastCalledWithExactly bar, ["2"],  	"bar callback args"
-	neverCalled id,                    	"id callback not called"
+	calledOnce slash,                	"/ callback called once"
+	lastCalledWithExactly slash, [0],	"/ callback args"
+	calledOnce foo,                  	"foo callback called once"
+	lastCalledWithExactly foo, [1],  	"foo callback args"
+	calledOnce bar,                  	"bar callback called once"
+	lastCalledWithExactly bar, [2],  	"bar callback args"
+	neverCalled id,                  	"id callback not called"
 
 	slash.reset()
 	foo.reset()
@@ -752,8 +752,40 @@ test "Observable hierarchy 2", sinon.test ->
 	neverCalled slash,                	"/ callback not called"
 	neverCalled foo,                  	"foo callback not called"
 	calledOnce bar,                   	"bar callback called once"
-	lastCalledWithExactly bar, ["10"],	"bar callback args"
+	lastCalledWithExactly bar, [10],	"bar callback args"
 	neverCalled id,                   	"id callback not called"
+
+test "Observable value types", sinon.test ->
+
+	stub = @stub()
+
+	Finch.route "/", (bindings) ->
+		Finch.observe ["x"], (x) -> stub(x)
+	
+	Finch.call "/?x=123"
+	calledOnce stub,                  	"/ callback called once"
+	lastCalledWithExactly stub, [123],	"/ called with correct 123"
+	stub.reset()
+	
+	Finch.call "/?x=123.456"
+	calledOnce stub,                      	"/ callback called once"
+	lastCalledWithExactly stub, [123.456],	"/ called with correct 123.456"
+	stub.reset()
+	
+	Finch.call "/?x=true"
+	calledOnce stub,                   	"/ callback called once"
+	lastCalledWithExactly stub, [true],	"/ called with correct true"
+	stub.reset()
+	
+	Finch.call "/?x=false"
+	calledOnce stub,                    	"/ callback called once"
+	lastCalledWithExactly stub, [false],	"/ called with correct false"
+	stub.reset()
+	
+	Finch.call "/?x=stuff"
+	calledOnce stub,                      	"/ callback called once"
+	lastCalledWithExactly stub, ["stuff"],	"/ called with correct ;stuff"
+	stub.reset()
 
 test "Finch.listen and Finch.ignore", sinon.test ->
 

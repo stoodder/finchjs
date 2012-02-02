@@ -173,6 +173,20 @@ parseQueryString = (queryString) ->
 	if queryString != ""
 		for piece in queryString.split("&")
 			[key, value] = piece.split("=", 2)
+
+			#Try to parse through parameters and be smart about
+			#their values
+			if value is "true"
+				value = true
+			else if value is "false"
+				value = false
+			#Is this an int
+			else if /^[0-9]+$/.test(value)
+				value = parseInt(value)
+			#Is this a float
+			else if /^[0-9]+\.[0-9]*$/.test(value)
+				value = parseFloat(value)
+
 			queryParameters[key] = value
 
 	#return the result

@@ -2,7 +2,7 @@
 	Finch.js - Powerfully simple javascript routing
 	by Rick Allen (stoodder) and Greg Smith (smrq)
 
-	Version 0.2.0
+	Version 0.3.0
 	Full source at https://github.com/stoodder/finchjs
 	Copyright (c) 2011 RokkinCat, http://www.rokkincat.com
 
@@ -297,6 +297,15 @@
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         piece = _ref[_i];
         _ref2 = piece.split("=", 2), key = _ref2[0], value = _ref2[1];
+        if (value === "true") {
+          value = true;
+        } else if (value === "false") {
+          value = false;
+        } else if (/^[0-9]+$/.test(value)) {
+          value = parseInt(value);
+        } else if (/^[0-9]+\.[0-9]*$/.test(value)) {
+          value = parseFloat(value);
+        }
         queryParameters[key] = value;
       }
     }
