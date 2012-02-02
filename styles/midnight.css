@@ -1,5 +1,7 @@
 /*Define the mixins */
-a {
+a,
+a:active,
+a:focus {
   color: #5588ff;
 }
 
@@ -50,6 +52,7 @@ body {
   color: white;
   font-size: 11pt;
   text-shadow: 1px 1px 1px black;
+  overflow: scroll;
 }
 
 #background {
@@ -90,7 +93,7 @@ body {
   margin: 0px 10px 0px 30px;
 }
 
-#content #forkMe {
+#forkMe {
   position: fixed;
   z-index: 100;
   top: 60px;
@@ -100,6 +103,7 @@ body {
   width: 120px;
   border: 0px;
 }
+
 #content #download {
   margin-top: 120px;
 }

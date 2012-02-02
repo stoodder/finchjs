@@ -51,32 +51,47 @@
   })();
 
   Finch.route("/", function() {
-    return Finch.call("home");
+    return mpq.track("Viewing Home", {}, function() {
+      return $("#content").fadeTo('fast', 0, function() {
+        return $.get("./pages/home.tmpl", function(html) {
+          var Layout;
+          Layout = LayoutViewModel.instance;
+          Layout.ContentViewModel({});
+          Layout.ContentTemplate(html);
+          return $("#content").fadeTo('fast', 1, callback);
+        });
+      });
+    });
   });
 
-  Finch.route(":page", function(_arg, callback) {
-    var page;
-    page = _arg.page;
-    if (!isString(page)) page = "home";
-    page = page.toLowerCase();
-    return $.get("./pages/" + page + ".tmpl", function(html) {
-      var Layout;
-      Layout = LayoutViewModel.instance;
-      Layout.ContentViewModel({});
-      Layout.ContentTemplate(html);
-      return defer(callback);
+  Finch.route("download", function(_arg, callback) {
+    _arg;
+    return mpq.track("Viewing Download", {}, function() {
+      return $("#content").fadeTo('fast', 0, function() {
+        return $.get("./pages/download.tmpl", function(data) {
+          var Layout;
+          Layout = LayoutViewModel.instance;
+          Layout.ContentViewModel(new DocsViewModel);
+          Layout.ContentTemplate(data);
+          return $("#content").fadeTo('fast', 1, callback);
+        });
+      });
     });
   });
 
   Finch.route("docs", {
     setup: function(_arg, callback) {
       _arg;
-      return $.get("./pages/docs.tmpl", function(data) {
-        var Layout;
-        Layout = LayoutViewModel.instance;
-        Layout.ContentViewModel(new DocsViewModel);
-        Layout.ContentTemplate(data);
-        return defer(callback);
+      return mpq.track("Viewing Documentation", {}, function() {
+        return $("#content").fadeTo('fast', 0, function() {
+          return $.get("./pages/docs.tmpl", function(data) {
+            var Layout;
+            Layout = LayoutViewModel.instance;
+            Layout.ContentViewModel(new DocsViewModel);
+            Layout.ContentTemplate(data);
+            return defer(callback);
+          });
+        });
       });
     },
     load: function() {
@@ -96,60 +111,71 @@
         return defer(callback);
       });
     },
-    load: function(_arg) {
-      var article, elm, _i, _len, _ref;
+    load: function(_arg, callback) {
+      var article;
       article = _arg.article;
-      article = sectionize(article);
-      _ref = $("h1");
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        elm = _ref[_i];
-        elm = $(elm);
-        if (sectionize(elm.text()) === article) {
-          return $.scrollTo(elm, {
-            duration: 1000,
-            offset: -$("#header").height() - 30
-          });
+      return $("#content").fadeTo('fast', 1, function() {
+        var elm, _i, _len, _ref;
+        article = sectionize(article);
+        _ref = $("h1");
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          elm = _ref[_i];
+          elm = $(elm);
+          if (sectionize(elm.text()) === article) {
+            return $.scrollTo(elm, {
+              duration: 1000,
+              offset: -$("#header").height() - 30
+            });
+          }
         }
-      }
+        return callback();
+      });
     }
   });
 
   Finch.route("[docs/:article]/:section", {
-    load: function(_arg) {
-      var elm, section, _i, _len, _ref;
+    load: function(_arg, callback) {
+      var section;
       section = _arg.section;
-      section = sectionize(section);
-      console.log(section);
-      _ref = $("h2");
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        elm = _ref[_i];
-        elm = $(elm);
-        if (sectionize(elm.text()) === section) {
-          return $.scrollTo(elm, {
-            duration: 1000,
-            offset: -$("#header").height() - 30
-          });
+      return $("#content").fadeTo('fast', 1, function() {
+        var elm, _i, _len, _ref;
+        section = sectionize(section);
+        _ref = $("h2");
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          elm = _ref[_i];
+          elm = $(elm);
+          if (sectionize(elm.text()) === section) {
+            return $.scrollTo(elm, {
+              duration: 1000,
+              offset: -$("#header").height() - 30
+            });
+          }
         }
-      }
+        return callback();
+      });
     }
   });
 
   Finch.route("[docs/:article/:section]/:subsection", {
-    load: function(_arg) {
-      var elm, subsection, _i, _len, _ref;
+    load: function(_arg, callback) {
+      var subsection;
       subsection = _arg.subsection;
-      subsection = sectionize(subsection);
-      _ref = $("h3");
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        elm = _ref[_i];
-        elm = $(elm);
-        if (sectionize(elm.text()) === subsection) {
-          return $.scrollTo(elm, {
-            duration: 1000,
-            offset: -$("#header").height() - 30
-          });
+      return $("#content").fadeTo('fast', 1, function() {
+        var elm, _i, _len, _ref;
+        subsection = sectionize(subsection);
+        _ref = $("h3");
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          elm = _ref[_i];
+          elm = $(elm);
+          if (sectionize(elm.text()) === subsection) {
+            return $.scrollTo(elm, {
+              duration: 1000,
+              offset: -$("#header").height() - 30
+            });
+          }
         }
-      }
+        return callback();
+      });
     }
   });
 

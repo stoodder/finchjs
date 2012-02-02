@@ -50,11 +50,13 @@ The last topic to cover is advanced route creation with setup, load, and teardow
 
 Typically, these pieces are called as follows:
 
-- **setup** - is called when a route is called in the call stack.  Usually used for any setup code, such as loading initial page data or setting up a model.
-- **load** - is only called at the top most level of a call stack after all of the setup methods are called.  This would typically be used for displaying some default page data (you know... the ones telling users to 'select something to do').
-- **teardown** - is called when we leave the current route for a new route.  This is the opposite of setup so it will be called as the stack begins to step towards it's new path. This might be used for removing any intervals (ajax polling), necessary page data, or to tack a user's actions.
+* **setup** - is called when a route is called in the call stack.  Usually used for any setup code, such as loading initial page data or setting up a model.
 
-**NOTE** The second argument of these functions(childCallback) is optional. As with simple routes, this determines whether the function is asynchronous. If so, Finch will not execute its next step until you return contrl back to finch by calling the childCallback().
+* **load** - is only called at the top most level of a call stack after all of the setup methods are called.  This would typically be used for displaying some default page data (you know... the ones telling users to 'select something to do').
+
+* **teardown** - is called when we leave the current route for a new route.  This is the opposite of setup so it will be called as the stack begins to step towards it's new path. This might be used for removing any intervals (ajax polling), necessary page data, or to tack a user's actions.
+
+__Note:__ The second argument of these functions (childCallback) is optional. As with simple routes, this determines whether the function is asynchronous. If so, Finch will not execute its next step until you return control back to Finch by calling the childCallback().
 
 So to dig in a bit more, pretend we had the following setup:
 

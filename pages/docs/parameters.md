@@ -111,12 +111,12 @@ It's the same!
 
 Just to add a little bit more to this example, lets suppose that we went one step further with this setup method:
 
-	Finch.route "/home/news" ->
+	Finch.route "/home/news", ->
 		console.log("Called home!")
 
 		Finch.observe (params) ->
 			sort = params('sort')
-			if sort if 'alpha'
+			if sort is 'alpha'
 				console.log("You're sorting alphanumerically! and hello is #{params('hello')}")
 			else
 				console.log("You must be sorting numerically! and foo is #{params('foo')}")

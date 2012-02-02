@@ -4,19 +4,17 @@ Finch is a simple, yet powerful, javascript route handling library.  It focuses 
 ## Basic Usage
 To start, you'll need to include the Finch.js file on page load. Simple
 
-```html
-<html>
-	<head>
-		<title>Using Finch is Fun!</title>
-		<script src="./scripts/Finch.js" type="text/javascript" language="javascript"></script>
-	</head>
-	<body>
-		... Stuff ...
-	</body>
-</html>
-```
+	<html>
+		<head>
+			<title>Using Finch is Fun!</title>
+			<script src="./scripts/Finch.js" type="text/javascript" language="javascript"></script>
+		</head>
+		<body>
+			... Stuff ...
+		</body>
+	</html>
 
-Once you've included Finch, start setting up your routes like so ([CoffeeScript](http://coffeescript.org/) here, for those wondering):
+Once you've included Finch, start setting up your routes like so (we're using [CoffeeScript](http://coffeescript.org/) here, for those wondering):
 
 	Finch.route "/home", ->
 		console.log "Called home!"

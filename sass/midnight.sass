@@ -1,6 +1,8 @@
 @import "mixins.sass"
 
-a 
+a,
+a:active,
+a:focus
 	color: #5588FF
 
 a:hover
@@ -19,7 +21,6 @@ ol
 
 	li
 		color: #113377
-
 
 h1, h2, h3, h4, h5, h6, h7
 	color: #ffffff
@@ -44,6 +45,7 @@ body
 	color: #ffffff
 	font-size: 11pt
 	text-shadow: 1px 1px 1px #000000
+	overflow: scroll
 
 #background
 	position: fixed
@@ -82,17 +84,17 @@ body
 		line-height: 60px
 		margin: 0px 10px 0px 30px
 
-#content
-	#forkMe
-		position: fixed
-		z-index: 100
-		top: 60px
-		left: 100%
-		margin-left: -120px
-		height: 120px
-		width: 120px
-		border: 0px
+#forkMe
+	position: fixed
+	z-index: 100
+	top: 60px
+	left: 100%
+	margin-left: -120px
+	height: 120px
+	width: 120px
+	border: 0px
 
+#content
 	#download
 		margin-top: 120px
 
