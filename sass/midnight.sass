@@ -93,6 +93,32 @@ body
 		width: 120px
 		border: 0px
 
+	#download
+		margin-top: 120px
+
+		.title
+			text-align: center
+			margin-bottom: 50px
+		
+		.zip, .tar, .version
+			text-align: center
+		
+		.zip, .tar
+			img
+				height: 130px
+
+		.version
+			@include opacity(.5)
+			font-size: 20pt
+			line-height: 85px
+		
+		#gitRow
+			margin-top: 100px
+			text-align: center
+
+			pre
+				text-align: left
+
 	#docs
 		margin-top: 80px
 
@@ -111,3 +137,4 @@ body
 	#tableOfContents > ol
 		position: fixed
 		margin-top: 60px
+

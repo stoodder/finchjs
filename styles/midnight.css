@@ -100,6 +100,35 @@ body {
   width: 120px;
   border: 0px;
 }
+#content #download {
+  margin-top: 120px;
+}
+#content #download .title {
+  text-align: center;
+  margin-bottom: 50px;
+}
+#content #download .zip, #content #download .tar, #content #download .version {
+  text-align: center;
+}
+#content #download .zip img, #content #download .tar img {
+  height: 130px;
+}
+#content #download .version {
+  opacity: 0.5;
+  -moz-opacity: 0.5;
+  -webkit-opacity: 0.5;
+  -o-opacity: 0.5;
+  filter: alpha(opacity=50);
+  font-size: 20pt;
+  line-height: 85px;
+}
+#content #download #gitRow {
+  margin-top: 100px;
+  text-align: center;
+}
+#content #download #gitRow pre {
+  text-align: left;
+}
 #content #docs {
   margin-top: 80px;
 }
