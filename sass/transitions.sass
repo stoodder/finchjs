@@ -1,0 +1,17 @@
+@import "mixins.sass"
+
+a, li, h1, h2, h3, h4, h5, h6, h7
+	@include transition-property("color")
+	@include transition-duration("1s")
+
+pre
+	@include transition-property("background-color, border-color, color")
+	@include transition-duration("1s, 1s, 1s")
+
+body
+	@include transition-property("background-color, color")
+	@include transition-duration("1s, 1s")
+
+#header
+	@include transition-property("background-color")
+	@include transition-duration("1s")

@@ -1,0 +1,120 @@
+/*Define the mixins */
+a {
+  color: #5588ff;
+}
+
+a:hover {
+  color: #88ccff;
+  text-decoration: underline;
+}
+
+ul, ol {
+  margin-left: 15px;
+}
+
+ul {
+  list-style: disc;
+}
+
+ol {
+  list-style: numbered;
+}
+ol li {
+  color: #113377;
+}
+
+h1, h2, h3, h4, h5, h6, h7 {
+  color: white;
+  font-weight: normal;
+}
+
+p {
+  font-size: 11pt;
+  padding: 0px 15px;
+}
+
+pre {
+  border-radius: 6px;
+  -moz-border-radius: 6px;
+  font-family: "courier new";
+  padding: 10px 20px;
+  margin: 0px 10px 30px 10px;
+  background-color: #000011;
+  color: #77aaff;
+  border: 1px solid #001144;
+  overflow: hidden;
+}
+
+body {
+  background-color: #000622;
+  color: white;
+  font-size: 11pt;
+  text-shadow: 1px 1px 1px black;
+}
+
+#background {
+  position: fixed;
+  z-index: -1;
+  height: 300px;
+  width: 300px;
+  top: 100%;
+  left: 0px;
+  margin-top: -300px;
+  margin-left: 0px;
+  background-image: url("../images/background-full.png");
+  background-position: bottom left;
+  background-repeat: no-repeat;
+}
+
+#header {
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  z-index: 200;
+  height: 60px;
+  background-color: #000622;
+  width: 100%;
+}
+#header #logo {
+  height: 60px;
+  margin-top: 10px;
+}
+#header .menu {
+  float: right;
+  list-style: none;
+  margin-right: 20px;
+}
+#header li {
+  float: left;
+  line-height: 60px;
+  margin: 0px 10px 0px 30px;
+}
+
+#content #forkMe {
+  position: fixed;
+  z-index: 100;
+  top: 60px;
+  left: 100%;
+  margin-left: -120px;
+  height: 120px;
+  width: 120px;
+  border: 0px;
+}
+#content #docs {
+  margin-top: 80px;
+}
+#content #tableOfContents {
+  position: relative;
+  margin-top: 30px;
+}
+#content #tableOfContents ol {
+  padding: 0px;
+  margin: 0px 0px 5px 20px;
+}
+#content #tableOfContents li {
+  margin: 3px 0px 5px 0px;
+}
+#content #tableOfContents > ol {
+  position: fixed;
+  margin-top: 60px;
+}
