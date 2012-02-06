@@ -56,67 +56,64 @@
 
   Finch.route("/", function(_arg, callback) {
     _arg;
-    return mpq.track("Viewing Home", {}, function() {
-      return $("#content").animate({
-        'opacity': 0
-      }, {
-        complete: function() {
-          return $.get("./pages/home.tmpl", function(data) {
-            var Layout;
-            Layout = LayoutViewModel.instance;
-            Layout.ContentViewModel(new DocsViewModel);
-            Layout.ContentTemplate(data);
-            return $("#content").animate({
-              'opacity': 1
-            }, {
-              complete: callback
-            });
+    mpq.track("Viewing Home", {}, (function() {}));
+    return $("#content").animate({
+      'opacity': 0
+    }, {
+      complete: function() {
+        return $.get("./pages/home.tmpl", function(data) {
+          var Layout;
+          Layout = LayoutViewModel.instance;
+          Layout.ContentViewModel(new DocsViewModel);
+          Layout.ContentTemplate(data);
+          return $("#content").animate({
+            'opacity': 1
+          }, {
+            complete: callback
           });
-        }
-      });
+        });
+      }
     });
   });
 
   Finch.route("download", function(_arg, callback) {
     _arg;
-    return mpq.track("Viewing Download", {}, function() {
-      return $("#content").animate({
-        'opacity': 0
-      }, {
-        complete: function() {
-          return $.get("./pages/download.tmpl", function(data) {
-            var Layout;
-            Layout = LayoutViewModel.instance;
-            Layout.ContentViewModel({});
-            Layout.ContentTemplate(data);
-            return $("#content").animate({
-              'opacity': 1
-            }, {
-              complete: callback
-            });
+    mpq.track("Viewing Download", {}, (function() {}));
+    return $("#content").animate({
+      'opacity': 0
+    }, {
+      complete: function() {
+        return $.get("./pages/download.tmpl", function(data) {
+          var Layout;
+          Layout = LayoutViewModel.instance;
+          Layout.ContentViewModel({});
+          Layout.ContentTemplate(data);
+          return $("#content").animate({
+            'opacity': 1
+          }, {
+            complete: callback
           });
-        }
-      });
+        });
+      }
     });
   });
 
   Finch.route("docs", {
     setup: function(_arg, callback) {
       _arg;
-      return mpq.track("Viewing Documentation", {}, function() {
-        return $("#content").animate({
-          'opacity': 0
-        }, {
-          complete: function() {
-            return $.get("./pages/docs.tmpl", function(data) {
-              var Layout;
-              Layout = LayoutViewModel.instance;
-              Layout.ContentViewModel(new DocsViewModel);
-              Layout.ContentTemplate(data);
-              return defer(callback);
-            });
-          }
-        });
+      mpq.track("Viewing Documentation", {}, (function() {}));
+      return $("#content").animate({
+        'opacity': 0
+      }, {
+        complete: function() {
+          return $.get("./pages/docs.tmpl", function(data) {
+            var Layout;
+            Layout = LayoutViewModel.instance;
+            Layout.ContentViewModel(new DocsViewModel);
+            Layout.ContentTemplate(data);
+            return defer(callback);
+          });
+        }
       });
     },
     load: function() {

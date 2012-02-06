@@ -40,47 +40,46 @@ class DocsViewModel
 #------------------------------------
 Finch.route "/", ({}, callback) -> 
 	
-	mpq.track "Viewing Home", {}, ->
-		$("#content").animate {'opacity':0}, complete: ->
-			$.get "./pages/home.tmpl", (data) ->
-				Layout = LayoutViewModel.instance
-				Layout.ContentViewModel(new DocsViewModel)
-				Layout.ContentTemplate(data)
+	mpq.track("Viewing Home", {}, (->))
+	
+	$("#content").animate {'opacity':0}, complete: ->
+		$.get "./pages/home.tmpl", (data) ->
+			Layout = LayoutViewModel.instance
+			Layout.ContentViewModel(new DocsViewModel)
+			Layout.ContentTemplate(data)
 
-				$("#content").animate({'opacity':1},{complete:callback})
-			# END get
-		#END fade
-	#END track
-
+			$("#content").animate({'opacity':1},{complete:callback})
+		# END get
+	#END fade
 
 Finch.route "download", ({}, callback) ->
 	
-	mpq.track "Viewing Download", {}, ->
-		$("#content").animate {'opacity':0}, complete: ->
-			$.get "./pages/download.tmpl", (data) ->
-				Layout = LayoutViewModel.instance
-				Layout.ContentViewModel({})
-				Layout.ContentTemplate(data)
+	mpq.track("Viewing Download", {}, (->))
 
-				$("#content").animate({'opacity':1},{complete:callback})
-			# END get
-		#END fade
-	#END track
+	$("#content").animate {'opacity':0}, complete: ->
+		$.get "./pages/download.tmpl", (data) ->
+			Layout = LayoutViewModel.instance
+			Layout.ContentViewModel({})
+			Layout.ContentTemplate(data)
+
+			$("#content").animate({'opacity':1},{complete:callback})
+		# END get
+	#END fade
 
 Finch.route "docs", 
 	setup: ({}, callback) ->
 	
-		mpq.track "Viewing Documentation", {}, ->
-			$("#content").animate {'opacity':0}, complete: ->
-				$.get "./pages/docs.tmpl", (data) ->
-					Layout = LayoutViewModel.instance
-					Layout.ContentViewModel(new DocsViewModel)
-					Layout.ContentTemplate(data)
+		mpq.track("Viewing Documentation", {}, (->))
 
-					defer callback
-				# END get
-			#END fade
-		#END track
+		$("#content").animate {'opacity':0}, complete: ->
+			$.get "./pages/docs.tmpl", (data) ->
+				Layout = LayoutViewModel.instance
+				Layout.ContentViewModel(new DocsViewModel)
+				Layout.ContentTemplate(data)
+
+				defer callback
+			# END get
+		#END fade
 	
 	load: () -> Finch.call("docs/introduction")
 
