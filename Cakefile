@@ -161,16 +161,51 @@ print_error = (error, file_name, file_contents) ->
 	else
 		console.log "Error compiling #{file_name}: #{error.message}"
 
-task 'patch', 'executing a patch ', () ->
 
-	console.log "Traying to run a patch update"
+task 'major', 'Executing a major version update', () ->
+
+	console.log "Trying to run a major version update"
+
+	v = version.match(/^([0-9]+)\.([0-9]+)\.([0-9]+)$/)
+	v[1]++
+	version = "#{v[1]}.#{v[2]}.#{v[3]}"
+
+	fs.writeFileSync('VERSION', version)
+
+	run "git", ["commit", '-a', '-m', "\"Updating to Major version #{version}\""]
+
+	console.log "Finched updating major version"
+
+
+task 'minor', 'Executing a minor version update', () ->
+
+	console.log "Trying to run a minor versino update"
+
+	v = version.match(/^([0-9]+)\.([0-9]+)\.([0-9]+)$/)
+	v[2]++
+	version = "#{v[1]}.#{v[2]}.#{v[3]}"
+
+	fs.writeFileSync('VERSION', version)
+
+	run "git", ["commit", '-a', '-m', "\"Updating to Minor version #{version}\""]
+
+	console.log "Finched updating minor version"
+
+
+task 'patch', 'Executing a patch version update', () ->
+
+	console.log "Trying to run a patch version update"
+
 	v = version.match(/^([0-9]+)\.([0-9]+)\.([0-9]+)$/)
 	v[3]++
 	version = "#{v[1]}.#{v[2]}.#{v[3]}"
 
 	fs.writeFileSync('VERSION', version)
 
-	run "git", ["commit", '-a', '-m', "\"Pathcing to version #{version}\""]
+	run "git", ["commit", '-a', '-m', "\"Updating to Patch version #{version}\""]
+
+	console.log "Finched updating patch version"
+
 
 task 'release', 'build, tag the current release, and push', ->
 	console.log "Trying to tag #{version_tag}..."
