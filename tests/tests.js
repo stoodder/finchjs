@@ -2,7 +2,7 @@
 	Finch.js - Powerfully simple javascript routing
 	by Rick Allen (stoodder) and Greg Smith (smrq)
 
-	Version 0.3.0
+	Version 0.3.1
 	Full source at https://github.com/stoodder/finchjs
 	Copyright (c) 2011 RokkinCat, http://www.rokkincat.com
 
@@ -85,7 +85,7 @@
     calledOnce(foo_bar_id, "foo/bar/id called once");
     lastCalledWithExactly(foo_bar_id, [
       {
-        id: "123"
+        id: 123
       }
     ], "foo/bar/id bindings");
     foo_bar_id.reset();
@@ -104,7 +104,7 @@
     ok(foo_baz.calledBefore(foo_baz_id), "foo/baz called before foo/baz/id");
     lastCalledWithExactly(foo_baz_id, [
       {
-        id: "456"
+        id: 456
       }
     ], "foo/baz/id bindings");
     foo_baz.reset();
@@ -115,7 +115,7 @@
     ok(quux.calledBefore(quux_id), "quux called before quux/id");
     return lastCalledWithExactly(quux_id, [
       {
-        id: "789"
+        id: 789
       }
     ], "quux/id bindings");
   }));
@@ -741,7 +741,37 @@
     stub.reset();
     Finch.call("/?x=stuff");
     calledOnce(stub, "/ callback called once");
-    lastCalledWithExactly(stub, ["stuff"], "/ called with correct ;stuff");
+    lastCalledWithExactly(stub, ["stuff"], "/ called with correct stuff");
+    return stub.reset();
+  }));
+
+  test("Binding value types", sinon.test(function() {
+    var stub;
+    stub = this.stub();
+    Finch.route("/:x", function(_arg) {
+      var x;
+      x = _arg.x;
+      return stub(x);
+    });
+    Finch.call("/123");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, [123], "/ called with correct 123");
+    stub.reset();
+    Finch.call("/123.456");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, [123.456], "/ called with correct 123.456");
+    stub.reset();
+    Finch.call("/true");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, [true], "/ called with correct true");
+    stub.reset();
+    Finch.call("/false");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, [false], "/ called with correct false");
+    stub.reset();
+    Finch.call("/stuff");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, ["stuff"], "/ called with correct stuff");
     return stub.reset();
   }));
 

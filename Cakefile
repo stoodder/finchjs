@@ -161,6 +161,17 @@ print_error = (error, file_name, file_contents) ->
 	else
 		console.log "Error compiling #{file_name}: #{error.message}"
 
+task 'patch', 'executing a patch ', () ->
+
+	console.log "Traying to run a patch update"
+	v = version.match(/^([0-9]+)\.([0-9]+)\.([0-9]+)$/)
+	v[3]++
+	version = "#{v[1]}.#{v[2]}.#{v[3]}"
+
+	fs.writeFileSync('VERSION', version)
+
+	run "git", ["commit", '-a', '-m', "\"Pathcing to version #{version}\""]
+
 task 'release', 'build, tag the current release, and push', ->
 	console.log "Trying to tag #{version_tag}..."
 	with_clean_repo( ->

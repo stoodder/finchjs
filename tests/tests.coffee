@@ -60,7 +60,7 @@ test "Simple hierarchical routing", sinon.test ->
 	neverCalled foo, "foo not called again"
 	neverCalled foo_bar, "foo/bar not called again"
 	calledOnce foo_bar_id, "foo/bar/id called once"
-	lastCalledWithExactly foo_bar_id, [{ id: "123" }], "foo/bar/id bindings"
+	lastCalledWithExactly foo_bar_id, [{ id: 123 }], "foo/bar/id bindings"
 	foo_bar_id.reset()
 
 	Finch.call "/foo/bar/123"
@@ -81,7 +81,7 @@ test "Simple hierarchical routing", sinon.test ->
 	calledOnce foo_baz, "foo/baz called"
 	calledOnce foo_baz_id, "foo/baz/id called"
 	ok foo_baz.calledBefore(foo_baz_id), "foo/baz called before foo/baz/id"
-	lastCalledWithExactly foo_baz_id, [{ id: "456" }], "foo/baz/id bindings"
+	lastCalledWithExactly foo_baz_id, [{ id: 456 }], "foo/baz/id bindings"
 	foo_baz.reset()
 	foo_baz_id.reset()
 
@@ -90,7 +90,7 @@ test "Simple hierarchical routing", sinon.test ->
 	calledOnce quux, "quux called"
 	calledOnce quux_id, "quux/id called"
 	ok quux.calledBefore(quux_id), "quux called before quux/id"
-	lastCalledWithExactly quux_id, [{ id: "789" }], "quux/id bindings"
+	lastCalledWithExactly quux_id, [{ id: 789 }], "quux/id bindings"
 
 test "More hierarchical routing", sinon.test ->
 
@@ -749,11 +749,11 @@ test "Observable hierarchy 2", sinon.test ->
 
 	Finch.call "/foo/bar?x=0&a=1&b=10&c=11"
 
-	neverCalled slash,                	"/ callback not called"
-	neverCalled foo,                  	"foo callback not called"
-	calledOnce bar,                   	"bar callback called once"
+	neverCalled slash,              	"/ callback not called"
+	neverCalled foo,                	"foo callback not called"
+	calledOnce bar,                 	"bar callback called once"
 	lastCalledWithExactly bar, [10],	"bar callback args"
-	neverCalled id,                   	"id callback not called"
+	neverCalled id,                 	"id callback not called"
 
 test "Observable value types", sinon.test ->
 
@@ -784,7 +784,38 @@ test "Observable value types", sinon.test ->
 	
 	Finch.call "/?x=stuff"
 	calledOnce stub,                      	"/ callback called once"
-	lastCalledWithExactly stub, ["stuff"],	"/ called with correct ;stuff"
+	lastCalledWithExactly stub, ["stuff"],	"/ called with correct stuff"
+	stub.reset()
+
+test "Binding value types", sinon.test ->
+
+	stub = @stub()
+
+	Finch.route "/:x", ({x}) -> stub(x)
+	
+	Finch.call "/123"
+	calledOnce stub,                  	"/ callback called once"
+	lastCalledWithExactly stub, [123],	"/ called with correct 123"
+	stub.reset()
+	
+	Finch.call "/123.456"
+	calledOnce stub,                      	"/ callback called once"
+	lastCalledWithExactly stub, [123.456],	"/ called with correct 123.456"
+	stub.reset()
+	
+	Finch.call "/true"
+	calledOnce stub,                   	"/ callback called once"
+	lastCalledWithExactly stub, [true],	"/ called with correct true"
+	stub.reset()
+	
+	Finch.call "/false"
+	calledOnce stub,                    	"/ callback called once"
+	lastCalledWithExactly stub, [false],	"/ called with correct false"
+	stub.reset()
+	
+	Finch.call "/stuff"
+	calledOnce stub,                      	"/ callback called once"
+	lastCalledWithExactly stub, ["stuff"],	"/ called with correct stuff"
 	stub.reset()
 
 test "Finch.listen and Finch.ignore", sinon.test ->

@@ -94,7 +94,7 @@ class RoutePath
 		bindings = {}
 		for binding, index in @node.bindings
 			bindings[binding] = @boundValues[index]
-		return bindings
+		return parseParameters( bindings )
 
 	isEqual: (path) -> path? and @node is path.node and arraysEqual(@boundValues, path.boundValues)
 
@@ -174,25 +174,48 @@ parseQueryString = (queryString) ->
 		for piece in queryString.split("&")
 			[key, value] = piece.split("=", 2)
 
-			#Try to parse through parameters and be smart about
-			#their values
-			if value is "true"
-				value = true
-			else if value is "false"
-				value = false
-			#Is this an int
-			else if /^[0-9]+$/.test(value)
-				value = parseInt(value)
-			#Is this a float
-			else if /^[0-9]+\.[0-9]*$/.test(value)
-				value = parseFloat(value)
-
 			queryParameters[key] = value
 
 	#return the result
-	return queryParameters
+	return parseParameters( queryParameters )
 
 #END parseQueryString
+
+#---------------------------------------------------
+# Method: parseParameters
+#	Used to 'smartly' parse through the parameters
+#	- converts string bools to booleans
+#	- converts string numbers to numbers
+#
+# Arguments:
+#	params - The input parameters to patse through
+#
+# Returns:
+#	object - The parsed parameters
+#---------------------------------------------------
+parseParameters = (params) ->
+	params = {} unless isObject(params)
+
+	#Try to parse through parameters and be smart about their values
+	for key, value of params
+
+		#Is thie a boolean
+		if value is "true"
+			value = true
+		else if value is "false"
+			value = false
+		#Is this an int
+		else if /^[0-9]+$/.test(value)
+			value = parseInt(value)
+		#Is this a float
+		else if /^[0-9]+\.[0-9]*$/.test(value)
+			value = parseFloat(value)
+		params[key] = value
+	
+	#Return the parameters
+	return params
+
+#END parseParameters
 
 
 #---------------------------------------------------
