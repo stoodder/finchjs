@@ -168,6 +168,7 @@ task 'major', 'Executing a major version update', () ->
 
 	v = version.match(/^([0-9]+)\.([0-9]+)\.([0-9]+)$/)
 	v[1]++
+	v[2] = v[3] = 0
 	version = "#{v[1]}.#{v[2]}.#{v[3]}"
 
 	fs.writeFileSync('VERSION', version)
@@ -183,6 +184,7 @@ task 'minor', 'Executing a minor version update', () ->
 
 	v = version.match(/^([0-9]+)\.([0-9]+)\.([0-9]+)$/)
 	v[2]++
+	v[3] = 0
 	version = "#{v[1]}.#{v[2]}.#{v[3]}"
 
 	fs.writeFileSync('VERSION', version)
