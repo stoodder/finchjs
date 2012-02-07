@@ -554,6 +554,7 @@ test "Asynchronous setup, load, and teardown", sinon.test ->
 
 do ->
 	trivialObservableTest = (fn) ->
+		
 		Finch.call "/foo"
 		calledOnce fn, "observable callback called once"
 		lastCalledWithExactly fn, [undefined, undefined], "called with given args"

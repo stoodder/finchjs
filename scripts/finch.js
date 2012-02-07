@@ -2,7 +2,7 @@
 	Finch.js - Powerfully simple javascript routing
 	by Rick Allen (stoodder) and Greg Smith (smrq)
 
-	Version 0.3.1
+	Version 0.3.4
 	Full source at https://github.com/stoodder/finchjs
 	Copyright (c) 2011 RokkinCat, http://www.rokkincat.com
 
@@ -50,7 +50,16 @@
   };
 
   contains = function(haystack, needle) {
-    return haystack.indexOf(needle) !== -1;
+    var hay, _i, _len;
+    if (isFunction(haystack.indexOf)) {
+      return haystack.indexOf(needle) !== -1;
+    } else if (isArray(haystack)) {
+      for (_i = 0, _len = haystack.length; _i < _len; _i++) {
+        hay = haystack[_i];
+        if (hay === needle) return true;
+      }
+    }
+    return false;
   };
 
   peek = function(arr) {

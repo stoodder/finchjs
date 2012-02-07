@@ -12,7 +12,14 @@ trim = (str) -> str.replace(/^\s+/, '').replace(/\s+$/, '')
 trimSlashes = (str) -> str.replace(/^\//, '').replace(/\/$/, '')
 startsWith = (haystack, needle) -> haystack.indexOf(needle) is 0
 endsWith = (haystack, needle) ->  haystack.indexOf(needle, haystack.length - needle.length) isnt -1
-contains = (haystack, needle) -> haystack.indexOf(needle) isnt -1
+
+contains = (haystack, needle) -> 
+	if isFunction( haystack.indexOf )
+		return haystack.indexOf(needle) isnt -1
+	else if isArray( haystack )
+		for hay in haystack
+			return true if hay is needle
+	return false
 peek = (arr) -> arr[arr.length - 1]
 
 countSubstrings = (str, substr) -> str.split(substr).length - 1
@@ -688,7 +695,7 @@ Finch = {
 
 		#Extract the route and query parameters from the uri
 		[uri, queryString] = uri.split("?", 2)
-
+		
 		# Find matching route in route tree, returning false if there is none
 		newPath = findPath(RootNode, uri)
 		return false unless newPath?
