@@ -858,13 +858,22 @@ Finch = {
 	#	queryParams (object) - An object to UPDATE the current list of query parameters (won't delete parameters from the list, only add and/or update current)use Finch.navigate(null, {params}) to change the list of query parameters
 	#---------------------------------------------------
 	navigate: (uri, queryParams) ->
+		#Get the current uri and params
+		[ currentUri, currentQueryString ] = window.location.hash.split("?", 2)
+		currentUri ?= ""
+		currentQueryString ?= ""
+
+		#format the current uri appropriately
+		currentUri = currentUri.slice(1) if currentUri.slice(0,1) is "#"
+		currentUri = unescape(currentUri)
+
+		#format the currentParams
+		currentQueryParams = parseQueryString( currentQueryString )
 
 		#if the uri is an object, we'll assume we're just updating the hash
 		if isObject(uri)
 			queryParams = uri
 			uri = null
-			currentQueryString = window.location.hash.split("?", 2)[1] ? ""
-			currentQueryParams = parseQueryString(currentQueryString)
 
 			#Unescape things fromthe current query params
 			do ->
@@ -875,29 +884,27 @@ Finch = {
 
 			#udpate the query params
 			queryParams = extend(currentQueryParams, queryParams)
-			queryParams = compact(queryParams)
 
-		#otherwise assume they're trying to browser to a completely new route
-		else
-			uri = null unless isString(uri)
-			queryParams = {} unless isObject(queryParams)
-			queryParams = compact(queryParams)
+		#Start trying to create the new uri
+		uri = null unless isString(uri)
+		uri = currentUri if uri is null
+		[uri, uriParamString] = uri.split("?", 2)
+		uri = escape(uri)
+
+		#Make sure the uri param string is valid
+		uriQueryParams = if isString(uriParamString) then parseQueryString(uriParamString) else {}
+
+		#Get and format the query params
+		queryParams = currentQueryParams unless isObject(queryParams)
+		queryParams = extend(uriQueryParams, queryParams)
+		queryParams = compact(queryParams)
 
 		#Generate a query string
 		queryString = (escape(key) + "=" + escape(value) for key, value of queryParams).join("&")
 
-		#if the uri is null, use the current uri
-		if uri is null
-			uri = window.location.hash.split("?", 2)[0] ? ""
-			uri = uri.slice(1) if uri.slice(0,1) is "#"
-
-		#escape the uri
-		uri = escape(uri)
-
 		#try to attach the query string
 		if queryString.length > 0
-			uri += if uri.indexOf("?") > -1 then "&" else "?"
-			uri += queryString
+			uri += "?" + queryString
 
 		#update the hash
 		window.location.hash = uri
