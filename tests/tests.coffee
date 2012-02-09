@@ -554,7 +554,7 @@ test "Asynchronous setup, load, and teardown", sinon.test ->
 
 do ->
 	trivialObservableTest = (fn) ->
-		
+
 		Finch.call "/foo"
 		calledOnce fn, "observable callback called once"
 		lastCalledWithExactly fn, [undefined, undefined], "called with given args"
@@ -914,6 +914,16 @@ test "Finch.navigate", sinon.test ->
 	ok hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world"
 	equal hash().split("?").length-1, 1, "Correct number of '?'"
 	equal hash().split("&").length-1, 2, "Correct number of '&'"
+
+	Finch.navigate("#/home")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("free=bird") > -1, "Had correct query parameter set free=bird"
+	ok hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world"
+
+	Finch.navigate("#/home/news",{free:"birds",hello:"worlds"})
+	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("free=birds") > -1, "Had correct query parameter set free=birds"
+	ok hash().indexOf("hello=worlds") > -1, "Had correct query parameter set hello=worlds"
 
 test "Finch.listen and Finch.ignore", sinon.test ->
 
