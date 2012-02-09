@@ -15,7 +15,7 @@ CoffeeScript    	= require 'coffee-script'
 # Get the version number
 version_file = 'VERSION'
 version = "#{fs.readFileSync(version_file)}".replace /[^0-9a-zA-Z.]*/gm, ''
-version_tag = "v#{version}"
+version_tag = -> "v#{version}"
 
 sources = [
 	"coffee/finch.coffee"
@@ -139,7 +139,7 @@ with_clean_repo = (cb) ->
 # --------------------------------------------------------
 without_existing_tag = (cb) ->
 	run 'git', ['tag'], (stdout) ->
-		if stdout.split("\n").indexOf( version_tag ) >= 0
+		if stdout.split("\n").indexOf( version_tag() ) >= 0
 			throw 'This tag has already been committed to the repo.'
 		else
 			cb()
@@ -178,15 +178,15 @@ git_commit = (message) ->
 #
 # --------------------------------------------------------
 git_tag = (cb, cb_err) ->
-	run 'git', ['tag', '-a', '-m', "\"Version #{version}\"", version_tag], cb, cb_err
+	run 'git', ['tag', '-a', '-m', "\"Version #{version}\"", version_tag()], cb, cb_err
 
 # --------------------------------------------------------
 #
 # --------------------------------------------------------
 git_untag = (e) ->
 	console.log "Failure to tag caught: #{e}"
-	console.log "Removing tag #{version_tag}"
-	run 'git', ['tag', '-d', version_tag]
+	console.log "Removing tag #{version_tag()}"
+	run 'git', ['tag', '-d', version_tag()]
 
 
 # --------------------------------------------------------
@@ -264,14 +264,14 @@ task 'patch', 'Executing a patch version update', () ->
 #
 # --------------------------------------------------------
 task 'release', 'build, tag the current release, and push', ->
-	console.log "Trying to tag #{version_tag}..."
+	console.log "Trying to tag #{version_tag()}..."
 	with_clean_repo( ->
 		without_existing_tag( ->
 			build( ->
 				git_tag ( ->
 					push_repo [], ( ->
 						push_repo ['--tags'], ( ->
-							console.log "Successfully tagged #{version_tag}: https://github.com/stoodder/finchjs/tree/#{version_tag}"
+							console.log "Successfully tagged #{version_tag()}: https://github.com/stoodder/finchjs/tree/#{version_tag()}"
 
 						), git_untag
 					), git_untag
