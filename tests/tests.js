@@ -775,9 +775,108 @@
     return stub.reset();
   }));
 
+  test("Finch.navigate", sinon.test(function() {
+    var hash, helloWorldRegex, homeNewsRegex, homeRegex;
+    window.location.hash = "";
+    hash = function() {
+      var _ref;
+      return (_ref = window.location.hash) != null ? _ref : "";
+    };
+    homeRegex = /^#?\/home/;
+    homeNewsRegex = /^#?\/home\/news/;
+    helloWorldRegex = /^#?\/hello%20world/;
+    Finch.navigate("/home");
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    Finch.navigate("/home/news");
+    ok(homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news");
+    Finch.navigate("/home");
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    Finch.navigate("/home", {
+      foo: "bar"
+    });
+    ok(homeRegex.test(hash()), "Navigate remained on the /home route");
+    ok(hash().indexOf("foo=bar") > -1, "Had correct query parameter set");
+    Finch.navigate("/home", {
+      hello: "world"
+    });
+    ok(homeRegex.test(hash()), "Navigate remained on the /home route");
+    ok(hash().indexOf("foo=bar") === -1, "Removed foo=bar");
+    ok(hash().indexOf("hello=world") > -1, "Added hello=world");
+    Finch.navigate(null, {
+      foos: "bars"
+    });
+    ok(/^#?\/home/.test(hash()), "Navigate remained on the /home route");
+    ok(hash().indexOf("hello=world") === -1, "Removed hello=world");
+    ok(hash().indexOf("foos=bars") > -1, "Added foos=bars");
+    Finch.navigate({
+      foos: "baz"
+    });
+    ok(hash().indexOf("foos=baz") > -1, "Changed to foos=baz");
+    Finch.navigate({
+      hello: "world"
+    });
+    ok(hash().indexOf("foos=baz") > -1, "Kept foos=baz");
+    ok(hash().indexOf("hello=world") > -1, "Added hello=world");
+    Finch.navigate({
+      foos: null
+    });
+    ok(hash().indexOf("foos=baz") === -1, "Removed foos=baz");
+    ok(hash().indexOf("hello=world") > -1, "Kept hello=world");
+    Finch.navigate("/home/news");
+    ok(homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news");
+    ok(hash().indexOf("hello=world") > -1, "Kept hello=world");
+    Finch.navigate("/hello world", {});
+    ok(helloWorldRegex.test(hash()), "Navigated to /hello%20world");
+    ok(hash().indexOf("hello=world") === -1, "Removed hello=world");
+    Finch.navigate("/hello world", {
+      foo: "bar bar"
+    });
+    ok(helloWorldRegex.test(hash()), "Navigate remained at /hello%20world");
+    ok(hash().indexOf("foo=bar%20bar") > -1, "Added and escaped foo=bar bar");
+    Finch.navigate(null, {
+      foo: "baz baz"
+    });
+    ok(helloWorldRegex.test(hash()), "Navigate remained at /hello%20world");
+    ok(hash().indexOf("foo=bar%20bar") === -1, "Removed foo=bar bar");
+    ok(hash().indexOf("foo=baz%20baz") > -1, "Added and escaped foo=baz baz");
+    Finch.navigate({
+      hello: 'world world'
+    });
+    ok(helloWorldRegex.test(hash()), "Navigate remained at /hello%20world");
+    ok(hash().indexOf("foo=baz%20baz") > -1, "Kept and escaped foo=baz baz");
+    ok(hash().indexOf("hello=world%20world") > -1, "Added and escaped hello=world world");
+    Finch.navigate("/home?foo=bar", {
+      hello: "world"
+    });
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    ok(hash().indexOf("foo=bar") > -1, "Had correct query parameter set foo=bar");
+    ok(hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world");
+    equal(hash().split("?").length - 1, 1, "Correct number of '?'");
+    equal(hash().split("&").length - 1, 1, "Correct number of '&'");
+    Finch.navigate("/home?foo=bar", {
+      hello: "world",
+      foo: "baz"
+    });
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    ok(hash().indexOf("foo=baz") > -1, "Had correct query parameter set foo=baz");
+    ok(hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world");
+    equal(hash().split("?").length - 1, 1, "Correct number of '?'");
+    equal(hash().split("&").length - 1, 1, "Correct number of '&'");
+    Finch.navigate("/home?foo=bar", {
+      hello: "world",
+      free: "bird"
+    });
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    ok(hash().indexOf("foo=bar") > -1, "Had correct query parameter set foo=bar");
+    ok(hash().indexOf("free=bird") > -1, "Had correct query parameter set free=bird");
+    ok(hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world");
+    equal(hash().split("?").length - 1, 1, "Correct number of '?'");
+    return equal(hash().split("&").length - 1, 2, "Correct number of '&'");
+  }));
+
   test("Finch.listen and Finch.ignore", sinon.test(function() {
-    var cb, clearWindowMethods;
-    if (window.hasOwnProperty == null) {
+    var cb, clearWindowMethods, _ref;
+    if ((_ref = window.hasOwnProperty) == null) {
       window.hasOwnProperty = function(prop) {
         return prop in this;
       };

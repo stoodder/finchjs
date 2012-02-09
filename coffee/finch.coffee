@@ -13,7 +13,7 @@ trimSlashes = (str) -> str.replace(/^\//, '').replace(/\/$/, '')
 startsWith = (haystack, needle) -> haystack.indexOf(needle) is 0
 endsWith = (haystack, needle) ->  haystack.indexOf(needle, haystack.length - needle.length) isnt -1
 
-contains = (haystack, needle) -> 
+contains = (haystack, needle) ->
 	if isFunction( haystack.indexOf )
 		return haystack.indexOf(needle) isnt -1
 	else if isArray( haystack )
@@ -34,6 +34,12 @@ extend = (obj, extender) ->
 	obj[key] = value for key, value of extender
 
 	return obj
+
+compact = (obj) ->
+	obj = {} unless isObject(obj)
+	newObj = {}
+	(newObj[key] = value if value?) for key, value of obj
+	return newObj
 
 objectsEqual = (obj1, obj2) ->
 	for key, value of obj1
@@ -95,7 +101,7 @@ class RoutePath
 	constructor: ({node, boundValues, parameterObservables} = {}) ->
 		@node = node ? null
 		@boundValues = boundValues ? []
-		@parameterObservables = parameterObservables ? []
+		@parameterObservables = parameterObservables ? [[]]
 
 	getBindings: ->
 		bindings = {}
@@ -218,7 +224,7 @@ parseParameters = (params) ->
 		else if /^[0-9]+\.[0-9]*$/.test(value)
 			value = parseFloat(value)
 		params[key] = value
-	
+
 	#Return the parameters
 	return params
 
@@ -485,7 +491,7 @@ step = ->
 
 		#Execute this path's load method
 		stepLoad()
-	
+
 	#Otherwise step through a teardown/setup
 	else
 		# Find the nearest common ancestor of the current and new path
@@ -548,7 +554,7 @@ stepLoad = ->
 	#Is the load method asynchronous?
 	if load.length is 2
 		load.call(context, bindings, recur)
-	
+
 	#Execute it synchronously
 	else
 		load.call(context, bindings)
@@ -614,7 +620,7 @@ hashChangeListener = (event) ->
 		#Run Finch.call, if successful save the current hash
 		if Finch.call(hash)
 			CurrentHash = hash
-		
+
 		#If not successful revert
 		else
 			window.location.hash = CurrentHash ? ""
@@ -657,7 +663,7 @@ Finch = {
 					if not SetupCalled
 						IgnoreObservables = true
 						cb(bindings, callback)
-			
+
 			#Otherwise set them up synchronously
 			else
 				settings.load = (bindings) ->
@@ -695,7 +701,7 @@ Finch = {
 
 		#Extract the route and query parameters from the uri
 		[uri, queryString] = uri.split("?", 2)
-		
+
 		# Find matching route in route tree, returning false if there is none
 		newPath = findPath(RootNode, uri)
 		return false unless newPath?
@@ -709,7 +715,7 @@ Finch = {
 		#avoid calling the load method again
 		if CurrentTargetPath is null and CurrentPath.isEqual(newPath)
 			step()
-		
+
 		#Otherwise, start stepping towards our target
 		else
 			previousTargetPath = CurrentTargetPath
@@ -831,7 +837,7 @@ Finch = {
 					HashListening = false
 
 		return not HashListening
-	
+
 	#END Finch.ignore()
 
 	#---------------------------------------------------
@@ -852,41 +858,53 @@ Finch = {
 	#	queryParams (object) - An object to UPDATE the current list of query parameters (won't delete parameters from the list, only add and/or update current)use Finch.navigate(null, {params}) to change the list of query parameters
 	#---------------------------------------------------
 	navigate: (uri, queryParams) ->
+		#Get the current uri and params
+		[ currentUri, currentQueryString ] = window.location.hash.split("?", 2)
+		currentUri ?= ""
+		currentQueryString ?= ""
+
+		#format the current uri appropriately
+		currentUri = currentUri.slice(1) if currentUri.slice(0,1) is "#"
+		currentUri = unescape(currentUri)
+
+		#format the currentParams
+		currentQueryParams = parseQueryString( currentQueryString )
 
 		#if the uri is an object, we'll assume we're just updating the hash
 		if isObject(uri)
 			queryParams = uri
 			uri = null
-			currentQueryString = window.location.hash.split("?", 2)[1] ? ""
-			currentQueryParams = parseQueryString(currentQueryString)
 
 			#Unescape things fromthe current query params
-			for key, value of currentQueryParams
-				currentQueryParams[unescape(key)] = unescape(value)
+			do ->
+				newQueryParams = {}
+				for key, value of currentQueryParams
+					newQueryParams[unescape(key)] = unescape(value)
+				currentQueryParams = newQueryParams
 
 			#udpate the query params
 			queryParams = extend(currentQueryParams, queryParams)
 
-		#otherwise assume they're trying to browser to a completely new route
-		else
-			uri = null unless isString(uri)
-			queryParams = {} unless isObject(queryParams)
+		#Start trying to create the new uri
+		uri = null unless isString(uri)
+		uri = currentUri if uri is null
+		[uri, uriParamString] = uri.split("?", 2)
+		uri = escape(uri)
+
+		#Make sure the uri param string is valid
+		uriQueryParams = if isString(uriParamString) then parseQueryString(uriParamString) else {}
+
+		#Get and format the query params
+		queryParams = currentQueryParams unless isObject(queryParams)
+		queryParams = extend(uriQueryParams, queryParams)
+		queryParams = compact(queryParams)
 
 		#Generate a query string
 		queryString = (escape(key) + "=" + escape(value) for key, value of queryParams).join("&")
 
-		#if the uri is null, use the current uri
-		if uri is null
-			uri = window.location.hash.split("?", 2)[0] ? ""
-			uri = uri.slice(1) if uri.slice(0,1) is "#"
-
-		#escape the uri
-		uri = escape(uri)
-
 		#try to attach the query string
 		if queryString.length > 0
-			uri += if uri.indexOf("?") > -1 then "&" else "?"
-			uri += queryString
+			uri += "?" + queryString
 
 		#update the hash
 		window.location.hash = uri
