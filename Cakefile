@@ -13,7 +13,8 @@ CoffeeScript    	= require 'coffee-script'
 
 
 # Get the version number
-version = "#{fs.readFileSync('VERSION')}".replace /[^0-9a-zA-Z.]*/gm, ''
+version_file = 'VERSION'
+version = "#{fs.readFileSync(version_file)}".replace /[^0-9a-zA-Z.]*/gm, ''
 version_tag = "v#{version}"
 
 sources = [
@@ -36,7 +37,6 @@ Array::unique = ->
 	output = {}
 	output[@[key]] = @[key] for key in [0...@length]
 	value for key, value of output
-
 
 # Method used to write a javascript file
 write_javascript_file = (filename, body) ->
@@ -97,7 +97,7 @@ task 'build-tests', 'build tests from source', (cb) ->
 
 #Task to watch files (so they're built when saved)
 task 'watch', 'watch coffee/ and tests/ for changes and build', ->
-	console.log "Watching for changes in coffee/"
+	console.log "Watching for changes in coffee/ and tests/"
 
 	for source in sources
 		fs.watch( source, (curr, prev) ->
@@ -112,6 +112,9 @@ task 'watch', 'watch coffee/ and tests/ for changes and build', ->
 				invoke 'build-tests'
 		)
 
+# --------------------------------------------------------
+# 
+# --------------------------------------------------------
 run = (cmd, args, cb, err_cb) ->
 	exec "#{cmd} #{args.join(' ')}", (err, stdout, stderr) ->
 		if err isnt null
@@ -124,10 +127,16 @@ run = (cmd, args, cb, err_cb) ->
 		else
 			cb(stdout) if typeof cb is 'function'
 
+# --------------------------------------------------------
+# 
+# --------------------------------------------------------
 with_clean_repo = (cb) ->
 	run 'git', ['diff', '--exit-code'], cb, ->
 		throw 'There are files that need to be committed first.'
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 without_existing_tag = (cb) ->
 	run 'git', ['tag'], (stdout) ->
 		if stdout.split("\n").indexOf( version_tag ) >= 0
@@ -135,17 +144,15 @@ without_existing_tag = (cb) ->
 		else
 			cb()
 
-tag_release = (cb, cb_err) ->
-	run 'git', ['tag', '-a', '-m', "\"Version #{version}\"", version_tag], cb, cb_err
-
-untag_release = (e) ->
-	console.log "Failure to tag caught: #{e}"
-	console.log "Removing tag #{version_tag}"
-	run 'git', ['tag', '-d', version_tag]
-
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 push_repo = (args=[], cb, cb_err) ->
 	run 'git', ['push'].concat(args), cb, cb_err
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 print_error = (error, file_name, file_contents) ->
 	line = error.message.match /line ([0-9]+):/
 	if line && line[1] && line = parseInt(line[1])
@@ -161,7 +168,30 @@ print_error = (error, file_name, file_contents) ->
 	else
 		console.log "Error compiling #{file_name}: #{error.message}"
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
+git_commit = (message) ->
+	run "git", ["commit", '-a', '-m', message]
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
+git_tag = (cb, cb_err) ->
+	run 'git', ['tag', '-a', '-m', "\"Version #{version}\"", version_tag], cb, cb_err
+
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
+git_untag = (e) ->
+	console.log "Failure to tag caught: #{e}"
+	console.log "Removing tag #{version_tag}"
+	run 'git', ['tag', '-d', version_tag]
+
+
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 task 'major', 'Executing a major version update', () ->
 
 	console.log "Trying to run a major version update"
@@ -171,13 +201,21 @@ task 'major', 'Executing a major version update', () ->
 	v[2] = v[3] = 0
 	version = "#{v[1]}.#{v[2]}.#{v[3]}"
 
-	fs.writeFileSync('VERSION', version)
+	fs.writeFileSync(version_file, version)
 
-	run "git", ["commit", '-a', '-m', "\"Updating to Major version #{version}\""]
+	invoke 'build'
+	invoke 'build-tests'
 
-	console.log "Finched updating major version"
+	git_commit("\"Updating to Major version #{version}\"")
+
+	git_tag(->)
+
+	console.log "Finished updating major version"
 
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 task 'minor', 'Executing a minor version update', () ->
 
 	console.log "Trying to run a minor versino update"
@@ -187,13 +225,21 @@ task 'minor', 'Executing a minor version update', () ->
 	v[3] = 0
 	version = "#{v[1]}.#{v[2]}.#{v[3]}"
 
-	fs.writeFileSync('VERSION', version)
+	fs.writeFileSync(version_file, version)
 
-	run "git", ["commit", '-a', '-m', "\"Updating to Minor version #{version}\""]
+	invoke 'build'
+	invoke 'build-tests'
 
-	console.log "Finched updating minor version"
+	git_commit("\"Updating to Minor version #{version}\"")
+
+	git_tag(->)
+
+	console.log "Finished updating minor version"
 
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 task 'patch', 'Executing a patch version update', () ->
 
 	console.log "Trying to run a patch version update"
@@ -202,26 +248,34 @@ task 'patch', 'Executing a patch version update', () ->
 	v[3]++
 	version = "#{v[1]}.#{v[2]}.#{v[3]}"
 
-	fs.writeFileSync('VERSION', version)
+	fs.writeFileSync(version_file, version)
 
-	run "git", ["commit", '-a', '-m', "\"Updating to Patch version #{version}\""]
+	invoke 'build'
+	invoke 'build-tests'
 
-	console.log "Finched updating patch version"
+	git_commit("\"Updating to Patch version #{version}\"")
+
+	git_tag(->)
+
+	console.log "Finished updating patch version"
 
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 task 'release', 'build, tag the current release, and push', ->
 	console.log "Trying to tag #{version_tag}..."
 	with_clean_repo( ->
 		without_existing_tag( ->
 			build( ->
-				tag_release ( ->
+				git_tag ( ->
 					push_repo [], ( ->
 						push_repo ['--tags'], ( ->
 							console.log "Successfully tagged #{version_tag}: https://github.com/stoodder/finchjs/tree/#{version_tag}"
 
-						), untag_release
-					), untag_release
-				), untag_release
+						), git_untag
+					), git_untag
+				), git_untag
 			)
 		)
 	)
