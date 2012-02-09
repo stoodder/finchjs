@@ -38,7 +38,6 @@ Array::unique = ->
 	output[@[key]] = @[key] for key in [0...@length]
 	value for key, value of output
 
-
 # Method used to write a javascript file
 write_javascript_file = (filename, body) ->
 	fs.writeFileSync filename, """
@@ -113,6 +112,9 @@ task 'watch', 'watch coffee/ and tests/ for changes and build', ->
 				invoke 'build-tests'
 		)
 
+# --------------------------------------------------------
+# 
+# --------------------------------------------------------
 run = (cmd, args, cb, err_cb) ->
 	exec "#{cmd} #{args.join(' ')}", (err, stdout, stderr) ->
 		if err isnt null
@@ -125,10 +127,16 @@ run = (cmd, args, cb, err_cb) ->
 		else
 			cb(stdout) if typeof cb is 'function'
 
+# --------------------------------------------------------
+# 
+# --------------------------------------------------------
 with_clean_repo = (cb) ->
 	run 'git', ['diff', '--exit-code'], cb, ->
 		throw 'There are files that need to be committed first.'
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 without_existing_tag = (cb) ->
 	run 'git', ['tag'], (stdout) ->
 		if stdout.split("\n").indexOf( version_tag ) >= 0
@@ -136,9 +144,15 @@ without_existing_tag = (cb) ->
 		else
 			cb()
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 push_repo = (args=[], cb, cb_err) ->
 	run 'git', ['push'].concat(args), cb, cb_err
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 print_error = (error, file_name, file_contents) ->
 	line = error.message.match /line ([0-9]+):/
 	if line && line[1] && line = parseInt(line[1])
@@ -154,17 +168,30 @@ print_error = (error, file_name, file_contents) ->
 	else
 		console.log "Error compiling #{file_name}: #{error.message}"
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 git_commit = (message) ->
 	run "git", ["commit", '-a', '-m', message]
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 git_tag = (cb, cb_err) ->
 	run 'git', ['tag', '-a', '-m', "\"Version #{version}\"", version_tag], cb, cb_err
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 git_untag = (e) ->
 	console.log "Failure to tag caught: #{e}"
 	console.log "Removing tag #{version_tag}"
 	run 'git', ['tag', '-d', version_tag]
 
+
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 task 'major', 'Executing a major version update', () ->
 
 	console.log "Trying to run a major version update"
@@ -186,6 +213,9 @@ task 'major', 'Executing a major version update', () ->
 	console.log "Finished updating major version"
 
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 task 'minor', 'Executing a minor version update', () ->
 
 	console.log "Trying to run a minor versino update"
@@ -207,6 +237,9 @@ task 'minor', 'Executing a minor version update', () ->
 	console.log "Finished updating minor version"
 
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 task 'patch', 'Executing a patch version update', () ->
 
 	console.log "Trying to run a patch version update"
@@ -223,10 +256,13 @@ task 'patch', 'Executing a patch version update', () ->
 	git_commit("\"Updating to Patch version #{version}\"")
 
 	git_tag(->)
-	
+
 	console.log "Finished updating patch version"
 
 
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
 task 'release', 'build, tag the current release, and push', ->
 	console.log "Trying to tag #{version_tag}..."
 	with_clean_repo( ->
