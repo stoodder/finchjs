@@ -2,7 +2,7 @@
 	Finch.js - Powerfully simple javascript routing
 	by Rick Allen (stoodder) and Greg Smith (smrq)
 
-	Version 0.3.9
+	Version 0.3.6
 	Full source at https://github.com/stoodder/finchjs
 	Copyright (c) 2011 RokkinCat, http://www.rokkincat.com
 
@@ -768,7 +768,7 @@
       _ref3 = window.location.hash.split("?", 2), currentUri = _ref3[0], currentQueryString = _ref3[1];
       if (currentUri == null) currentUri = "";
       if (currentQueryString == null) currentQueryString = "";
-      if (currentUri[0] === "#") currentUri = currentUri.slice(1);
+      if (currentUri.slice(0, 1) === "#") currentUri = currentUri.slice(1);
       currentUri = unescape(currentUri);
       currentQueryParams = parseQueryString(currentQueryString);
       if (isObject(uri)) {
@@ -788,7 +788,7 @@
       if (!isString(uri)) uri = null;
       if (uri === null) uri = currentUri;
       _ref4 = uri.split("?", 2), uri = _ref4[0], uriParamString = _ref4[1];
-      if (uri[0] === "#") uri = uri.slice(1);
+      if (uri.slice(0, 1) === "#") uri = uri.slice(1);
       uri = escape(uri);
       uriQueryParams = isString(uriParamString) ? parseQueryString(uriParamString) : {};
       if (!isObject(queryParams)) queryParams = currentQueryParams;

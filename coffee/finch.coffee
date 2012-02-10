@@ -864,7 +864,7 @@ Finch = {
 		currentQueryString ?= ""
 
 		#format the current uri appropriately
-		currentUri = currentUri[1..] if currentUri[0] is "#"
+		currentUri = currentUri[1..] if currentUri[0..0] is "#"
 		currentUri = unescape(currentUri)
 
 		#format the currentParams
@@ -889,7 +889,7 @@ Finch = {
 		uri = null unless isString(uri)
 		uri = currentUri if uri is null
 		[uri, uriParamString] = uri.split("?", 2)
-		uri = uri[1..] if uri[0] is "#"
+		uri = uri[1..] if uri[0..0] is "#"
 		uri = escape(uri)
 
 		#Make sure the uri param string is valid
