@@ -30,10 +30,10 @@ __With an Asynchronous Callback__
 		childCallback()
 
 #### See Also
-<a href="http://localhost.com:1337/index.html#docs/introduction/basic usage" alt="Basic Usage" title="Basic Usage">Basic Usage</a>&nbsp; - &nbsp;
-<a href="http://localhost.com:1337/index.html#docs/parameters/working with inline parameters (bindings)" alt="Working with Inline Parameters" title="Working with Inline Parameters">Working with Inline Parameters (Bindings)</a>&nbsp; - &nbsp;
-<a href="http://localhost.com:1337/index.html#docs/parentRoutes" alt="Parent Routes" title="Parent Routes">Parent Routes</a>&nbsp; - &nbsp;
-<a href="http://localhost.com:1337/index.html#docs/advancedTopics/Asynchronous routes" alt="Asynchronous Routes" title="Asynchronous Routes">Asynchronous Routes</a>
+<a href="#docs/introduction/basic usage" alt="Basic Usage" title="Basic Usage">Basic Usage</a>&nbsp; - &nbsp;
+<a href="#docs/parameters/working with inline parameters (bindings)" alt="Working with Inline Parameters" title="Working with Inline Parameters">Working with Inline Parameters (Bindings)</a>&nbsp; - &nbsp;
+<a href="#docs/parentRoutes" alt="Parent Routes" title="Parent Routes">Parent Routes</a>&nbsp; - &nbsp;
+<a href="#docs/advancedTopics/Asynchronous routes" alt="Asynchronous Routes" title="Asynchronous Routes">Asynchronous Routes</a>
 
 ### &nbsp;
 ### Finch.route( route, {setup, load, teardown} )
@@ -186,7 +186,7 @@ __With Query Parameters__
 	Finch.navigate "Some/Route", {hello:'world', foo:'bar'}
 
 #### See Also
-<a href="http://localhost.com:1337/index.html#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>
+<a href="#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>
 
 ### &nbsp;
 ### Finch.navigate( _null_, queryParams )
@@ -203,7 +203,7 @@ If null is passed in as the first argument, only the query parameters are update
 	Finch.navigate null, {hello:'world2', wow:'wee'}
 
 #### See Also
-<a href="http://localhost.com:1337/index.html#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>
+<a href="#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>
 
 ### &nbsp;
 ### Finch.navigate( queryParams )
@@ -221,7 +221,7 @@ The last version of Finch.navigate takes only one perameter for the query string
 	Finch.navigate {foo:'bar', wow:'wee!!!'}
 
 #### See Also
-<a href="http://localhost.com:1337/index.html#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>
+<a href="#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>
 
 ## &nbsp;
 ## Finch.listen()
@@ -231,7 +231,7 @@ Finch.listen() listens for changes in the browser's hash value and responds by c
 _(boolean)_ - Was Finch.listen() successful in setting up hash listening
 
 #### See Also
-<a href="http://localhost.com:1337/index.html#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>
+<a href="#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>
 
 ## &nbsp;
 ## Finch.ignore()
@@ -241,4 +241,11 @@ Finch.ignore() is the opposite of Finch.listen() and will stop listening to chan
 _(boolean)_ - Was Finch.ignore() successful in removing hash listening
 
 #### See Also
-<a href="http://localhost.com:1337/index.html#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>
+<a href="#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>
+
+## &nbsp;
+## Finch.abort()
+Sometimes, especially when heavily utilizing asynchronous routes, we'll need to return contorl back to Finch even though we may be in the middle of currently processing a step in the route hierarchy.  This is usually the case when an unexpected error occurs in our program and fails to call the childCallback for any reason.  Finch.abort() brings control back to Finch for this very reason. 
+
+#### See Also
+<a href="#docs/advancedTopics/Asynchronous routes/How do I abort a call?" alt="How do I abort a call?" title="How do I abort a call?">How do I abort a call?</a>

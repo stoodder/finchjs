@@ -39,6 +39,9 @@ Again, calling the /home/news route would yield:
 
 **NOTE** Because of Finch's caching abilities, if a call is interrupted (perhaps a user is clicking madly through your website... because they love it so much, of course), the current call will be aborted and once finished, will call the newly updated route.  This is useful for keeping things in sync and prevents firing off a ton of concurrent ajax requests (which could even lead to weird race conditions!)
 
+## How do I abort a call?
+Simple, Finch provides a method (Finch.abort) that will kill the current request execution wherever the current step in the request queue is at.  This can be especially useful for recovering from unexpected errors that might otherwise comprimise the entire system.  For example, if we make an ajax call (and are therefore using asynchronous routes) but for some reason our ajax call is not successful, we may never call the corresponding childCallback.  In this scenarion, Finch provides Finch.abort() ro handle these scenarios.  Finch.abort() basically will stop the current execution of the route queue at whichever state its in and return power back to Finch.
+
 ## Setup, Load, and Teardown
 The last topic to cover is advanced route creation with setup, load, and teardown functions.  Until now, we've seen the short hand version (Finch.route "route", callback), but there is also a more complex long hand notation.  The second parameter may, instead of being a function, be an object containing the keys setup, load, teardown.  Like so:
 
