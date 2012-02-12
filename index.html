@@ -3,89 +3,33 @@
 	<head>
 		<script src="./scripts/finch.js" type="text/javascript" language="javascript"></script>
 		<script type="text/javascript" language="javascript">
-			Finch.route("home", function(bindings)
+			
+			Finch.route("/home", function(bindings, stepCallback)
 			{
-				console.log("Setup home");
-				Finch.observe(function(params)
+				alert("HEY!");
+
+				setTimeout(function()
 				{
-					console.log(params("hello"))
-				});
+					alert("aborting home");
+					Finch.abort()
+				}, 3000);
 			});
 
-			Finch.route("[home]/news", {
-				setup: function(bindings)
-				{
-					this.interval = "Some interval"
-					console.log("Setup home/news");
-					Finch.observe(function(params)
-					{
-						console.log("Well " + params('hello'));
-					});
-				},
-
-				load: function(bindings)
-				{
-					console.log("Loaded home, " + this.interval);
-				},
-
-				teardown: function(bindings, cb)
-				{
-					console.log("Home is being torn down, " + this.interval);
-
-					cb();
-				}
-			});
-
-			Finch.route("[home/news]/:id", function(bindings)
+			Finch.route("/foo", function(bindings, stepCallback)
 			{
-				console.log("loaded with id, " + bindings.id);
-				Finch.observe("hello", "foo", function(hello, foo)
-				{
-					console.log("HERE: ", foo, " ", hello)
-				});
-			});
+				alert("Foo");
 
-			Finch.route("bool", function()
-			{
-				Finch.observe('val', function(val)
+				setTimeout(function()
 				{
-					alert(typeof val + " " + val);
-				});
+					alert("aborting foo");
+					Finch.abort()
+				}, 3000);
 			});
 
 			Finch.listen()
 		</script>
 	</head>
 	<body>
-		<div>
-			<a href="javascript:void(0)" onclick="Finch.navigate('home')">Home</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate('home', {hello:'world'})">Home?hello=world</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate('home', {hello:'world', foo:'bar'})">Home?hello=world&amp;foo=bar</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate('home', {hello:'world', foo:'baz'})">Home?hello=world&amp;foo=baz</a>
-		</div>
-		<div>
-			<a href="javascript:void(0)" onclick="Finch.navigate('home/news')">Home/News</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate('home/news', {hello:'world'})">Home/News?hello=world</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate('home/news', {hello:'world', foo:'bar'})">Home/News?hello=world&amp;foo=bar</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate('home/news', {hello:'world', foo:'baz'})">Home/News?hello=world&amp;foo=baz</a>
-		</div>
-		<div>
-			<a href="javascript:void(0)" onclick="Finch.navigate('home/news/33')">Home/News/33</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate('home/news/33', {hello:'world'})">Home/News/33?hello=world</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate('home/news/33', {hello:'world', foo:'bar'})">Home/News/33?hello=world&amp;foo=bar</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate('home/news/33', {hello:'world', foo:'baz'})">Home/News/33?hello=world&amp;foo=baz</a>
-		</div>
-		<div>
-			<a href="javascript:void(0)" onclick="Finch.navigate({})">?</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate({hello:'world'})">?hello=world</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate({hello:'world', foo:'bar'})">?hello=world&amp;foo=bar</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate({hello:'world', foo:'baz'})">?hello=world&amp;foo=baz</a>
-		</div>
-		<div>
-			<a href="javascript:void(0)" onclick="Finch.navigate(null, {})">null ?</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate(null, {hello:'world'})">null ?hello=world</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate(null, {hello:'world', foo:'bar'})">null ?hello=world&amp;foo=bar</a> |
-			<a href="javascript:void(0)" onclick="Finch.navigate(null, {hello:'world', foo:'baz'})">null ?hello=world&amp;foo=baz</a>
-		</div>
+		<a href="#home">Home</a> | <a href="#foo">foo</a>
 	</body>
 </html>

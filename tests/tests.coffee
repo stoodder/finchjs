@@ -823,7 +823,9 @@ test "Finch.navigate", sinon.test ->
 
 	window.location.hash = ""
 
-	hash = -> window.location.hash ? ""
+	hash = -> 
+		return "#" + ( window.location.href.split("#", 2)[1] ? "" )
+
 	homeRegex = /^#?\/home/
 	homeNewsRegex = /^#?\/home\/news/
 	helloWorldRegex = /^#?\/hello%20world/
@@ -851,7 +853,7 @@ test "Finch.navigate", sinon.test ->
 
 	#Navigate to only a new hash
 	Finch.navigate(null, foos:"bars")
-	ok /^#?\/home/.test(hash()), "Navigate remained on the /home route"
+	ok homeRegex.test(hash()), "Navigate remained on the /home route"
 	ok hash().indexOf("hello=world") is -1, "Removed hello=world"
 	ok hash().indexOf("foos=bars") > -1, "Added foos=bars"
 
@@ -995,3 +997,33 @@ test "Finch.listen and Finch.ignore", sinon.test ->
 	equal cb.removeEventListener.callCount, 0, "removeEventListener not called"
 	equal cb.detachEvent.callCount, 1, "detachEvent called once"
 	equal cb.clearInterval.callCount, 0, "clearInterval not called"
+
+test "Finch.abort", sinon.test ->
+
+	homeStub = @stub()
+	fooStub = @stub()
+
+	Finch.route "/home", (bindings, continuation) -> homeStub()
+	Finch.route "/foo", (bindings, continuation) -> fooStub()
+
+	#make a call to home
+	Finch.call("home")
+	equal homeStub.callCount, 1, "Home called correctly"
+	equal fooStub.callCount, 0, "Foo not called"
+
+	homeStub.reset()
+	fooStub.reset()
+
+	#Call foo
+	Finch.call("foo")
+	equal homeStub.callCount, 0, "Home not called"
+	equal fooStub.callCount, 0, "Foo not called"
+
+	homeStub.reset()
+	fooStub.reset()
+
+	#abort first, then call foo
+	Finch.abort()
+	Finch.call("foo")
+	equal homeStub.callCount, 0, "Home not called"
+	equal fooStub.callCount, 1, "Foo called correctly"

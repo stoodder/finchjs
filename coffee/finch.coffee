@@ -777,6 +777,19 @@ Finch = {
 	#END Finch.observe()
 
 	#---------------------------------------------------
+	# Method: Finch.abort
+	#	Used to abort a current call and hand control back to finch.
+	#	This can be especially useful when doing an asynchronous call that
+	#	for some reason (perhaps an ajax fail) doesn't ever call the continuation
+	#	method, therefore hanging the entire app.
+	#---------------------------------------------------
+	abort: () ->
+		#Simply abort by clearing the current target path
+		CurrentTargetPath = null
+		
+	#END abort
+
+	#---------------------------------------------------
 	# Method: Finch.listen
 	#	Used to listen to changes in the window hash, will respond with Finch.call
 	#
