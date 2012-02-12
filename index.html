@@ -21,6 +21,7 @@
 
 				setTimeout(function()
 				{
+					location.replace("#foo?replaced=true")
 					alert("aborting foo");
 					Finch.abort()
 				}, 3000);
