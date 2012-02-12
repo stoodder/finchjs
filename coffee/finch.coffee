@@ -195,6 +195,30 @@ parseQueryString = (queryString) ->
 #END parseQueryString
 
 #---------------------------------------------------
+# Method: getHash
+#	Used to get the hash of a url in a standard way (that performs the same in all browsers)
+#
+# Returns:
+#	string - the string of the current hash, including the '#'
+#---------------------------------------------------
+getHash = () ->
+
+	return "#" + ( window.location.href.split("#", 2)[1] ? "" )
+
+#END getHash
+
+#---------------------------------------------------
+# Method: setHash
+#	Used to set the current hash in a standard way
+#---------------------------------------------------
+setHash = (hash) ->
+	hash = "" unless isString(hash)
+	hash = trim(hash)
+	hash = hash[1..] if hash[0..0] is '#'
+	window.location.hash = hash
+#END setHash
+
+#---------------------------------------------------
 # Method: parseParameters
 #	Used to 'smartly' parse through the parameters
 #	- converts string bools to booleans
@@ -610,7 +634,7 @@ runObservables = ->
 #	Used to respond to hash changes
 #---------------------------------------------------
 hashChangeListener = (event) ->
-	hash = window.location.hash
+	hash = getHash()
 	hash = hash.slice(1) if startsWith(hash, "#")
 	hash = unescape(hash)
 
@@ -623,7 +647,7 @@ hashChangeListener = (event) ->
 
 		#If not successful revert
 		else
-			window.location.hash = CurrentHash ? ""
+			setHash(CurrentHash ? "")
 
 #END hashChangeListener
 
@@ -786,7 +810,7 @@ Finch = {
 	abort: () ->
 		#Simply abort by clearing the current target path
 		CurrentTargetPath = null
-		
+
 	#END abort
 
 	#---------------------------------------------------
@@ -872,7 +896,7 @@ Finch = {
 	#---------------------------------------------------
 	navigate: (uri, queryParams) ->
 		#Get the current uri and params
-		[ currentUri, currentQueryString ] = window.location.hash.split("?", 2)
+		[ currentUri, currentQueryString ] = getHash().split("?", 2)
 		currentUri ?= ""
 		currentQueryString ?= ""
 
@@ -921,7 +945,7 @@ Finch = {
 			uri += "?" + queryString
 
 		#update the hash
-		window.location.hash = uri
+		setHash(uri)
 
 	#END Finch.navigate()
 
