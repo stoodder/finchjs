@@ -2,7 +2,7 @@
 	Finch.js - Powerfully simple javascript routing
 	by Rick Allen (stoodder) and Greg Smith (smrq)
 
-	Version 0.3.11
+	Version 0.3.12
 	Full source at https://github.com/stoodder/finchjs
 	Copyright (c) 2011 RokkinCat, http://www.rokkincat.com
 
@@ -886,8 +886,8 @@
   }));
 
   test("Finch.listen and Finch.ignore", sinon.test(function() {
-    var cb, clearWindowMethods;
-    if (window.hasOwnProperty == null) {
+    var cb, clearWindowMethods, _ref;
+    if ((_ref = window.hasOwnProperty) == null) {
       window.hasOwnProperty = function(prop) {
         return prop in this;
       };
