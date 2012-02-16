@@ -2,7 +2,7 @@
 	Finch.js - Powerfully simple javascript routing
 	by Rick Allen (stoodder) and Greg Smith (smrq)
 
-	Version 0.3.9
+	Version 0.3.12
 	Full source at https://github.com/stoodder/finchjs
 	Copyright (c) 2011 RokkinCat, http://www.rokkincat.com
 
@@ -780,7 +780,7 @@
     window.location.hash = "";
     hash = function() {
       var _ref;
-      return (_ref = window.location.hash) != null ? _ref : "";
+      return "#" + ((_ref = window.location.href.split("#", 2)[1]) != null ? _ref : "");
     };
     homeRegex = /^#?\/home/;
     homeNewsRegex = /^#?\/home\/news/;
@@ -805,7 +805,7 @@
     Finch.navigate(null, {
       foos: "bars"
     });
-    ok(/^#?\/home/.test(hash()), "Navigate remained on the /home route");
+    ok(homeRegex.test(hash()), "Navigate remained on the /home route");
     ok(hash().indexOf("hello=world") === -1, "Removed hello=world");
     ok(hash().indexOf("foos=bars") > -1, "Added foos=bars");
     Finch.navigate({
@@ -945,6 +945,32 @@
     equal(cb.removeEventListener.callCount, 0, "removeEventListener not called");
     equal(cb.detachEvent.callCount, 1, "detachEvent called once");
     return equal(cb.clearInterval.callCount, 0, "clearInterval not called");
+  }));
+
+  test("Finch.abort", sinon.test(function() {
+    var fooStub, homeStub;
+    homeStub = this.stub();
+    fooStub = this.stub();
+    Finch.route("/home", function(bindings, continuation) {
+      return homeStub();
+    });
+    Finch.route("/foo", function(bindings, continuation) {
+      return fooStub();
+    });
+    Finch.call("home");
+    equal(homeStub.callCount, 1, "Home called correctly");
+    equal(fooStub.callCount, 0, "Foo not called");
+    homeStub.reset();
+    fooStub.reset();
+    Finch.call("foo");
+    equal(homeStub.callCount, 0, "Home not called");
+    equal(fooStub.callCount, 0, "Foo not called");
+    homeStub.reset();
+    fooStub.reset();
+    Finch.abort();
+    Finch.call("foo");
+    equal(homeStub.callCount, 0, "Home not called");
+    return equal(fooStub.callCount, 1, "Foo called correctly");
   }));
 
 }).call(this);

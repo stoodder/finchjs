@@ -424,7 +424,7 @@ test "Route sanitation", sinon.test ->
 
 	Finch.call "foo"
 	neverCalled slash,	"/ not called again"
-	calledOnce foo,          	"foo called once"
+	calledOnce foo,   	"foo called once"
 	slash.reset()
 	foo.reset()
 
@@ -447,9 +447,9 @@ test "Route sanitation", sinon.test ->
 	foo.reset()
 
 	Finch.call "foo/bar"
-	neverCalled slash,	"/ not called again"
-	neverCalled foo,  	"foo not called again"
-	calledOnce foo_bar,      	"foo/bar called once"
+	neverCalled slash, 	"/ not called again"
+	neverCalled foo,   	"foo not called again"
+	calledOnce foo_bar,	"foo/bar called once"
 	slash.reset()
 	foo.reset()
 	foo_bar.reset()
@@ -535,7 +535,7 @@ test "Asynchronous setup, load, and teardown", sinon.test ->
 	# Call /quux before the call to /foo/bar/baz completes
 	Finch.call "/quux"
 
-	calledOnce cb.setup_foo_bar,            	"/quux (before /foo/bar callback): foo/bar setup not called again"
+	calledOnce cb.setup_foo_bar,     	"/quux (before /foo/bar callback): foo/bar setup not called again"
 	neverCalled cb.setup_foo_bar_baz,	"/quux (before /foo/bar callback): foo/bar/baz setup not called"
 	neverCalled cb.setup_quux,       	"/quux (before /foo/bar callback): quux setup not called yet"
 
@@ -548,13 +548,13 @@ test "Asynchronous setup, load, and teardown", sinon.test ->
 	equal cb.setup_quux.callCount, 1,          	"/quux (after /foo/bar callback): quux setup called"
 	calledOnce cb.setup_foo_bar,               	"/quux (after /foo/bar callback): foo/bar setup not called again"
 	calledOnce cb.teardown_foo_bar,            	"/quux (after /foo/bar callback): foo/bar teardown called"
-	neverCalled cb.setup_foo_bar_baz,   	"/quux (after /foo/bar callback): foo/bar/baz setup not called"
-	neverCalled cb.teardown_foo_bar_baz,	"/quux (after /foo/bar callback): foo/bar/baz teardown not called"
+	neverCalled cb.setup_foo_bar_baz,          	"/quux (after /foo/bar callback): foo/bar/baz setup not called"
+	neverCalled cb.teardown_foo_bar_baz,       	"/quux (after /foo/bar callback): foo/bar/baz teardown not called"
 	calledOnce cb.setup_quux,                  	"/quux (after /foo/bar callback): quux setup called"
 
 do ->
 	trivialObservableTest = (fn) ->
-		
+
 		Finch.call "/foo"
 		calledOnce fn, "observable callback called once"
 		lastCalledWithExactly fn, [undefined, undefined], "called with given args"
@@ -762,27 +762,27 @@ test "Observable value types", sinon.test ->
 
 	Finch.route "/", (bindings) ->
 		Finch.observe ["x"], (x) -> stub(x)
-	
+
 	Finch.call "/?x=123"
 	calledOnce stub,                  	"/ callback called once"
 	lastCalledWithExactly stub, [123],	"/ called with correct 123"
 	stub.reset()
-	
+
 	Finch.call "/?x=123.456"
 	calledOnce stub,                      	"/ callback called once"
 	lastCalledWithExactly stub, [123.456],	"/ called with correct 123.456"
 	stub.reset()
-	
+
 	Finch.call "/?x=true"
 	calledOnce stub,                   	"/ callback called once"
 	lastCalledWithExactly stub, [true],	"/ called with correct true"
 	stub.reset()
-	
+
 	Finch.call "/?x=false"
 	calledOnce stub,                    	"/ callback called once"
 	lastCalledWithExactly stub, [false],	"/ called with correct false"
 	stub.reset()
-	
+
 	Finch.call "/?x=stuff"
 	calledOnce stub,                      	"/ callback called once"
 	lastCalledWithExactly stub, ["stuff"],	"/ called with correct stuff"
@@ -793,31 +793,139 @@ test "Binding value types", sinon.test ->
 	stub = @stub()
 
 	Finch.route "/:x", ({x}) -> stub(x)
-	
+
 	Finch.call "/123"
 	calledOnce stub,                  	"/ callback called once"
 	lastCalledWithExactly stub, [123],	"/ called with correct 123"
 	stub.reset()
-	
+
 	Finch.call "/123.456"
 	calledOnce stub,                      	"/ callback called once"
 	lastCalledWithExactly stub, [123.456],	"/ called with correct 123.456"
 	stub.reset()
-	
+
 	Finch.call "/true"
 	calledOnce stub,                   	"/ callback called once"
 	lastCalledWithExactly stub, [true],	"/ called with correct true"
 	stub.reset()
-	
+
 	Finch.call "/false"
 	calledOnce stub,                    	"/ callback called once"
 	lastCalledWithExactly stub, [false],	"/ called with correct false"
 	stub.reset()
-	
+
 	Finch.call "/stuff"
 	calledOnce stub,                      	"/ callback called once"
 	lastCalledWithExactly stub, ["stuff"],	"/ called with correct stuff"
 	stub.reset()
+
+test "Finch.navigate", sinon.test ->
+
+	window.location.hash = ""
+
+	hash = -> 
+		return "#" + ( window.location.href.split("#", 2)[1] ? "" )
+
+	homeRegex = /^#?\/home/
+	homeNewsRegex = /^#?\/home\/news/
+	helloWorldRegex = /^#?\/hello%20world/
+
+	#Navigate to just a single route
+	Finch.navigate("/home")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+
+	Finch.navigate("/home/news")
+	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news"
+
+	Finch.navigate("/home")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+
+	#navigate to a route and query parameters
+	Finch.navigate("/home", foo:"bar")
+	ok homeRegex.test(hash()), "Navigate remained on the /home route"
+	ok hash().indexOf("foo=bar") > -1, "Had correct query parameter set"
+
+	#navigate to a route and query parameters
+	Finch.navigate("/home", hello:"world")
+	ok homeRegex.test(hash()), "Navigate remained on the /home route"
+	ok hash().indexOf("foo=bar") is -1, "Removed foo=bar"
+	ok hash().indexOf("hello=world") > -1, "Added hello=world"
+
+	#Navigate to only a new hash
+	Finch.navigate(null, foos:"bars")
+	ok homeRegex.test(hash()), "Navigate remained on the /home route"
+	ok hash().indexOf("hello=world") is -1, "Removed hello=world"
+	ok hash().indexOf("foos=bars") > -1, "Added foos=bars"
+
+	#Only update the hash
+	Finch.navigate(foos:"baz")
+	ok hash().indexOf("foos=baz") > -1, "Changed to foos=baz"
+
+	Finch.navigate(hello:"world")
+	ok hash().indexOf("foos=baz") > -1, "Kept foos=baz"
+	ok hash().indexOf("hello=world") > -1, "Added hello=world"
+
+	#Remove a paremeter
+	Finch.navigate(foos:null)
+	ok hash().indexOf("foos=baz") is -1, "Removed foos=baz"
+	ok hash().indexOf("hello=world") > -1, "Kept hello=world"
+
+	#Make sure regular nbavigate keeps our qury params
+	Finch.navigate("/home/news")
+	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news"
+	ok hash().indexOf("hello=world") > -1, "Kept hello=world"
+
+	#Make sure we add proper escaping
+	Finch.navigate("/hello world", {})
+	ok helloWorldRegex.test(hash()), "Navigated to /hello%20world"
+	ok hash().indexOf("hello=world") is -1, "Removed hello=world"
+
+	Finch.navigate("/hello world", foo:"bar bar")
+	ok helloWorldRegex.test(hash()), "Navigate remained at /hello%20world"
+	ok hash().indexOf("foo=bar%20bar") > -1, "Added and escaped foo=bar bar"
+
+	Finch.navigate(null, foo:"baz baz")
+	ok helloWorldRegex.test(hash()), "Navigate remained at /hello%20world"
+	ok hash().indexOf("foo=bar%20bar") is -1, "Removed foo=bar bar"
+	ok hash().indexOf("foo=baz%20baz") > -1, "Added and escaped foo=baz baz"
+
+	Finch.navigate(hello:'world world')
+	ok helloWorldRegex.test(hash()), "Navigate remained at /hello%20world"
+	ok hash().indexOf("foo=baz%20baz") > -1, "Kept and escaped foo=baz baz"
+	ok hash().indexOf("hello=world%20world") > -1, "Added and escaped hello=world world"
+
+	#Make sure we don't add multiple '?'
+	Finch.navigate("/home?foo=bar",hello:"world")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("foo=bar") > -1, "Had correct query parameter set foo=bar"
+	ok hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world"
+	equal hash().split("?").length-1, 1, "Correct number of '?'"
+	equal hash().split("&").length-1, 1, "Correct number of '&'"
+
+	Finch.navigate("/home?foo=bar",{hello:"world",foo:"baz"})
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("foo=baz") > -1, "Had correct query parameter set foo=baz"
+	ok hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world"
+	equal hash().split("?").length-1, 1, "Correct number of '?'"
+	equal hash().split("&").length-1, 1, "Correct number of '&'"
+
+	Finch.navigate("/home?foo=bar",{hello:"world",free:"bird"})
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("foo=bar") > -1, "Had correct query parameter set foo=bar"
+	ok hash().indexOf("free=bird") > -1, "Had correct query parameter set free=bird"
+	ok hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world"
+	equal hash().split("?").length-1, 1, "Correct number of '?'"
+	equal hash().split("&").length-1, 2, "Correct number of '&'"
+
+	Finch.navigate("#/home")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("free=bird") > -1, "Had correct query parameter set free=bird"
+	ok hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world"
+
+	Finch.navigate("#/home/news",{free:"birds",hello:"worlds"})
+	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("free=birds") > -1, "Had correct query parameter set free=birds"
+	ok hash().indexOf("hello=worlds") > -1, "Had correct query parameter set hello=worlds"
 
 test "Finch.listen and Finch.ignore", sinon.test ->
 
@@ -889,3 +997,33 @@ test "Finch.listen and Finch.ignore", sinon.test ->
 	equal cb.removeEventListener.callCount, 0, "removeEventListener not called"
 	equal cb.detachEvent.callCount, 1, "detachEvent called once"
 	equal cb.clearInterval.callCount, 0, "clearInterval not called"
+
+test "Finch.abort", sinon.test ->
+
+	homeStub = @stub()
+	fooStub = @stub()
+
+	Finch.route "/home", (bindings, continuation) -> homeStub()
+	Finch.route "/foo", (bindings, continuation) -> fooStub()
+
+	#make a call to home
+	Finch.call("home")
+	equal homeStub.callCount, 1, "Home called correctly"
+	equal fooStub.callCount, 0, "Foo not called"
+
+	homeStub.reset()
+	fooStub.reset()
+
+	#Call foo
+	Finch.call("foo")
+	equal homeStub.callCount, 0, "Home not called"
+	equal fooStub.callCount, 0, "Foo not called"
+
+	homeStub.reset()
+	fooStub.reset()
+
+	#abort first, then call foo
+	Finch.abort()
+	Finch.call("foo")
+	equal homeStub.callCount, 0, "Home not called"
+	equal fooStub.callCount, 1, "Foo called correctly"
