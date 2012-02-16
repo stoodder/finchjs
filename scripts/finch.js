@@ -2,7 +2,7 @@
 	Finch.js - Powerfully simple javascript routing
 	by Rick Allen (stoodder) and Greg Smith (smrq)
 
-	Version 0.3.12
+	Version 0.3.13
 	Full source at https://github.com/stoodder/finchjs
 	Copyright (c) 2011 RokkinCat, http://www.rokkincat.com
 
@@ -332,7 +332,7 @@
     if (!isString(hash)) hash = "";
     hash = trim(hash);
     if (hash.slice(0, 1) === '#') hash = hash.slice(1);
-    if (hash.length > 0) return window.location.href = "#" + hash;
+    return window.location.hash = hash;
   };
 
   parseParameters = function(params) {
