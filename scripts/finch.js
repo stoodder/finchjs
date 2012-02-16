@@ -332,7 +332,7 @@
     if (!isString(hash)) hash = "";
     hash = trim(hash);
     if (hash.slice(0, 1) === '#') hash = hash.slice(1);
-    if (hash.length > 0) return window.location.href = "#" + hash;
+    return window.location.hash = hash;
   };
 
   parseParameters = function(params) {

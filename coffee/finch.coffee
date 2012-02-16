@@ -215,7 +215,7 @@ setHash = (hash) ->
 	hash = "" unless isString(hash)
 	hash = trim(hash)
 	hash = hash[1..] if hash[0..0] is '#'
-	window.location.href = "#" + hash if hash.length > 0
+	window.location.hash = hash
 #END setHash
 
 #---------------------------------------------------
