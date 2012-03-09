@@ -3,28 +3,10 @@
 	<head>
 		<script src="./scripts/finch.js" type="text/javascript" language="javascript"></script>
 		<script type="text/javascript" language="javascript">
-			
-			Finch.route("/home", function(bindings, stepCallback)
+
+			Finch.route("", function()
 			{
-				alert("HEY!");
-
-				setTimeout(function()
-				{
-					alert("aborting home");
-					Finch.abort()
-				}, 3000);
-			});
-
-			Finch.route("/foo", function(bindings, stepCallback)
-			{
-				alert("Foo");
-
-				setTimeout(function()
-				{
-					location.replace("#foo?replaced=true")
-					alert("aborting foo");
-					Finch.abort()
-				}, 3000);
+				alert("HELLO WORLD");
 			});
 
 			Finch.listen()

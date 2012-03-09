@@ -699,6 +699,8 @@ Finch = {
 
 		# Make sure we have valid inputs
 		pattern = "" unless isString(pattern)
+		pattern = trim(pattern)
+		pattern = "/" unless pattern.length > 0
 
 		# Parse the route, and return false if it was invalid
 		parsedRouteString = parseRouteString(pattern)

@@ -684,6 +684,8 @@
       }
       if (!isObject(settings)) settings = {};
       if (!isString(pattern)) pattern = "";
+      pattern = trim(pattern);
+      if (!(pattern.length > 0)) pattern = "/";
       parsedRouteString = parseRouteString(pattern);
       if (parsedRouteString == null) return false;
       addRoute(RootNode, parsedRouteString, settings);
