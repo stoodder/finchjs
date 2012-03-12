@@ -166,59 +166,74 @@ __Note:__ Finch.observe must exist inside of either a setup or load method (or a
 Finch.navigate() allows one to udpate the URL hash in a few different ways.
 
 ### &nbsp;
-### Finch.navigate( uri, queryParams )
-Calling Finch.navigate with a uri and optional queryParams will update the current browsers hash accordingly
+### Finch.navigate( uri, queryParams, doUpdate )
+Calling Finch.navigate with a uri and optional queryParams will set the current browsers hash accordingly
 
 #### Arguments
 * **uri** _(string)_ - The uri to direct to
 
-* **queryParams** _(object)) - Optional query parameters to append on to the uri
+* **queryParams** _(object)_ - Optional query parameters to append on to the uri
+
+* **doUpdate** _(boolean)_ - Optional flag to tell finch to just update the query params instead of overitting them.
 
 #### Example
 
 __Without Query Parameters__
 
+	# Goes to #Some/Route
 	Finch.navigate "Some/Route"
 
 __With Query Parameters__
 
-	# Goes to Some/Route?hello=world&foo=bar
+	# Goes to #Some/Route?hello=world&foo=bar
 	Finch.navigate "Some/Route", {hello:'world', foo:'bar'}
+
+__With Query Parameters and doUpdate__
+
+	# From #Some/Route?hello=world
+	# Goes to #Some/Route?hello=world&foo=bar
+	Finch.navigate "Some/Route", {foo:'bar'}, true
 
 #### See Also
 <a href="#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>
 
 ### &nbsp;
-### Finch.navigate( _null_, queryParams )
-If null is passed in as the first argument, only the query parameters are updated.
+### Finch.navigate( uri, doUpdate )
+Allows us to simply update the uri while keeping the same query parameters
 
 #### Arguments
-* **uri** _(null)_ - The uri is null in this case
+* **uri** _(string)_ - The uri to direct to
 
-* **queryParams** _(object)_ - The query params to set in the uri
+* **doUpdate** _(boolean)_ - Optional flag to tell finch to just update the query params instead of overitting them.
 
 #### Example
 
-	# Goes to Some/Route?hello=world2&wow=wee
-	Finch.navigate null, {hello:'world2', wow:'wee'}
+	# From #This/Route?hello=world2&wow=wee
+	# Goes to #Some/Route?hello=world2&wow=wee
+	Finch.navigate SomeRoute, true
 
 #### See Also
 <a href="#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>
 
 ### &nbsp;
-### Finch.navigate( queryParams )
-The last version of Finch.navigate takes only one perameter for the query string parameters.  If called in this form, the query parameters will only be added or updated (not deleted).
+### Finch.navigate( queryParams, doUpdate )
+The last version of Finch.navigate takes two parameters.  One for the query paremters and the second to tell us if we're updating or overwritting the query parameters.  If called in this form, we will only modify the query parameters
 
 #### Arguments
 * **queryParams** _(object)_ - The query params to set in the uri
+
+* **doUpdate** _(boolean)_ - Optional flag to tell finch to just update the query params instead of overitting them.
 
 #### Example
 
 	# Goes to Some/Route?hello=world2&wow=wee
 	Finch.navigate {hello:'world2', wow:'wee'}
 
-	# Goes to Some/Route?hello=world2&wow=wee!!!&foo=bar
+	# Goes to Some/Route?wow=wee!!!&foo=bar
 	Finch.navigate {foo:'bar', wow:'wee!!!'}
+
+	# Goes to Some/Route?wow=wee!!!&foo=bar&hello=world2
+	Finch.navigate {hello:'world2'}, true
 
 #### See Also
 <a href="#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>

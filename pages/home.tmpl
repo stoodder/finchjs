@@ -9,7 +9,7 @@
 				web apps that rely highly on interacting with the browser's url.
 			</p>
 			<h2 style="text-align: center" id="downloadNow">
-				<a href="#download" alt="download">Download v0.3.13 Now!</a>
+				<a href="#download" alt="download">Download v0.4.0 Now!</a>
 			</h2>
 		</div>
 	</div>
@@ -129,6 +129,7 @@ Finch.route "Home", ->
 Finch.route "/Home",
    setup: (bindings, next) ->
       console.log "Setup the home route"
+      @nametag = "Hello I am /Home"
       $.get "trackUser.json", ->
          next()
 
@@ -142,6 +143,7 @@ Finch.route "[/Home]/News", {
 
    load: (bindings, next) ->
       console.log "Looking at home/news"
+      console.log @parent.nametag
       $("#news").show('fast', next)
 
    teardown: (bindings, next) ->
@@ -155,6 +157,7 @@ Finch.route "[/Home]/News", {
 "Setup at home/news"
 ... sets this.interval
 "Looking at home/news"
+"Hello I am /Home"
 ... fades in the news element
 
 >> Calling "/Home"

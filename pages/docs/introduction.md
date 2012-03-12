@@ -18,7 +18,7 @@ Once you've included Finch, start setting up your routes like so (we're using [C
 
 	Finch.route "/home", ->
 		console.log "Called home!"
-	
+
 	Finch.route "/home/news", ->
 		console.log "Called home/news!"
 
@@ -59,47 +59,47 @@ The last utility method to deal with the browser's url is Finch.navigate() which
 
 **Form 1:**
 
-Finch.navigate() can take two parameters, the first for a uri, and an optional second parameter to deal with changing the query string, like so:
+Finch.navigate() can take three parameters, the first for a uri, and an optional second parameter to deal with changing the query string, and the last is a flag to tell finch if we should update or overwite the current uri.  Finch.navigate looks like this:
 
 	Finch.navigate "home"
 	Finch.navigate "home", {hello: 'world'}
 	Finch.navigate "home/news", {foo: 'bar'}
 	Finch.navigate "home/news?hello=world", {foo: 'bar'}
+	Finch.navigate "home/news?hello=world", {free: 'bird'}, true
 
 
 Calling these would respectively change the hash to:
-	
+
 	#home
 	#home?hello=world
 	#home/news?foo=bar
 	#home/news?hello=world&foo=bar
+	#home/news?hello=world&foo=bar&free=bird
 
 **Form 2:**
 
-However, we can also use Finch.navigate in two other ways, the first is by sending in null as the first parameter.  Doing so will keep the current hash uri and only update the query parameters.
+However, we can also use Finch.navigate in two other ways, the first is by sending in just a uri and the doUpdate flag.  Doing this will keep the current query params and only update the hash
 
-For instance, so we were on "#home/news" and called Finch.navigate() this way:
+For instance, so we were on "#home/news?hello=world" and called Finch.navigate() this way:
 
-	Finch.navigate null, {hello: 'world'}
-	Finch.navigate null, {foo: 'bar'}
-	Finch.navigate null, {hello: 'world', foo: 'bar'}
+	Finch.navigate "/account", true
 
-The above would yield the following hashes:
+The above would yield the following hash:
 
-	#home/news?hello=world
-	#home/news?foo=bar
-	#home/news?hello=world&foo=bar
+	#account?hello=world
 
 **Form 3:**
 
-The last form of Finch.navigate() only takes in a single parameter.  If the first parameter is an object then Finch will only UPDATE the current query parameters (without deleting any old ones), this can be useful for doing things like paging that shouldn't remove other parameters from the url.  For instance, lets assume we're currently on "home/news?hello=world" and called the following:
+The last form of Finch.navigate() takes in an object and the doUpdate flag.  Using this form will ensure that the uri stays the same but the query params ar only updated/written depending on the value of the doUpdate flag.  Pretend we're on "#home/news" and called Finch.navigate like so:
 
 	Finch.navigate {hello:'world2'}
-	Finch.navigate {foo:'bar'}
-	Finch.navigate {hello:'world', foo: 'baz'}
+	Finch.navigate {foo:'bar'}, true
+	Finch.navigate {foo: 'baz'}, true
+	Finch.navigate {hello:'world'}
 
 Accordingly, we would see the following hashes:
 
 	#home/news?hello=world2
 	#home/news?hello=world2&foo=bar
 	#home/news?hello=world&foo=baz
+	#home/news?hello=world
