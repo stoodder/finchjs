@@ -686,12 +686,12 @@ Finch = {
 
 			#if the callback was asynchronous, setup the setting as such
 			if cb.length is 2
-				settings.load = (bindings, callback) ->
+				settings.load = (bindings, next) ->
 					if not SetupCalled
 						IgnoreObservables = true
-						cb(bindings, callback)
+						cb(bindings, next)
 					else
-						callback()
+						next()
 
 			#Otherwise set them up synchronously
 			else

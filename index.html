@@ -4,56 +4,28 @@
 		<script src="./scripts/finch.js" type="text/javascript" language="javascript"></script>
 		<script type="text/javascript" language="javascript">
 
-			Finch.route("/", {
-				setup: function(b, c)
-				{
-					console.log("Setup /");
-					c();
-				},
 
-				load: function(b, c)
+			Finch.route("/home", function(b)
+			{
+				Finch.observe("hello", function(hello)
 				{
-					console.log("Load /");
-					c();
-				},
+					console.log(hello)
+				});
 
-				teardown: function(b, c)
-				{
-					console.log("Teardown /");
-					c();
-				}
+				console.log("Called /home");
 			});
 
-			Finch.route("[/]news", function(b, c)
+			Finch.route("/news", function(b)
 			{
 				console.log("Called /news");
-				c();
-			});
-
-			Finch.route("[/]home", {
-				setup: function(b, c)
-				{
-					console.log("Setup /home");
-					c()
-				},
-
-				load: function(b, c)
-				{
-					console.log("Load /home");
-					c();
-				},
-
-				teardown: function(b, c)
-				{
-					console.log("Teardown /home");
-					c();
-				}
 			});
 
 			Finch.listen()
 		</script>
 	</head>
 	<body>
-		<a href="#home">Home</a> | <a href="#news">news</a>
+		<a href="#home?hello=world">home?hello=world</a> |
+		<a href="#home?hello=foooo">home?hello=fooo</a> |
+		<a href="#news">news</a> |
 	</body>
 </html>

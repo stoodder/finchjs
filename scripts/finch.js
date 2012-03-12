@@ -671,12 +671,12 @@
           setup: cb
         };
         if (cb.length === 2) {
-          settings.load = function(bindings, callback) {
+          settings.load = function(bindings, next) {
             if (!SetupCalled) {
               IgnoreObservables = true;
-              return cb(bindings, callback);
+              return cb(bindings, next);
             } else {
-              return callback();
+              return next();
             }
           };
         } else {
