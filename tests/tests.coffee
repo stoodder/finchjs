@@ -418,7 +418,6 @@ test "Hierarchical calling with context", sinon.test ->
 	Finch.route "baz", @stub()
 
 	# Test routes
-
 	Finch.call "/foo"
 
 	calledOnce setup_foo, 'foo setup called once'
