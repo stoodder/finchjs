@@ -852,26 +852,29 @@ test "Finch.navigate", sinon.test ->
 	ok hash().indexOf("hello=world") > -1, "Added hello=world"
 
 	#Navigate to only a new hash
-	Finch.navigate(null, foos:"bars")
+	Finch.navigate(foos:"bars")
 	ok homeRegex.test(hash()), "Navigate remained on the /home route"
 	ok hash().indexOf("hello=world") is -1, "Removed hello=world"
 	ok hash().indexOf("foos=bars") > -1, "Added foos=bars"
 
 	#Only update the hash
 	Finch.navigate(foos:"baz")
+	ok homeRegex.test(hash()), "Navigate remained on the /home route"
 	ok hash().indexOf("foos=baz") > -1, "Changed to foos=baz"
 
-	Finch.navigate(hello:"world")
+	Finch.navigate(hello:"world", true)
+	ok homeRegex.test(hash()), "Navigate remained on the /home route"
 	ok hash().indexOf("foos=baz") > -1, "Kept foos=baz"
 	ok hash().indexOf("hello=world") > -1, "Added hello=world"
 
 	#Remove a paremeter
-	Finch.navigate(foos:null)
+	Finch.navigate(foos:null, true)
+	ok homeRegex.test(hash()), "Navigate remained on the /home route"
 	ok hash().indexOf("foos=baz") is -1, "Removed foos=baz"
 	ok hash().indexOf("hello=world") > -1, "Kept hello=world"
 
-	#Make sure regular nbavigate keeps our qury params
-	Finch.navigate("/home/news")
+	#Make siure the doUpdate navigate keeps the query string
+	Finch.navigate("/home/news", true)
 	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news"
 	ok hash().indexOf("hello=world") > -1, "Kept hello=world"
 
@@ -884,12 +887,12 @@ test "Finch.navigate", sinon.test ->
 	ok helloWorldRegex.test(hash()), "Navigate remained at /hello%20world"
 	ok hash().indexOf("foo=bar%20bar") > -1, "Added and escaped foo=bar bar"
 
-	Finch.navigate(null, foo:"baz baz")
+	Finch.navigate(foo:"baz baz")
 	ok helloWorldRegex.test(hash()), "Navigate remained at /hello%20world"
 	ok hash().indexOf("foo=bar%20bar") is -1, "Removed foo=bar bar"
 	ok hash().indexOf("foo=baz%20baz") > -1, "Added and escaped foo=baz baz"
 
-	Finch.navigate(hello:'world world')
+	Finch.navigate(hello:'world world', true)
 	ok helloWorldRegex.test(hash()), "Navigate remained at /hello%20world"
 	ok hash().indexOf("foo=baz%20baz") > -1, "Kept and escaped foo=baz baz"
 	ok hash().indexOf("hello=world%20world") > -1, "Added and escaped hello=world world"
@@ -904,6 +907,7 @@ test "Finch.navigate", sinon.test ->
 
 	Finch.navigate("/home?foo=bar",{hello:"world",foo:"baz"})
 	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("foo=bar") is -1, "foo=bar not set"
 	ok hash().indexOf("foo=baz") > -1, "Had correct query parameter set foo=baz"
 	ok hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world"
 	equal hash().split("?").length-1, 1, "Correct number of '?'"
@@ -917,15 +921,27 @@ test "Finch.navigate", sinon.test ->
 	equal hash().split("?").length-1, 1, "Correct number of '?'"
 	equal hash().split("&").length-1, 2, "Correct number of '&'"
 
-	Finch.navigate("#/home")
+	#Account for the hash character
+	Finch.navigate("#/home", true)
 	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
 	ok hash().indexOf("free=bird") > -1, "Had correct query parameter set free=bird"
 	ok hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world"
+
+	Finch.navigate("#/home")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("free=bird") is -1, "Had correct query parameter set free=bird"
+	ok hash().indexOf("hello=world") is -1, "Had correct query parameter set hello=world"
 
 	Finch.navigate("#/home/news",{free:"birds",hello:"worlds"})
 	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home"
 	ok hash().indexOf("free=birds") > -1, "Had correct query parameter set free=birds"
 	ok hash().indexOf("hello=worlds") > -1, "Had correct query parameter set hello=worlds"
+
+	Finch.navigate("#/home/news", {foo:"bar"}, true)
+	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("free=birds") > -1, "Had correct query parameter set free=birds"
+	ok hash().indexOf("hello=worlds") > -1, "Had correct query parameter set hello=worlds"
+	ok hash().indexOf("foo=bar") > -1, "Had correct query parameter set hello=worlds"
 
 test "Finch.listen and Finch.ignore", sinon.test ->
 

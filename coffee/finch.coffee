@@ -4,6 +4,7 @@
 
 isObject = (object) -> (typeof object) is (typeof {}) and object isnt null
 isFunction = (object) -> Object::toString.call( object ) is "[object Function]"
+isBoolean = (object) -> Object::toString.call( object ) is "[object Boolean]"
 isArray = (object) -> Object::toString.call( object ) is "[object Array]"
 isString = (object) -> Object::toString.call( object ) is "[object String]"
 isNumber = (object) -> Object::toString.call( object ) is "[object Number]"
@@ -884,19 +885,35 @@ Finch = {
 	#	Method used to 'navigate' to a new/update the existing hash route
 	#
 	# Form 1:
-	#	Finch.navigate('/my/favorite/route', {hello: 'world'})
-	#	- or -
-	#	Finch.navigate(null, {hello: 'world'})
+	#	Finch.navigate('/my/favorite/route', {hello: 'world'}, true)
+	#
 	# Arguments:
-	#	uri (string) - string of a uri to browse to, if uri is null, the current uri will be used
+	#	uri (string) - string of a uri to browse to
 	#	queryParams (object) - The query parameters to add the to the uri
+	#	doUpdate (boolean) - Should we replace the current hash or just updates it?
+	#
 	#
 	# Form 2:
-	#	Finch.navigate({hello: 'world', foo: 'bar'})
+	#	Finch.navigate('my/second/favorite/url', true)
+	#
+	#	Updates the url keeping the current query params
+	#
 	# Arguments:
-	#	queryParams (object) - An object to UPDATE the current list of query parameters (won't delete parameters from the list, only add and/or update current)use Finch.navigate(null, {params}) to change the list of query parameters
+	#	uri (string) - string of a uri to browse to
+	#	doUpdate (boolean) - Should we replace the current hash or just updates it?
+	#
+	#
+	# Form 3:
+	#	Finch.navigate({hello: 'world', foo: 'bar'}, true)
+	#
+	#	Updates the query params keeping the current url
+	#
+	# Arguments:
+	#	queryParams (object) - The query parameters to add the to the uri
+	#	doUpdate (boolean) - Should we replace the current hash or just updates it?
 	#---------------------------------------------------
-	navigate: (uri, queryParams) ->
+	navigate: (uri, queryParams, doUpdate) ->
+
 		#Get the current uri and params
 		[ currentUri, currentQueryString ] = getHash().split("?", 2)
 		currentUri ?= ""
@@ -909,11 +926,19 @@ Finch = {
 		#format the currentParams
 		currentQueryParams = parseQueryString( currentQueryString )
 
-		#if the uri is an object, we'll assume we're just updating the hash
-		if isObject(uri)
-			queryParams = uri
-			uri = null
+		#Make sure our arguments are valid
+		doUpdate = queryParams if isBoolean(queryParams)
+		queryParams = uri if isObject(uri)
 
+		uri = "" unless isString(uri)
+		queryParams = {} unless isObject(queryParams)
+		doUpdate = false unless isBoolean(doUpdate)
+
+		uri = trim(uri)
+		uri = null if uri.length is 0
+
+		#If we're just updating, extend the currnet params
+		if doUpdate
 			#Unescape things fromthe current query params
 			do ->
 				newQueryParams = {}
@@ -924,8 +949,8 @@ Finch = {
 			#udpate the query params
 			queryParams = extend(currentQueryParams, queryParams)
 
+
 		#Start trying to create the new uri
-		uri = null unless isString(uri)
 		uri = currentUri if uri is null
 		[uri, uriParamString] = uri.split("?", 2)
 		uri = uri[1..] if uri[0..0] is "#"
@@ -935,7 +960,6 @@ Finch = {
 		uriQueryParams = if isString(uriParamString) then parseQueryString(uriParamString) else {}
 
 		#Get and format the query params
-		queryParams = currentQueryParams unless isObject(queryParams)
 		queryParams = extend(uriQueryParams, queryParams)
 		queryParams = compact(queryParams)
 
@@ -968,51 +992,6 @@ Finch = {
 
 	#END Finch.reset()
 }
-
-###
-# FOR NOW, we'll just comment this out instead of having a debug flag
-Finch.private = {
-	# utility
-	isObject
-	isFunction
-	isArray
-	isString
-	isNumber
-	trim
-	trimSlashes
-	startsWith
-	endsWith
-	contains
-	extend
-	objectsEqual
-	arraysEqual
-
-	# constants
-	NullPath
-	NodeType
-
-	# classes
-	RouteSettings
-	RoutePath
-	RouteNode
-
-	#functions
-	parseQueryString
-	splitUri
-	parseRouteString
-	getComponentType
-	getComponentName
-	addRoute
-	findPath
-	findNearestCommonAncestor
-
-	globals: -> return {
-		RootNode
-		CurrentPath
-		CurrentParameters
-	}
-}
-###
 
 #Expose Finch to the window
 @Finch = Finch
