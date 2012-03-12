@@ -590,8 +590,8 @@
 
   stepLoad = function() {
     var bindings, context, load, recur, setup, _ref3, _ref4;
-    CurrentTargetPath = null;
     recur = function() {
+      CurrentTargetPath = null;
       return step();
     };
     if (CurrentPath.node == null) return recur();
@@ -675,6 +675,8 @@
             if (!SetupCalled) {
               IgnoreObservables = true;
               return cb(bindings, callback);
+            } else {
+              return callback();
             }
           };
         } else {

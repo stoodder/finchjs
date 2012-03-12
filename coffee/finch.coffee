@@ -563,9 +563,11 @@ stepSetup = ->
 #	Used to execute a load method on a node
 #---------------------------------------------------
 stepLoad = ->
-	# End the step process
-	CurrentTargetPath = null
-	recur = -> step()
+	#Setup the recurrance method
+	recur = ->
+		# End the step process
+		CurrentTargetPath = null
+		step()
 
 	#Stop executing if we don't have a current node
 	return recur() unless CurrentPath.node?
@@ -688,6 +690,8 @@ Finch = {
 					if not SetupCalled
 						IgnoreObservables = true
 						cb(bindings, callback)
+					else
+						callback()
 
 			#Otherwise set them up synchronously
 			else
