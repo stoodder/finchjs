@@ -954,7 +954,18 @@ Finch = {
 		uri = currentUri if uri is null
 		[uri, uriParamString] = uri.split("?", 2)
 		uri = uri[1..] if uri[0..0] is "#"
-		uri = escape(uri)
+
+		#Check if they're trying to use relative routing
+		if startsWith(uri, "./") or startsWith(uri, "../")
+			builtUri = currentUri
+
+			while startsWith(uri, "./") or startsWith(uri, "../")
+				slashIndex = uri.indexOf("/")
+				piece = uri.slice(0, slashIndex)
+				uri = uri.slice(slashIndex+1)
+				builtUri = builtUri.slice(0, builtUri.lastIndexOf("/")) if piece is ".."
+
+			uri = if uri.length > 0 then "#{builtUri}/#{uri}" else builtUri
 
 		#Make sure the uri param string is valid
 		uriQueryParams = if isString(uriParamString) then parseQueryString(uriParamString) else {}
@@ -963,12 +974,14 @@ Finch = {
 		queryParams = extend(uriQueryParams, queryParams)
 		queryParams = compact(queryParams)
 
+		#Build the final uri
+		uri = escape(uri)
+
 		#Generate a query string
 		queryString = (escape(key) + "=" + escape(value) for key, value of queryParams).join("&")
 
 		#try to attach the query string
-		if queryString.length > 0
-			uri += "?" + queryString
+		uri += "?" + queryString if queryString.length > 0
 
 		#update the hash
 		setHash(uri)

@@ -138,7 +138,7 @@ test "Even more hierarchical routing", sinon.test ->
 	foo_bar.reset()
 
 	Finch.call "/foo"
-	
+
 	calledOnce foo, "foo called"
 	neverCalled foo_bar, "foo/bar not called"
 
@@ -823,11 +823,13 @@ test "Finch.navigate", sinon.test ->
 
 	window.location.hash = ""
 
-	hash = -> 
+	hash = ->
 		return "#" + ( window.location.href.split("#", 2)[1] ? "" )
 
 	homeRegex = /^#?\/home/
 	homeNewsRegex = /^#?\/home\/news/
+	homeAccountRegex = /^#?\/home\/account/
+	homeNewsArticleRegex = /^#?\/home\/news\/article/
 	helloWorldRegex = /^#?\/hello%20world/
 
 	#Navigate to just a single route
@@ -942,6 +944,25 @@ test "Finch.navigate", sinon.test ->
 	ok hash().indexOf("free=birds") > -1, "Had correct query parameter set free=birds"
 	ok hash().indexOf("hello=worlds") > -1, "Had correct query parameter set hello=worlds"
 	ok hash().indexOf("foo=bar") > -1, "Had correct query parameter set hello=worlds"
+
+	#Test relative navigation
+	Finch.navigate("/home/news")
+	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news"
+
+	Finch.navigate("../")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+
+	Finch.navigate("./")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+
+	Finch.navigate("./news")
+	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news"
+
+	Finch.navigate("/home/news/article")
+	ok homeNewsArticleRegex.test(hash()), "Navigate called and changed hash to /home/news/article"
+
+	Finch.navigate("../../account")
+	ok homeAccountRegex.test(hash()), "Navigate called and changed hash to /home/account"
 
 test "Finch.listen and Finch.ignore", sinon.test ->
 

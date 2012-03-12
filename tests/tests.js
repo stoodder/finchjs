@@ -776,7 +776,7 @@
   }));
 
   test("Finch.navigate", sinon.test(function() {
-    var hash, helloWorldRegex, homeNewsRegex, homeRegex;
+    var hash, helloWorldRegex, homeAccountRegex, homeNewsArticleRegex, homeNewsRegex, homeRegex;
     window.location.hash = "";
     hash = function() {
       var _ref;
@@ -784,6 +784,8 @@
     };
     homeRegex = /^#?\/home/;
     homeNewsRegex = /^#?\/home\/news/;
+    homeAccountRegex = /^#?\/home\/account/;
+    homeNewsArticleRegex = /^#?\/home\/news\/article/;
     helloWorldRegex = /^#?\/hello%20world/;
     Finch.navigate("/home");
     ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
@@ -897,7 +899,19 @@
     ok(homeNewsRegex.test(hash()), "Navigate called and changed hash to /home");
     ok(hash().indexOf("free=birds") > -1, "Had correct query parameter set free=birds");
     ok(hash().indexOf("hello=worlds") > -1, "Had correct query parameter set hello=worlds");
-    return ok(hash().indexOf("foo=bar") > -1, "Had correct query parameter set hello=worlds");
+    ok(hash().indexOf("foo=bar") > -1, "Had correct query parameter set hello=worlds");
+    Finch.navigate("/home/news");
+    ok(homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news");
+    Finch.navigate("../");
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    Finch.navigate("./");
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    Finch.navigate("./news");
+    ok(homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news");
+    Finch.navigate("/home/news/article");
+    ok(homeNewsArticleRegex.test(hash()), "Navigate called and changed hash to /home/news/article");
+    Finch.navigate("../../account");
+    return ok(homeAccountRegex.test(hash()), "Navigate called and changed hash to /home/account");
   }));
 
   test("Finch.listen and Finch.ignore", sinon.test(function() {

@@ -785,7 +785,7 @@
       return !HashListening;
     },
     navigate: function(uri, queryParams, doUpdate) {
-      var currentQueryParams, currentQueryString, currentUri, key, queryString, uriParamString, uriQueryParams, value, _ref3, _ref4;
+      var builtUri, currentQueryParams, currentQueryString, currentUri, key, piece, queryString, slashIndex, uriParamString, uriQueryParams, value, _ref3, _ref4;
       _ref3 = getHash().split("?", 2), currentUri = _ref3[0], currentQueryString = _ref3[1];
       if (currentUri == null) currentUri = "";
       if (currentQueryString == null) currentQueryString = "";
@@ -814,10 +814,22 @@
       if (uri === null) uri = currentUri;
       _ref4 = uri.split("?", 2), uri = _ref4[0], uriParamString = _ref4[1];
       if (uri.slice(0, 1) === "#") uri = uri.slice(1);
-      uri = escape(uri);
+      if (startsWith(uri, "./") || startsWith(uri, "../")) {
+        builtUri = currentUri;
+        while (startsWith(uri, "./") || startsWith(uri, "../")) {
+          slashIndex = uri.indexOf("/");
+          piece = uri.slice(0, slashIndex);
+          uri = uri.slice(slashIndex + 1);
+          if (piece === "..") {
+            builtUri = builtUri.slice(0, builtUri.lastIndexOf("/"));
+          }
+        }
+        uri = uri.length > 0 ? "" + builtUri + "/" + uri : builtUri;
+      }
       uriQueryParams = isString(uriParamString) ? parseQueryString(uriParamString) : {};
       queryParams = extend(uriQueryParams, queryParams);
       queryParams = compact(queryParams);
+      uri = escape(uri);
       queryString = ((function() {
         var _results;
         _results = [];
