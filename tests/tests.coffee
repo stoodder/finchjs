@@ -363,6 +363,48 @@ test "Calling with context", sinon.test ->
 	Finch.call "/bar"
 	ok teardown_foo.calledOn(context), 'foo teardown called on same context as setup'
 
+test "Checking Parent Context", ->
+	Finch.route "/", ->
+		equal @parent, null, "Parent is null"
+
+		@someData = "Free Bird"
+
+	Finch.route "[/]home", ->
+		ok @parent isnt null, "Parent is defined in simple version"
+		equal @parent.someData, "Free Bird", "Correct parent passed in"
+
+		@moreData = "Hello World"
+
+	Finch.route "[/home]/news",
+		setup: ->
+			ok @parent isnt null, "Parent is defined in setup"
+			equal @parent.moreData, "Hello World", "Correct parent passed in"
+			equal @parent.parent.someData, "Free Bird", "Correct parent's parent passed in"
+
+		load: ->
+			ok @parent isnt null, "Parent is defined in load"
+			equal @parent.moreData, "Hello World", "Correct parent passed in"
+			equal @parent.parent.someData, "Free Bird", "Correct parent's parent passed in"
+
+		teardown: ->
+			ok @parent isnt null, "Parent is defined in teardown"
+			equal @parent.moreData, "Hello World", "Correct parent passed in"
+			equal @parent.parent.someData, "Free Bird", "Correct parent's parent passed in"
+
+	Finch.route "/foo",
+		setup: ->
+			equal @parent, null, "Parent is null"
+
+		load: ->
+			equal @parent, null, "Parent is null"
+
+		teardown: ->
+			equal @parent, null, "Parent is null"
+
+	Finch.call("/home/news")
+	Finch.call("/foo")
+	Finch.call("/home/news")
+
 test "Hierarchical calling with context", sinon.test ->
 
 	Finch.route "foo",

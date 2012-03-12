@@ -347,6 +347,49 @@
     return ok(teardown_foo.calledOn(context), 'foo teardown called on same context as setup');
   }));
 
+  test("Checking Parent Context", function() {
+    Finch.route("/", function() {
+      equal(this.parent, null, "Parent is null");
+      return this.someData = "Free Bird";
+    });
+    Finch.route("[/]home", function() {
+      ok(this.parent !== null, "Parent is defined in simple version");
+      equal(this.parent.someData, "Free Bird", "Correct parent passed in");
+      return this.moreData = "Hello World";
+    });
+    Finch.route("[/home]/news", {
+      setup: function() {
+        ok(this.parent !== null, "Parent is defined in setup");
+        equal(this.parent.moreData, "Hello World", "Correct parent passed in");
+        return equal(this.parent.parent.someData, "Free Bird", "Correct parent's parent passed in");
+      },
+      load: function() {
+        ok(this.parent !== null, "Parent is defined in load");
+        equal(this.parent.moreData, "Hello World", "Correct parent passed in");
+        return equal(this.parent.parent.someData, "Free Bird", "Correct parent's parent passed in");
+      },
+      teardown: function() {
+        ok(this.parent !== null, "Parent is defined in teardown");
+        equal(this.parent.moreData, "Hello World", "Correct parent passed in");
+        return equal(this.parent.parent.someData, "Free Bird", "Correct parent's parent passed in");
+      }
+    });
+    Finch.route("/foo", {
+      setup: function() {
+        return equal(this.parent, null, "Parent is null");
+      },
+      load: function() {
+        return equal(this.parent, null, "Parent is null");
+      },
+      teardown: function() {
+        return equal(this.parent, null, "Parent is null");
+      }
+    });
+    Finch.call("/home/news");
+    Finch.call("/foo");
+    return Finch.call("/home/news");
+  });
+
   test("Hierarchical calling with context", sinon.test(function() {
     var foo_bar_context, foo_context, load_foo, load_foo_bar, setup_foo, setup_foo_bar, teardown_foo, teardown_foo_bar;
     Finch.route("foo", {

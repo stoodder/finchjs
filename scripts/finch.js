@@ -569,11 +569,15 @@
   };
 
   stepSetup = function() {
-    var bindings, context, load, recur, setup, _ref3, _ref4;
+    var bindings, context, load, parentContext, recur, setup, _ref3, _ref4, _ref5, _ref6;
     SetupCalled = true;
+    parentContext = ((_ref3 = (_ref4 = CurrentPath.node) != null ? _ref4.routeSettings : void 0) != null ? _ref3 : {
+      context: null
+    }).context;
     CurrentPath = CurrentPath.getChild(CurrentTargetPath);
-    _ref4 = (_ref3 = CurrentPath.node.routeSettings) != null ? _ref3 : {}, context = _ref4.context, setup = _ref4.setup, load = _ref4.load;
+    _ref6 = (_ref5 = CurrentPath.node.routeSettings) != null ? _ref5 : {}, context = _ref6.context, setup = _ref6.setup, load = _ref6.load;
     if (context == null) context = {};
+    context.parent = parentContext;
     if (setup == null) setup = (function() {});
     if (load == null) load = (function() {});
     bindings = CurrentPath.getBindings();

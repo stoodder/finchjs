@@ -535,6 +535,9 @@ step = ->
 stepSetup = ->
 	SetupCalled = true
 
+	#Try and get the parent context if we can
+	{context: parentContext} = CurrentPath.node?.routeSettings ? {context: null}
+
 	# During setup and teardown, CurrentPath should always be the path to the
 	# node getting setup or torn down.
 	# In the setup case: CurrentPath must be set before the setup function is called.
@@ -542,6 +545,7 @@ stepSetup = ->
 
 	{context, setup, load} = CurrentPath.node.routeSettings ? {}
 	context ?= {}
+	context.parent = parentContext
 	setup ?= (->)
 	load ?= (->)
 	bindings = CurrentPath.getBindings()
