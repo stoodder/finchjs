@@ -108,10 +108,15 @@
         complete: function() {
           return $.get("./pages/docs.tmpl", function(data) {
             var Layout;
+            console.log(data);
             Layout = LayoutViewModel.instance;
-            Layout.ContentViewModel(new DocsViewModel);
             Layout.ContentTemplate(data);
-            return defer(callback);
+            Layout.ContentViewModel(new DocsViewModel);
+            return $("#content").animate({
+              'opacity': 1
+            }, {
+              complete: callback
+            });
           });
         }
       });

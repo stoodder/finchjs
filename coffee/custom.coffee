@@ -73,11 +73,12 @@ Finch.route "docs",
 
 		$("#content").animate {'opacity':0}, complete: ->
 			$.get "./pages/docs.tmpl", (data) ->
+				console.log(data)
 				Layout = LayoutViewModel.instance
-				Layout.ContentViewModel(new DocsViewModel)
 				Layout.ContentTemplate(data)
+				Layout.ContentViewModel(new DocsViewModel)
 
-				defer callback
+				$("#content").animate({'opacity':1},{complete:callback})
 			# END get
 		#END fade
 	
