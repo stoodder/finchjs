@@ -420,6 +420,112 @@
     return ok(teardown_foo.calledOn(foo_context), 'foo teardown called on same context as');
   }));
 
+  test('Testing synchronous and asynchronous unload method and context', sinon.test(function() {
+    var call, call_context, call_next, cb;
+    cb = callbackGroup();
+    cb.home_setup = this.stub();
+    cb.home_load = this.stub();
+    cb.home_unload = this.stub();
+    cb.home_teardown = this.stub();
+    Finch.route("/home", {
+      setup: function(bindings, next) {
+        cb.home_setup();
+        return next();
+      },
+      load: function(bindings, next) {
+        cb.home_load();
+        return next();
+      },
+      unload: function(bindings, next) {
+        cb.home_unload();
+        return next();
+      },
+      teardown: function(bindings, next) {
+        cb.home_teardown();
+        return next();
+      }
+    });
+    cb.home_news_setup = this.stub();
+    cb.home_news_load = this.stub();
+    cb.home_news_unload = this.stub();
+    cb.home_news_teardown = this.stub();
+    Finch.route("[/home]/news", {
+      setup: function(bindings, next) {
+        this.did_setup = true;
+        cb.home_news_setup();
+        return next();
+      },
+      load: function(bindings, next) {
+        this.did_load = true;
+        cb.home_news_load();
+        return next();
+      },
+      unload: function(bindings, next) {
+        this.did_unload = true;
+        return cb.home_news_unload(this, next);
+      },
+      teardown: function(bindings, next) {
+        this.did_teardown = true;
+        cb.home_news_teardown();
+        return next();
+      }
+    });
+    Finch.route("/foo", cb.foo = this.stub());
+    Finch.call("/home");
+    calledOnce(cb.home_setup, "Called Home Setup");
+    calledOnce(cb.home_load, "Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    neverCalled(cb.foo, "Never Called Foo");
+    ok(cb.home_setup.calledBefore(cb.home_load), "Called Home setup before load");
+    cb.reset();
+    Finch.call("/home/news");
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    calledOnce(cb.home_unload, "Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    calledOnce(cb.home_news_setup, "Called Home News Setup");
+    calledOnce(cb.home_news_load, "Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    neverCalled(cb.foo, "Never Called Foo");
+    ok(cb.home_unload.calledBefore(cb.home_news_setup), "Home unload called before Home/News setup");
+    ok(cb.home_news_setup.calledBefore(cb.home_news_load), "Home/News setup called before Home/News load");
+    cb.reset();
+    Finch.call("/foo");
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    calledOnce(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    neverCalled(cb.foo, "Never Called Foo");
+    call = cb.home_news_unload.getCall(0);
+    call_context = call.args[0];
+    call_next = call.args[1];
+    ok(call_context.did_setup != null, "Setup was passed in context");
+    ok(call_context.did_load != null, "Load was passed in context");
+    ok(call_context.did_unload != null, "Unload was passed in context");
+    ok(!(call_context.did_teardown != null), "Unload was not passed in context");
+    call_next();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    calledOnce(cb.home_teardown, "Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    calledOnce(cb.home_news_unload, "Called Home News Unload");
+    calledOnce(cb.home_news_teardown, "Called Home News Teardown");
+    calledOnce(cb.foo, "Called Foo");
+    return cb.reset();
+  }));
+
   test("Route sanitation", sinon.test(function() {
     var foo, foo_bar, slash;
     Finch.route("/", slash = this.stub());
@@ -958,8 +1064,8 @@
   }));
 
   test("Finch.listen and Finch.ignore", sinon.test(function() {
-    var cb, clearWindowMethods, _ref;
-    if ((_ref = window.hasOwnProperty) == null) {
+    var cb, clearWindowMethods;
+    if (window.hasOwnProperty == null) {
       window.hasOwnProperty = function(prop) {
         return prop in this;
       };

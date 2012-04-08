@@ -441,6 +441,120 @@ test "Hierarchical calling with context", sinon.test ->
 	ok teardown_foo_bar.calledOn(foo_bar_context), 'foo/bar teardown called on same context as setup'
 	ok teardown_foo.calledOn(foo_context), 'foo teardown called on same context as'
 
+test 'Testing synchronous and asynchronous unload method and context', sinon.test ->
+
+	cb = callbackGroup()
+	cb.home_setup = @stub()
+	cb.home_load = @stub()
+	cb.home_unload = @stub()
+	cb.home_teardown = @stub()
+
+	Finch.route "/home",
+		setup: (bindings, next) -> 
+			cb.home_setup()
+			next()
+		load: (bindings, next) ->
+			cb.home_load() 
+			next()
+		unload: (bindings, next) -> 
+			cb.home_unload()
+			next()
+		teardown: (bindings, next) -> 
+			cb.home_teardown()
+			next()
+
+	cb.home_news_setup = @stub()
+	cb.home_news_load = @stub()
+	cb.home_news_unload = @stub()
+	cb.home_news_teardown = @stub()
+
+	Finch.route "[/home]/news"
+		setup: (bindings, next) -> 
+			@did_setup = true
+			cb.home_news_setup()
+			next()
+		load: (bindings, next) ->
+			@did_load = true
+			cb.home_news_load() 
+			next()
+		unload: (bindings, next) -> 
+			@did_unload = true
+			cb.home_news_unload(this, next)
+		teardown: (bindings, next) -> 
+			@did_teardown = true
+			cb.home_news_teardown()
+			next()
+
+	Finch.route "/foo", cb.foo = @stub()
+
+	Finch.call("/home")
+
+	calledOnce cb.home_setup, "Called Home Setup"
+	calledOnce cb.home_load, "Called Home Load"
+	neverCalled cb.home_unload, "Never Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	neverCalled cb.home_news_load, "Never Called Home News Load"
+	neverCalled cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+	neverCalled cb.foo, "Never Called Foo"
+
+	ok cb.home_setup.calledBefore(cb.home_load), "Called Home setup before load"
+
+	cb.reset()
+
+	Finch.call("/home/news")
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	neverCalled cb.home_load, "Never Called Home Load"
+	calledOnce cb.home_unload, "Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	calledOnce cb.home_news_setup, "Called Home News Setup"
+	calledOnce cb.home_news_load, "Called Home News Load"
+	neverCalled cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+	neverCalled cb.foo, "Never Called Foo"
+
+	ok cb.home_unload.calledBefore(cb.home_news_setup), "Home unload called before Home/News setup"
+	ok cb.home_news_setup.calledBefore(cb.home_news_load), "Home/News setup called before Home/News load"
+
+	cb.reset()
+
+	Finch.call("/foo")
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	neverCalled cb.home_load, "Never Called Home Load"
+	neverCalled cb.home_unload, "Never Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	neverCalled cb.home_news_load, "Never Called Home News Load"
+	calledOnce cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+	neverCalled cb.foo, "Never Called Foo"
+
+	call = cb.home_news_unload.getCall(0)
+	call_context = call.args[0]
+	call_next = call.args[1]
+
+	ok call_context.did_setup?, "Setup was passed in context"
+	ok call_context.did_load?, "Load was passed in context"
+	ok call_context.did_unload?, "Unload was passed in context"
+	ok not call_context.did_teardown?, "Unload was not passed in context"
+	
+	call_next()
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	neverCalled cb.home_load, "Never Called Home Load"
+	neverCalled cb.home_unload, "Never Called Home Unload"
+	calledOnce cb.home_teardown, "Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	neverCalled cb.home_news_load, "Never Called Home News Load"
+	calledOnce cb.home_news_unload, "Called Home News Unload"
+	calledOnce cb.home_news_teardown, "Called Home News Teardown"
+	calledOnce cb.foo, "Called Foo"
+
+	cb.reset()
+
 test "Route sanitation", sinon.test ->
 
 	Finch.route "/", slash = @stub()

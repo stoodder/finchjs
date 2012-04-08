@@ -92,9 +92,10 @@ class RouteNode
 		@bindings = []
 
 class RouteSettings
-	constructor: ({setup, teardown, load, context} = {}) ->
+	constructor: ({setup, teardown, load, unload, context} = {}) ->
 		@setup = if isFunction(setup) then setup else (->)
 		@load = if isFunction(load) then load else (->)
+		@unload = if isFunction(unload) then unload else (->)
 		@teardown = if isFunction(teardown) then teardown else (->)
 		@context = if isObject(context) then context else {}
 
@@ -486,6 +487,7 @@ PreviousParameters = CurrentParameters = null
 HashInterval = CurrentHash = null
 HashListening = false
 IgnoreObservables = SetupCalled = false # Used to handle cases of same load/setup methods
+LoadCompleted = false
 
 do resetGlobals = ->
 	RootNode = new RouteNode(name: "*")
@@ -498,6 +500,7 @@ do resetGlobals = ->
 	HashListening = false
 	IgnoreObservables = false
 	SetupCalled = false
+	LoadCompleted = false
 
 #END Globals
 
@@ -511,7 +514,12 @@ step = ->
 		#Execute the observables
 		runObservables()
 
-	#If we're at our destination. run the load method
+	#Otherwise, if this is our first call since the last 'load' was called,
+	#Call the unload method
+	else if LoadCompleted
+		stepUnload()
+
+	#Otherwise, we're currently stepping and if we're at our destination. run the load method
 	else if CurrentTargetPath.isEqual(CurrentPath)
 
 		#Execute this path's load method
@@ -570,6 +578,7 @@ stepLoad = ->
 	#Setup the recurrance method
 	recur = ->
 		# End the step process
+		LoadCompleted = true
 		CurrentTargetPath = null
 		step()
 
@@ -592,6 +601,31 @@ stepLoad = ->
 		recur()
 
 #END stepLoad
+
+#---------------------------------------------------
+# Method: stepUnload
+#	Used to execute a unload method on a node
+#---------------------------------------------------
+stepUnload = ->
+	recur = ->
+		LoadCompleted = false
+		step()
+
+	{context, unload} = CurrentPath.node.routeSettings ? {}
+	context ?= {}
+	unload ?= (->)
+	bindings = CurrentPath.getBindings()
+
+	#If the unload method takes two parameters, it is an asynchronous method
+	if unload.length is 2
+		unload.call(context, bindings, recur)
+
+	#Otherwise call it synchronously
+	else
+		unload.call(context, bindings)
+		recur()
+
+#END stepUnload
 
 #---------------------------------------------------
 # Method: stepTeardown

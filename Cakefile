@@ -101,15 +101,13 @@ task 'watch', 'watch coffee/ and tests/ for changes and build', ->
 
 	for source in sources
 		fs.watch( source, (curr, prev) ->
-			if +curr.mtime isnt +prev.mtime
-				console.log "Saw change in #{source}"
-				invoke 'build'
+			console.log "Saw change in #{source}"
+			invoke 'build'
 		)
 	for test in tests
 		fs.watch( test, (curr, prev) ->
-			if +curr.mtime isnt +prev.mtime
-				console.log "Saw change in #{test}"
-				invoke 'build-tests'
+			console.log "Saw change in #{test}"
+			invoke 'build-tests'
 		)
 
 # --------------------------------------------------------
