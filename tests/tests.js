@@ -512,7 +512,7 @@
     ok(call_context.did_setup != null, "Setup was passed in context");
     ok(call_context.did_load != null, "Load was passed in context");
     ok(call_context.did_unload != null, "Unload was passed in context");
-    ok(!(call_context.did_teardown != null), "Unload was not passed in context");
+    ok(!(call_context.did_teardown != null), "Teardown was not passed in context");
     call_next();
     neverCalled(cb.home_setup, "Never Called Home Setup");
     neverCalled(cb.home_load, "Never Called Home Load");
@@ -524,6 +524,174 @@
     calledOnce(cb.home_news_teardown, "Called Home News Teardown");
     calledOnce(cb.foo, "Called Foo");
     return cb.reset();
+  }));
+
+  test("Reload", sinon.test(function() {
+    var call, call_context, call_next, cb;
+    cb = callbackGroup();
+    cb.home_setup = this.stub();
+    cb.home_load = this.stub();
+    cb.home_unload = this.stub();
+    cb.home_teardown = this.stub();
+    Finch.route("/home", {
+      setup: function(bindings, next) {
+        cb.home_setup();
+        return next();
+      },
+      load: function(bindings, next) {
+        cb.home_load();
+        return next();
+      },
+      unload: function(bindings, next) {
+        cb.home_unload();
+        return next();
+      },
+      teardown: function(bindings, next) {
+        cb.home_teardown();
+        return next();
+      }
+    });
+    cb.home_news_setup = this.stub();
+    cb.home_news_load = this.stub();
+    cb.home_news_unload = this.stub();
+    cb.home_news_teardown = this.stub();
+    Finch.route("[/home]/news", {
+      setup: function(bindings, next) {
+        this.did_setup = true;
+        return cb.home_news_setup(this, next);
+      },
+      load: function(bindings, next) {
+        this.did_load = true;
+        return cb.home_news_load(this, next);
+      },
+      unload: function(bindings, next) {
+        this.did_unload = true;
+        return cb.home_news_unload(this, next);
+      },
+      teardown: function(bindings, next) {
+        this.did_teardown = true;
+        cb.home_news_teardown();
+        return next();
+      }
+    });
+    Finch.call("/home");
+    calledOnce(cb.home_setup, "Called Home Setup");
+    calledOnce(cb.home_load, "Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    cb.reset();
+    Finch.reload();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    calledOnce(cb.home_load, "Called Home Load");
+    calledOnce(cb.home_unload, "Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    cb.reset();
+    Finch.call("/home/news");
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    calledOnce(cb.home_unload, "Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    calledOnce(cb.home_news_setup, "Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    call = cb.home_news_setup.getCall(0);
+    call_context = call.args[0];
+    call_next = call.args[1];
+    ok(call_context.did_setup != null, "Setup was passed in context");
+    ok(!(call_context.did_load != null), "Load was not passed in context");
+    ok(!(call_context.did_unload != null), "Unload was not passed in context");
+    ok(!(call_context.did_teardown != null), "Teardown was not passed in context");
+    cb.reset();
+    Finch.reload();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    cb.reset();
+    call_next();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    calledOnce(cb.home_news_load, "Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    call = cb.home_news_load.getCall(0);
+    call_context = call.args[0];
+    call_next = call.args[1];
+    ok(call_context.did_setup != null, "Setup was passed in context");
+    ok(call_context.did_load != null, "Load was passed in context");
+    ok(!(call_context.did_unload != null), "Unload was not passed in context");
+    ok(!(call_context.did_teardown != null), "Teardown was not passed in context");
+    cb.reset();
+    Finch.reload();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    cb.reset();
+    call_next();
+    Finch.reload();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    calledOnce(cb.home_news_unload, "Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    call = cb.home_news_unload.getCall(0);
+    call_context = call.args[0];
+    call_next = call.args[1];
+    ok(call_context.did_setup != null, "Setup was passed in context");
+    ok(call_context.did_load != null, "Load was passed in context");
+    ok(call_context.did_unload != null, "Unload was passed in context");
+    ok(!(call_context.did_teardown != null), "Teardown was not passed in context");
+    cb.reset();
+    Finch.reload();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    cb.reset();
+    call_next();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    calledOnce(cb.home_news_load, "Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    call = cb.home_news_load.getCall(0);
+    call_context = call.args[0];
+    call_next = call.args[1];
+    ok(call_context.did_setup != null, "Setup was passed in context");
+    ok(call_context.did_load != null, "Load was passed in context");
+    ok(call_context.did_unload != null, "Unload was passed in context");
+    return ok(!(call_context.did_teardown != null), "Teardown was not passed in context");
   }));
 
   test("Route sanitation", sinon.test(function() {

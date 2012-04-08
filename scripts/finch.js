@@ -621,8 +621,8 @@
 
   stepUnload = function() {
     var bindings, context, recur, unload, _ref, _ref2;
+    LoadCompleted = false;
     recur = function() {
-      LoadCompleted = false;
       return step();
     };
     _ref2 = (_ref = CurrentPath.node.routeSettings) != null ? _ref : {}, context = _ref2.context, unload = _ref2.unload;
@@ -744,6 +744,13 @@
         if (previousTargetPath == null) step();
       }
       return true;
+    },
+    reload: function() {
+      if (!LoadCompleted) return this;
+      if (!((CurrentPath != null) && (CurrentPath.node != null))) return this;
+      CurrentTargetPath = CurrentPath;
+      step();
+      return this;
     },
     observe: function() {
       var args, callback, keys, observable;

@@ -607,8 +607,9 @@ stepLoad = ->
 #	Used to execute a unload method on a node
 #---------------------------------------------------
 stepUnload = ->
+	LoadCompleted = false
+	
 	recur = ->
-		LoadCompleted = false
 		step()
 
 	{context, unload} = CurrentPath.node.routeSettings ? {}
@@ -796,6 +797,20 @@ Finch = {
 		return true;
 
 	#END Finch.call()
+
+	#---------------------------------------------------
+	# Method: Finch.reload
+	#	Reruns the 'load' method
+	#---------------------------------------------------
+	reload: () ->
+		return this unless LoadCompleted
+		return this unless CurrentPath? and CurrentPath.node?
+
+		CurrentTargetPath = CurrentPath
+		step()
+
+		return this
+	#END Finch.reload()
 
 	#---------------------------------------------------
 	# Method: Finch.observe

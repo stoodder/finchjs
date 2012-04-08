@@ -5,27 +5,72 @@
 		<script type="text/javascript" language="javascript">
 
 
-			Finch.route("/home", function(b)
-			{
-				Finch.observe("hello", function(hello)
+			Finch.route("/home", {
+				setup: function()
 				{
-					console.log(hello)
-				});
+					console.log("Setup Home")
+				},
+				load: function()
+				{
+					console.log("Load Home")
+				},
+				unload: function()
+				{
+					console.log("Unload Home")
+				},
+				teardown: function()
+				{
+					console.log("Teardown Home")
+				},
+			})
 
-				console.log("Called /home");
-			});
 
-			Finch.route("/news", function(b)
-			{
-				console.log("Called /news");
-			});
+			Finch.route("[/home]/news", {
+				setup: function()
+				{
+					console.log("Setup Home/News")
+				},
+				load: function()
+				{
+					console.log("Load Home/News")
+				},
+				unload: function()
+				{
+					console.log("Unload Home/News")
+				},
+				teardown: function()
+				{
+					console.log("Teardown Home/News")
+				},
+			})
+
+
+			Finch.route("/foo", {
+				setup: function()
+				{
+					console.log("Setup Foo")
+				},
+				load: function()
+				{
+					console.log("Load Foo")
+				},
+				unload: function()
+				{
+					console.log("Unload Foo")
+				},
+				teardown: function()
+				{
+					console.log("Teardown Foo")
+				},
+			})
 
 			Finch.listen()
 		</script>
 	</head>
 	<body>
-		<a href="#home?hello=world">home?hello=world</a> |
-		<a href="#home?hello=foooo">home?hello=fooo</a> |
-		<a href="#news">news</a> |
+		<a href="#home">home</a> |
+		<a href="#home/news">home/news</a> |
+		<a href="#foo">foo</a> |
+		<a href="javascript:void(Finch.reload())">reload</a> |
 	</body>
 </html>
