@@ -17,6 +17,7 @@ callbackGroup = () ->
 module "Finch",
 	teardown: ->
 		Finch.reset()
+		Finch.options { CoerceParameterTypes: true }
 
 test "Trivial routing", sinon.test ->
 
@@ -1448,3 +1449,22 @@ test "Route finding backtracking 2", sinon.test ->
 	lastCalledWithExactly var3, [{var1: "foo", var2: "bar", var3: "nope"}], "var3 called with bindings for var1, var2 and var3"
 	neverCalled foo,	"foo never called"
 	neverCalled bar,	"bar never called"
+
+test "Optional parameter parsing", sinon.test ->
+
+	Finch.route "/"
+	Finch.route "/home/news/:id", foo = @stub()
+	Finch.call "/home/news/1234"
+
+	calledOnce foo, "foo called once"
+	lastCalledWithExactly foo, [{id: 1234}], "foo called with int parameter"
+
+	foo.reset()
+
+	Finch.options { CoerceParameterTypes: false }
+
+	Finch.call "/"
+	Finch.call "/home/news/1234"
+
+	calledOnce foo, "foo called once"
+	lastCalledWithExactly foo, [{id: "1234"}], "foo called with string parameter"

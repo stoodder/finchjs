@@ -1378,4 +1378,29 @@
     return neverCalled(bar, "bar never called");
   }));
 
+  test("Optional parameter parsing", sinon.test(function() {
+    var foo;
+    Finch.route("/");
+    Finch.route("/home/news/:id", foo = this.stub());
+    Finch.call("/home/news/1234");
+    calledOnce(foo, "foo called once");
+    lastCalledWithExactly(foo, [
+      {
+        id: 1234
+      }
+    ], "foo called with int parameter");
+    foo.reset();
+    Finch.options({
+      CoerceParameterTypes: false
+    });
+    Finch.call("/");
+    Finch.call("/home/news/1234");
+    calledOnce(foo, "foo called once");
+    return lastCalledWithExactly(foo, [
+      {
+        id: "1234"
+      }
+    ], "foo called with string parameter");
+  }));
+
 }).call(this);

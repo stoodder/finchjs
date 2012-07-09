@@ -236,20 +236,21 @@ parseParameters = (params) ->
 	params = {} unless isObject(params)
 
 	#Try to parse through parameters and be smart about their values
-	for key, value of params
+	if Options.CoerceParameterTypes
+		for key, value of params
 
-		#Is thie a boolean
-		if value is "true"
-			value = true
-		else if value is "false"
-			value = false
-		#Is this an int
-		else if /^[0-9]+$/.test(value)
-			value = parseInt(value)
-		#Is this a float
-		else if /^[0-9]+\.[0-9]*$/.test(value)
-			value = parseFloat(value)
-		params[key] = value
+			#Is this a boolean
+			if value is "true"
+				value = true
+			else if value is "false"
+				value = false
+			#Is this an int
+			else if /^[0-9]+$/.test(value)
+				value = parseInt(value)
+			#Is this a float
+			else if /^[0-9]+\.[0-9]*$/.test(value)
+				value = parseFloat(value)
+			params[key] = value
 
 	#Return the parameters
 	return params
@@ -488,6 +489,9 @@ HashInterval = CurrentHash = null
 HashListening = false
 IgnoreObservables = SetupCalled = false # Used to handle cases of same load/setup methods
 LoadCompleted = false
+Options = {
+	CoerceParameterTypes: true
+}
 
 do resetGlobals = ->
 	RootNode = new RouteNode(name: "*")
@@ -608,7 +612,7 @@ stepLoad = ->
 #---------------------------------------------------
 stepUnload = ->
 	LoadCompleted = false
-	
+
 	recur = ->
 		step()
 
@@ -1061,6 +1065,24 @@ Finch = {
 		return
 
 	#END Finch.reset()
+
+	#---------------------------------------------------
+	# Method: Finch.options
+	#	Sets up configurable options for Finch.
+	#
+	# Arguments:
+	#	newOptions (object) - The new options to set.
+	#
+	# Options:
+	#	CoerceParameterTypes (boolean, default: true)
+	#		Whether to coerce parameters from strings into other types. For example,
+	#		the route /home/news/:id called with /home/news/1234 will fill the
+	#		"id" parameter with the integer 1234 instead of the string "1234".
+	#---------------------------------------------------
+	options: (newOptions) ->
+		extend Options, newOptions
+
+	#END Finch.options()
 }
 
 #Expose Finch to the window
