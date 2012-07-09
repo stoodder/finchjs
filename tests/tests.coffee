@@ -138,7 +138,7 @@ test "Even more hierarchical routing", sinon.test ->
 	foo_bar.reset()
 
 	Finch.call "/foo"
-	
+
 	calledOnce foo, "foo called"
 	neverCalled foo_bar, "foo/bar not called"
 
@@ -554,7 +554,7 @@ test "Asynchronous setup, load, and teardown", sinon.test ->
 
 do ->
 	trivialObservableTest = (fn) ->
-		
+
 		Finch.call "/foo"
 		calledOnce fn, "observable callback called once"
 		lastCalledWithExactly fn, [undefined, undefined], "called with given args"
@@ -762,27 +762,27 @@ test "Observable value types", sinon.test ->
 
 	Finch.route "/", (bindings) ->
 		Finch.observe ["x"], (x) -> stub(x)
-	
+
 	Finch.call "/?x=123"
 	calledOnce stub,                  	"/ callback called once"
 	lastCalledWithExactly stub, [123],	"/ called with correct 123"
 	stub.reset()
-	
+
 	Finch.call "/?x=123.456"
 	calledOnce stub,                      	"/ callback called once"
 	lastCalledWithExactly stub, [123.456],	"/ called with correct 123.456"
 	stub.reset()
-	
+
 	Finch.call "/?x=true"
 	calledOnce stub,                   	"/ callback called once"
 	lastCalledWithExactly stub, [true],	"/ called with correct true"
 	stub.reset()
-	
+
 	Finch.call "/?x=false"
 	calledOnce stub,                    	"/ callback called once"
 	lastCalledWithExactly stub, [false],	"/ called with correct false"
 	stub.reset()
-	
+
 	Finch.call "/?x=stuff"
 	calledOnce stub,                      	"/ callback called once"
 	lastCalledWithExactly stub, ["stuff"],	"/ called with correct stuff"
@@ -793,27 +793,27 @@ test "Binding value types", sinon.test ->
 	stub = @stub()
 
 	Finch.route "/:x", ({x}) -> stub(x)
-	
+
 	Finch.call "/123"
 	calledOnce stub,                  	"/ callback called once"
 	lastCalledWithExactly stub, [123],	"/ called with correct 123"
 	stub.reset()
-	
+
 	Finch.call "/123.456"
 	calledOnce stub,                      	"/ callback called once"
 	lastCalledWithExactly stub, [123.456],	"/ called with correct 123.456"
 	stub.reset()
-	
+
 	Finch.call "/true"
 	calledOnce stub,                   	"/ callback called once"
 	lastCalledWithExactly stub, [true],	"/ called with correct true"
 	stub.reset()
-	
+
 	Finch.call "/false"
 	calledOnce stub,                    	"/ callback called once"
 	lastCalledWithExactly stub, [false],	"/ called with correct false"
 	stub.reset()
-	
+
 	Finch.call "/stuff"
 	calledOnce stub,                      	"/ callback called once"
 	lastCalledWithExactly stub, ["stuff"],	"/ called with correct stuff"
@@ -889,3 +889,46 @@ test "Finch.listen and Finch.ignore", sinon.test ->
 	equal cb.removeEventListener.callCount, 0, "removeEventListener not called"
 	equal cb.detachEvent.callCount, 1, "detachEvent called once"
 	equal cb.clearInterval.callCount, 0, "clearInterval not called"
+
+test "Route finding backtracking 1", sinon.test ->
+
+	Finch.route "/foo",          	foo = @stub()
+	Finch.route "[/foo]/bar",    	bar = @stub()
+	Finch.route "[/foo/bar]/baz",	baz = @stub()
+
+	Finch.route "/:var1",              	var1 = @stub()
+	Finch.route "[/:var1/]:var2",      	var2 = @stub()
+	Finch.route "[/:var1/:var2]/:var3",	var3 = @stub()
+
+	# Test routes
+
+	Finch.call "/foo/nope"
+
+	calledOnce var1,	"var1 called once"
+	lastCalledWithExactly var1, [{var1: "foo"}], "var1 called with binding for var1"
+	calledOnce var2,	"var2 called once"
+	lastCalledWithExactly var2, [{var1: "foo", var2: "nope"}], "var2 called with bindings for var1 and var2"
+	neverCalled foo,	"foo never called"
+
+test "Route finding backtracking 2", sinon.test ->
+
+	Finch.route "/foo",          	foo = @stub()
+	Finch.route "[/foo]/bar",    	bar = @stub()
+	Finch.route "[/foo/bar]/baz",	baz = @stub()
+
+	Finch.route "/:var1",              	var1 = @stub()
+	Finch.route "[/:var1/]:var2",      	var2 = @stub()
+	Finch.route "[/:var1/:var2]/:var3",	var3 = @stub()
+
+	# Test routes
+
+	Finch.call "/foo/bar/nope"
+
+	calledOnce var1,	"var1 called once"
+	lastCalledWithExactly var1, [{var1: "foo"}], "var1 called with binding for var1"
+	calledOnce var2,	"var2 called once"
+	lastCalledWithExactly var2, [{var1: "foo", var2: "bar"}], "var2 called with bindings for var1 and var2"
+	calledOnce var3,	"var3 called once"
+	lastCalledWithExactly var3, [{var1: "foo", var2: "bar", var3: "nope"}], "var3 called with bindings for var1, var2 and var3"
+	neverCalled foo,	"foo never called"
+	neverCalled bar,	"bar never called"

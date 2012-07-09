@@ -397,28 +397,28 @@ findPath = (rootNode, uri) ->
 	uriComponents = splitUri(uri)
 	boundValues = []
 
-	(recur = (currentNode) ->
+	(recur = (currentNode, uriComponents) ->
 		# Are we done traversing the uri?
 		if uriComponents.length <= 0
 			return new RoutePath( node: currentNode, boundValues: boundValues )
 
-		component = uriComponents.shift()
+		component = uriComponents[0]
 
 		# Try to find a matching literal component
 		if currentNode.childLiterals[component]?
-			result = recur(currentNode.childLiterals[component])
+			result = recur(currentNode.childLiterals[component], uriComponents[1..])
 			return result if result?
 
 		# Try to find a matching variable component
 		if currentNode.childVariable?
 			boundValues.push(component)
-			result = recur(currentNode.childVariable)
+			result = recur(currentNode.childVariable, uriComponents[1..])
 			return result if result?
 			boundValues.pop()
 
 		# No matching route found in this traversal branch
 		return null
-	)(rootNode)
+	)(rootNode, uriComponents)
 
 #END findPath
 

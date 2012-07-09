@@ -469,7 +469,7 @@
     var boundValues, recur, uriComponents;
     uriComponents = splitUri(uri);
     boundValues = [];
-    return (recur = function(currentNode) {
+    return (recur = function(currentNode, uriComponents) {
       var component, result;
       if (uriComponents.length <= 0) {
         return new RoutePath({
@@ -477,19 +477,19 @@
           boundValues: boundValues
         });
       }
-      component = uriComponents.shift();
+      component = uriComponents[0];
       if (currentNode.childLiterals[component] != null) {
-        result = recur(currentNode.childLiterals[component]);
+        result = recur(currentNode.childLiterals[component], uriComponents.slice(1));
         if (result != null) return result;
       }
       if (currentNode.childVariable != null) {
         boundValues.push(component);
-        result = recur(currentNode.childVariable);
+        result = recur(currentNode.childVariable, uriComponents.slice(1));
         if (result != null) return result;
         boundValues.pop();
       }
       return null;
-    })(rootNode);
+    })(rootNode, uriComponents);
   };
 
   findNearestCommonAncestor = function(path1, path2) {
