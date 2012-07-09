@@ -2,7 +2,7 @@
 	Finch.js - Powerfully simple javascript routing
 	by Rick Allen (stoodder) and Greg Smith (smrq)
 
-	Version 0.4.1
+	Version 0.4.2
 	Full source at https://github.com/stoodder/finchjs
 	Copyright (c) 2011 RokkinCat, http://www.rokkincat.com
 
@@ -48,7 +48,10 @@
 
   module("Finch", {
     teardown: function() {
-      return Finch.reset();
+      Finch.reset();
+      return Finch.options({
+        CoerceParameterTypes: true
+      });
     }
   });
 
