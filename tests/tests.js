@@ -2,7 +2,7 @@
 	Finch.js - Powerfully simple javascript routing
 	by Rick Allen (stoodder) and Greg Smith (smrq)
 
-	Version 0.3.6
+	Version 0.4.0
 	Full source at https://github.com/stoodder/finchjs
 	Copyright (c) 2011 RokkinCat, http://www.rokkincat.com
 
@@ -347,6 +347,49 @@
     return ok(teardown_foo.calledOn(context), 'foo teardown called on same context as setup');
   }));
 
+  test("Checking Parent Context", function() {
+    Finch.route("/", function() {
+      equal(this.parent, null, "Parent is null");
+      return this.someData = "Free Bird";
+    });
+    Finch.route("[/]home", function() {
+      ok(this.parent !== null, "Parent is defined in simple version");
+      equal(this.parent.someData, "Free Bird", "Correct parent passed in");
+      return this.moreData = "Hello World";
+    });
+    Finch.route("[/home]/news", {
+      setup: function() {
+        ok(this.parent !== null, "Parent is defined in setup");
+        equal(this.parent.moreData, "Hello World", "Correct parent passed in");
+        return equal(this.parent.parent.someData, "Free Bird", "Correct parent's parent passed in");
+      },
+      load: function() {
+        ok(this.parent !== null, "Parent is defined in load");
+        equal(this.parent.moreData, "Hello World", "Correct parent passed in");
+        return equal(this.parent.parent.someData, "Free Bird", "Correct parent's parent passed in");
+      },
+      teardown: function() {
+        ok(this.parent !== null, "Parent is defined in teardown");
+        equal(this.parent.moreData, "Hello World", "Correct parent passed in");
+        return equal(this.parent.parent.someData, "Free Bird", "Correct parent's parent passed in");
+      }
+    });
+    Finch.route("/foo", {
+      setup: function() {
+        return equal(this.parent, null, "Parent is null");
+      },
+      load: function() {
+        return equal(this.parent, null, "Parent is null");
+      },
+      teardown: function() {
+        return equal(this.parent, null, "Parent is null");
+      }
+    });
+    Finch.call("/home/news");
+    Finch.call("/foo");
+    return Finch.call("/home/news");
+  });
+
   test("Hierarchical calling with context", sinon.test(function() {
     var foo_bar_context, foo_context, load_foo, load_foo_bar, setup_foo, setup_foo_bar, teardown_foo, teardown_foo_bar;
     Finch.route("foo", {
@@ -375,6 +418,280 @@
     ok(teardown_foo_bar.calledBefore(teardown_foo), 'foo/bar teardown called before foo teardown');
     ok(teardown_foo_bar.calledOn(foo_bar_context), 'foo/bar teardown called on same context as setup');
     return ok(teardown_foo.calledOn(foo_context), 'foo teardown called on same context as');
+  }));
+
+  test('Testing synchronous and asynchronous unload method and context', sinon.test(function() {
+    var call, call_context, call_next, cb;
+    cb = callbackGroup();
+    cb.home_setup = this.stub();
+    cb.home_load = this.stub();
+    cb.home_unload = this.stub();
+    cb.home_teardown = this.stub();
+    Finch.route("/home", {
+      setup: function(bindings, next) {
+        cb.home_setup();
+        return next();
+      },
+      load: function(bindings, next) {
+        cb.home_load();
+        return next();
+      },
+      unload: function(bindings, next) {
+        cb.home_unload();
+        return next();
+      },
+      teardown: function(bindings, next) {
+        cb.home_teardown();
+        return next();
+      }
+    });
+    cb.home_news_setup = this.stub();
+    cb.home_news_load = this.stub();
+    cb.home_news_unload = this.stub();
+    cb.home_news_teardown = this.stub();
+    Finch.route("[/home]/news", {
+      setup: function(bindings, next) {
+        this.did_setup = true;
+        cb.home_news_setup();
+        return next();
+      },
+      load: function(bindings, next) {
+        this.did_load = true;
+        cb.home_news_load();
+        return next();
+      },
+      unload: function(bindings, next) {
+        this.did_unload = true;
+        return cb.home_news_unload(this, next);
+      },
+      teardown: function(bindings, next) {
+        this.did_teardown = true;
+        cb.home_news_teardown();
+        return next();
+      }
+    });
+    Finch.route("/foo", cb.foo = this.stub());
+    Finch.call("/home");
+    calledOnce(cb.home_setup, "Called Home Setup");
+    calledOnce(cb.home_load, "Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    neverCalled(cb.foo, "Never Called Foo");
+    ok(cb.home_setup.calledBefore(cb.home_load), "Called Home setup before load");
+    cb.reset();
+    Finch.call("/home/news");
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    calledOnce(cb.home_unload, "Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    calledOnce(cb.home_news_setup, "Called Home News Setup");
+    calledOnce(cb.home_news_load, "Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    neverCalled(cb.foo, "Never Called Foo");
+    ok(cb.home_unload.calledBefore(cb.home_news_setup), "Home unload called before Home/News setup");
+    ok(cb.home_news_setup.calledBefore(cb.home_news_load), "Home/News setup called before Home/News load");
+    cb.reset();
+    Finch.call("/foo");
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    calledOnce(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    neverCalled(cb.foo, "Never Called Foo");
+    call = cb.home_news_unload.getCall(0);
+    call_context = call.args[0];
+    call_next = call.args[1];
+    ok(call_context.did_setup != null, "Setup was passed in context");
+    ok(call_context.did_load != null, "Load was passed in context");
+    ok(call_context.did_unload != null, "Unload was passed in context");
+    ok(!(call_context.did_teardown != null), "Teardown was not passed in context");
+    call_next();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    calledOnce(cb.home_teardown, "Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    calledOnce(cb.home_news_unload, "Called Home News Unload");
+    calledOnce(cb.home_news_teardown, "Called Home News Teardown");
+    calledOnce(cb.foo, "Called Foo");
+    return cb.reset();
+  }));
+
+  test("Reload", sinon.test(function() {
+    var call, call_context, call_next, cb;
+    cb = callbackGroup();
+    cb.home_setup = this.stub();
+    cb.home_load = this.stub();
+    cb.home_unload = this.stub();
+    cb.home_teardown = this.stub();
+    Finch.route("/home", {
+      setup: function(bindings, next) {
+        cb.home_setup();
+        return next();
+      },
+      load: function(bindings, next) {
+        cb.home_load();
+        return next();
+      },
+      unload: function(bindings, next) {
+        cb.home_unload();
+        return next();
+      },
+      teardown: function(bindings, next) {
+        cb.home_teardown();
+        return next();
+      }
+    });
+    cb.home_news_setup = this.stub();
+    cb.home_news_load = this.stub();
+    cb.home_news_unload = this.stub();
+    cb.home_news_teardown = this.stub();
+    Finch.route("[/home]/news", {
+      setup: function(bindings, next) {
+        this.did_setup = true;
+        return cb.home_news_setup(this, next);
+      },
+      load: function(bindings, next) {
+        this.did_load = true;
+        return cb.home_news_load(this, next);
+      },
+      unload: function(bindings, next) {
+        this.did_unload = true;
+        return cb.home_news_unload(this, next);
+      },
+      teardown: function(bindings, next) {
+        this.did_teardown = true;
+        cb.home_news_teardown();
+        return next();
+      }
+    });
+    Finch.call("/home");
+    calledOnce(cb.home_setup, "Called Home Setup");
+    calledOnce(cb.home_load, "Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    cb.reset();
+    Finch.reload();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    calledOnce(cb.home_load, "Called Home Load");
+    calledOnce(cb.home_unload, "Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    cb.reset();
+    Finch.call("/home/news");
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    calledOnce(cb.home_unload, "Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    calledOnce(cb.home_news_setup, "Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    call = cb.home_news_setup.getCall(0);
+    call_context = call.args[0];
+    call_next = call.args[1];
+    ok(call_context.did_setup != null, "Setup was passed in context");
+    ok(!(call_context.did_load != null), "Load was not passed in context");
+    ok(!(call_context.did_unload != null), "Unload was not passed in context");
+    ok(!(call_context.did_teardown != null), "Teardown was not passed in context");
+    cb.reset();
+    Finch.reload();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    cb.reset();
+    call_next();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    calledOnce(cb.home_news_load, "Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    call = cb.home_news_load.getCall(0);
+    call_context = call.args[0];
+    call_next = call.args[1];
+    ok(call_context.did_setup != null, "Setup was passed in context");
+    ok(call_context.did_load != null, "Load was passed in context");
+    ok(!(call_context.did_unload != null), "Unload was not passed in context");
+    ok(!(call_context.did_teardown != null), "Teardown was not passed in context");
+    cb.reset();
+    Finch.reload();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    cb.reset();
+    call_next();
+    Finch.reload();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    calledOnce(cb.home_news_unload, "Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    call = cb.home_news_unload.getCall(0);
+    call_context = call.args[0];
+    call_next = call.args[1];
+    ok(call_context.did_setup != null, "Setup was passed in context");
+    ok(call_context.did_load != null, "Load was passed in context");
+    ok(call_context.did_unload != null, "Unload was passed in context");
+    ok(!(call_context.did_teardown != null), "Teardown was not passed in context");
+    cb.reset();
+    Finch.reload();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    neverCalled(cb.home_news_load, "Never Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    cb.reset();
+    call_next();
+    neverCalled(cb.home_setup, "Never Called Home Setup");
+    neverCalled(cb.home_load, "Never Called Home Load");
+    neverCalled(cb.home_unload, "Never Called Home Unload");
+    neverCalled(cb.home_teardown, "Never Called Home Teardown");
+    neverCalled(cb.home_news_setup, "Never Called Home News Setup");
+    calledOnce(cb.home_news_load, "Called Home News Load");
+    neverCalled(cb.home_news_unload, "Never Called Home News Unload");
+    neverCalled(cb.home_news_teardown, "Never Called Home News Teardown");
+    call = cb.home_news_load.getCall(0);
+    call_context = call.args[0];
+    call_next = call.args[1];
+    ok(call_context.did_setup != null, "Setup was passed in context");
+    ok(call_context.did_load != null, "Load was passed in context");
+    ok(call_context.did_unload != null, "Unload was passed in context");
+    return ok(!(call_context.did_teardown != null), "Teardown was not passed in context");
   }));
 
   test("Route sanitation", sinon.test(function() {
@@ -775,6 +1092,145 @@
     return stub.reset();
   }));
 
+  test("Finch.navigate", sinon.test(function() {
+    var hash, helloWorldRegex, homeAccountRegex, homeNewsArticleRegex, homeNewsRegex, homeRegex;
+    window.location.hash = "";
+    hash = function() {
+      var _ref;
+      return "#" + ((_ref = window.location.href.split("#", 2)[1]) != null ? _ref : "");
+    };
+    homeRegex = /^#?\/home/;
+    homeNewsRegex = /^#?\/home\/news/;
+    homeAccountRegex = /^#?\/home\/account/;
+    homeNewsArticleRegex = /^#?\/home\/news\/article/;
+    helloWorldRegex = /^#?\/hello%20world/;
+    Finch.navigate("/home");
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    Finch.navigate("/home/news");
+    ok(homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news");
+    Finch.navigate("/home");
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    Finch.navigate("/home", {
+      foo: "bar"
+    });
+    ok(homeRegex.test(hash()), "Navigate remained on the /home route");
+    ok(hash().indexOf("foo=bar") > -1, "Had correct query parameter set");
+    Finch.navigate("/home", {
+      hello: "world"
+    });
+    ok(homeRegex.test(hash()), "Navigate remained on the /home route");
+    ok(hash().indexOf("foo=bar") === -1, "Removed foo=bar");
+    ok(hash().indexOf("hello=world") > -1, "Added hello=world");
+    Finch.navigate({
+      foos: "bars"
+    });
+    ok(homeRegex.test(hash()), "Navigate remained on the /home route");
+    ok(hash().indexOf("hello=world") === -1, "Removed hello=world");
+    ok(hash().indexOf("foos=bars") > -1, "Added foos=bars");
+    Finch.navigate({
+      foos: "baz"
+    });
+    ok(homeRegex.test(hash()), "Navigate remained on the /home route");
+    ok(hash().indexOf("foos=baz") > -1, "Changed to foos=baz");
+    Finch.navigate({
+      hello: "world"
+    }, true);
+    ok(homeRegex.test(hash()), "Navigate remained on the /home route");
+    ok(hash().indexOf("foos=baz") > -1, "Kept foos=baz");
+    ok(hash().indexOf("hello=world") > -1, "Added hello=world");
+    Finch.navigate({
+      foos: null
+    }, true);
+    ok(homeRegex.test(hash()), "Navigate remained on the /home route");
+    ok(hash().indexOf("foos=baz") === -1, "Removed foos=baz");
+    ok(hash().indexOf("hello=world") > -1, "Kept hello=world");
+    Finch.navigate("/home/news", true);
+    ok(homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news");
+    ok(hash().indexOf("hello=world") > -1, "Kept hello=world");
+    Finch.navigate("/hello world", {});
+    ok(helloWorldRegex.test(hash()), "Navigated to /hello%20world");
+    ok(hash().indexOf("hello=world") === -1, "Removed hello=world");
+    Finch.navigate("/hello world", {
+      foo: "bar bar"
+    });
+    ok(helloWorldRegex.test(hash()), "Navigate remained at /hello%20world");
+    ok(hash().indexOf("foo=bar%20bar") > -1, "Added and escaped foo=bar bar");
+    Finch.navigate({
+      foo: "baz baz"
+    });
+    ok(helloWorldRegex.test(hash()), "Navigate remained at /hello%20world");
+    ok(hash().indexOf("foo=bar%20bar") === -1, "Removed foo=bar bar");
+    ok(hash().indexOf("foo=baz%20baz") > -1, "Added and escaped foo=baz baz");
+    Finch.navigate({
+      hello: 'world world'
+    }, true);
+    ok(helloWorldRegex.test(hash()), "Navigate remained at /hello%20world");
+    ok(hash().indexOf("foo=baz%20baz") > -1, "Kept and escaped foo=baz baz");
+    ok(hash().indexOf("hello=world%20world") > -1, "Added and escaped hello=world world");
+    Finch.navigate("/home?foo=bar", {
+      hello: "world"
+    });
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    ok(hash().indexOf("foo=bar") > -1, "Had correct query parameter set foo=bar");
+    ok(hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world");
+    equal(hash().split("?").length - 1, 1, "Correct number of '?'");
+    equal(hash().split("&").length - 1, 1, "Correct number of '&'");
+    Finch.navigate("/home?foo=bar", {
+      hello: "world",
+      foo: "baz"
+    });
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    ok(hash().indexOf("foo=bar") === -1, "foo=bar not set");
+    ok(hash().indexOf("foo=baz") > -1, "Had correct query parameter set foo=baz");
+    ok(hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world");
+    equal(hash().split("?").length - 1, 1, "Correct number of '?'");
+    equal(hash().split("&").length - 1, 1, "Correct number of '&'");
+    Finch.navigate("/home?foo=bar", {
+      hello: "world",
+      free: "bird"
+    });
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    ok(hash().indexOf("foo=bar") > -1, "Had correct query parameter set foo=bar");
+    ok(hash().indexOf("free=bird") > -1, "Had correct query parameter set free=bird");
+    ok(hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world");
+    equal(hash().split("?").length - 1, 1, "Correct number of '?'");
+    equal(hash().split("&").length - 1, 2, "Correct number of '&'");
+    Finch.navigate("#/home", true);
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    ok(hash().indexOf("free=bird") > -1, "Had correct query parameter set free=bird");
+    ok(hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world");
+    Finch.navigate("#/home");
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    ok(hash().indexOf("free=bird") === -1, "Had correct query parameter set free=bird");
+    ok(hash().indexOf("hello=world") === -1, "Had correct query parameter set hello=world");
+    Finch.navigate("#/home/news", {
+      free: "birds",
+      hello: "worlds"
+    });
+    ok(homeNewsRegex.test(hash()), "Navigate called and changed hash to /home");
+    ok(hash().indexOf("free=birds") > -1, "Had correct query parameter set free=birds");
+    ok(hash().indexOf("hello=worlds") > -1, "Had correct query parameter set hello=worlds");
+    Finch.navigate("#/home/news", {
+      foo: "bar"
+    }, true);
+    ok(homeNewsRegex.test(hash()), "Navigate called and changed hash to /home");
+    ok(hash().indexOf("free=birds") > -1, "Had correct query parameter set free=birds");
+    ok(hash().indexOf("hello=worlds") > -1, "Had correct query parameter set hello=worlds");
+    ok(hash().indexOf("foo=bar") > -1, "Had correct query parameter set hello=worlds");
+    Finch.navigate("/home/news");
+    ok(homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news");
+    Finch.navigate("../");
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    Finch.navigate("./");
+    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    Finch.navigate("./news");
+    ok(homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news");
+    Finch.navigate("/home/news/article");
+    ok(homeNewsArticleRegex.test(hash()), "Navigate called and changed hash to /home/news/article");
+    Finch.navigate("../../account");
+    return ok(homeAccountRegex.test(hash()), "Navigate called and changed hash to /home/account");
+  }));
+
   test("Finch.listen and Finch.ignore", sinon.test(function() {
     var cb, clearWindowMethods;
     if (window.hasOwnProperty == null) {
@@ -835,6 +1291,32 @@
     equal(cb.removeEventListener.callCount, 0, "removeEventListener not called");
     equal(cb.detachEvent.callCount, 1, "detachEvent called once");
     return equal(cb.clearInterval.callCount, 0, "clearInterval not called");
+  }));
+
+  test("Finch.abort", sinon.test(function() {
+    var fooStub, homeStub;
+    homeStub = this.stub();
+    fooStub = this.stub();
+    Finch.route("/home", function(bindings, continuation) {
+      return homeStub();
+    });
+    Finch.route("/foo", function(bindings, continuation) {
+      return fooStub();
+    });
+    Finch.call("home");
+    equal(homeStub.callCount, 1, "Home called correctly");
+    equal(fooStub.callCount, 0, "Foo not called");
+    homeStub.reset();
+    fooStub.reset();
+    Finch.call("foo");
+    equal(homeStub.callCount, 0, "Home not called");
+    equal(fooStub.callCount, 0, "Foo not called");
+    homeStub.reset();
+    fooStub.reset();
+    Finch.abort();
+    Finch.call("foo");
+    equal(homeStub.callCount, 0, "Home not called");
+    return equal(fooStub.callCount, 1, "Foo called correctly");
   }));
 
   test("Route finding backtracking 1", sinon.test(function() {

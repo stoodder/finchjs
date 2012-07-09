@@ -4,6 +4,7 @@
 
 isObject = (object) -> (typeof object) is (typeof {}) and object isnt null
 isFunction = (object) -> Object::toString.call( object ) is "[object Function]"
+isBoolean = (object) -> Object::toString.call( object ) is "[object Boolean]"
 isArray = (object) -> Object::toString.call( object ) is "[object Array]"
 isString = (object) -> Object::toString.call( object ) is "[object String]"
 isNumber = (object) -> Object::toString.call( object ) is "[object Number]"
@@ -91,9 +92,10 @@ class RouteNode
 		@bindings = []
 
 class RouteSettings
-	constructor: ({setup, teardown, load, context} = {}) ->
+	constructor: ({setup, teardown, load, unload, context} = {}) ->
 		@setup = if isFunction(setup) then setup else (->)
 		@load = if isFunction(load) then load else (->)
+		@unload = if isFunction(unload) then unload else (->)
 		@teardown = if isFunction(teardown) then teardown else (->)
 		@context = if isObject(context) then context else {}
 
@@ -193,6 +195,30 @@ parseQueryString = (queryString) ->
 	return parseParameters( queryParameters )
 
 #END parseQueryString
+
+#---------------------------------------------------
+# Method: getHash
+#	Used to get the hash of a url in a standard way (that performs the same in all browsers)
+#
+# Returns:
+#	string - the string of the current hash, including the '#'
+#---------------------------------------------------
+getHash = () ->
+
+	return "#" + ( window.location.href.split("#", 2)[1] ? "" )
+
+#END getHash
+
+#---------------------------------------------------
+# Method: setHash
+#	Used to set the current hash in a standard way
+#---------------------------------------------------
+setHash = (hash) ->
+	hash = "" unless isString(hash)
+	hash = trim(hash)
+	hash = hash[1..] if hash[0..0] is '#'
+	window.location.hash = hash
+#END setHash
 
 #---------------------------------------------------
 # Method: parseParameters
@@ -461,6 +487,7 @@ PreviousParameters = CurrentParameters = null
 HashInterval = CurrentHash = null
 HashListening = false
 IgnoreObservables = SetupCalled = false # Used to handle cases of same load/setup methods
+LoadCompleted = false
 
 do resetGlobals = ->
 	RootNode = new RouteNode(name: "*")
@@ -473,6 +500,7 @@ do resetGlobals = ->
 	HashListening = false
 	IgnoreObservables = false
 	SetupCalled = false
+	LoadCompleted = false
 
 #END Globals
 
@@ -486,7 +514,12 @@ step = ->
 		#Execute the observables
 		runObservables()
 
-	#If we're at our destination. run the load method
+	#Otherwise, if this is our first call since the last 'load' was called,
+	#Call the unload method
+	else if LoadCompleted
+		stepUnload()
+
+	#Otherwise, we're currently stepping and if we're at our destination. run the load method
 	else if CurrentTargetPath.isEqual(CurrentPath)
 
 		#Execute this path's load method
@@ -510,6 +543,9 @@ step = ->
 stepSetup = ->
 	SetupCalled = true
 
+	#Try and get the parent context if we can
+	{context: parentContext} = CurrentPath.node?.routeSettings ? {context: null}
+
 	# During setup and teardown, CurrentPath should always be the path to the
 	# node getting setup or torn down.
 	# In the setup case: CurrentPath must be set before the setup function is called.
@@ -517,6 +553,7 @@ stepSetup = ->
 
 	{context, setup, load} = CurrentPath.node.routeSettings ? {}
 	context ?= {}
+	context.parent = parentContext
 	setup ?= (->)
 	load ?= (->)
 	bindings = CurrentPath.getBindings()
@@ -538,9 +575,12 @@ stepSetup = ->
 #	Used to execute a load method on a node
 #---------------------------------------------------
 stepLoad = ->
-	# End the step process
-	CurrentTargetPath = null
-	recur = -> step()
+	#Setup the recurrance method
+	recur = ->
+		# End the step process
+		LoadCompleted = true
+		CurrentTargetPath = null
+		step()
 
 	#Stop executing if we don't have a current node
 	return recur() unless CurrentPath.node?
@@ -561,6 +601,32 @@ stepLoad = ->
 		recur()
 
 #END stepLoad
+
+#---------------------------------------------------
+# Method: stepUnload
+#	Used to execute a unload method on a node
+#---------------------------------------------------
+stepUnload = ->
+	LoadCompleted = false
+	
+	recur = ->
+		step()
+
+	{context, unload} = CurrentPath.node.routeSettings ? {}
+	context ?= {}
+	unload ?= (->)
+	bindings = CurrentPath.getBindings()
+
+	#If the unload method takes two parameters, it is an asynchronous method
+	if unload.length is 2
+		unload.call(context, bindings, recur)
+
+	#Otherwise call it synchronously
+	else
+		unload.call(context, bindings)
+		recur()
+
+#END stepUnload
 
 #---------------------------------------------------
 # Method: stepTeardown
@@ -610,7 +676,7 @@ runObservables = ->
 #	Used to respond to hash changes
 #---------------------------------------------------
 hashChangeListener = (event) ->
-	hash = window.location.hash
+	hash = getHash()
 	hash = hash.slice(1) if startsWith(hash, "#")
 	hash = unescape(hash)
 
@@ -623,7 +689,7 @@ hashChangeListener = (event) ->
 
 		#If not successful revert
 		else
-			window.location.hash = CurrentHash ? ""
+			setHash(CurrentHash ? "")
 
 #END hashChangeListener
 
@@ -659,10 +725,12 @@ Finch = {
 
 			#if the callback was asynchronous, setup the setting as such
 			if cb.length is 2
-				settings.load = (bindings, callback) ->
+				settings.load = (bindings, next) ->
 					if not SetupCalled
 						IgnoreObservables = true
-						cb(bindings, callback)
+						cb(bindings, next)
+					else
+						next()
 
 			#Otherwise set them up synchronously
 			else
@@ -675,6 +743,8 @@ Finch = {
 
 		# Make sure we have valid inputs
 		pattern = "" unless isString(pattern)
+		pattern = trim(pattern)
+		pattern = "/" unless pattern.length > 0
 
 		# Parse the route, and return false if it was invalid
 		parsedRouteString = parseRouteString(pattern)
@@ -729,6 +799,20 @@ Finch = {
 	#END Finch.call()
 
 	#---------------------------------------------------
+	# Method: Finch.reload
+	#	Reruns the 'load' method
+	#---------------------------------------------------
+	reload: () ->
+		return this unless LoadCompleted
+		return this unless CurrentPath? and CurrentPath.node?
+
+		CurrentTargetPath = CurrentPath
+		step()
+
+		return this
+	#END Finch.reload()
+
+	#---------------------------------------------------
 	# Method: Finch.observe
 	#	Used to set up observers on the query string.
 	#
@@ -775,6 +859,19 @@ Finch = {
 			peek(CurrentPath.parameterObservables).push(observable)
 
 	#END Finch.observe()
+
+	#---------------------------------------------------
+	# Method: Finch.abort
+	#	Used to abort a current call and hand control back to finch.
+	#	This can be especially useful when doing an asynchronous call that
+	#	for some reason (perhaps an ajax fail) doesn't ever call the continuation
+	#	method, therefore hanging the entire app.
+	#---------------------------------------------------
+	abort: () ->
+		#Simply abort by clearing the current target path
+		CurrentTargetPath = null
+
+	#END abort
 
 	#---------------------------------------------------
 	# Method: Finch.listen
@@ -845,27 +942,60 @@ Finch = {
 	#	Method used to 'navigate' to a new/update the existing hash route
 	#
 	# Form 1:
-	#	Finch.navigate('/my/favorite/route', {hello: 'world'})
-	#	- or -
-	#	Finch.navigate(null, {hello: 'world'})
+	#	Finch.navigate('/my/favorite/route', {hello: 'world'}, true)
+	#
 	# Arguments:
-	#	uri (string) - string of a uri to browse to, if uri is null, the current uri will be used
+	#	uri (string) - string of a uri to browse to
 	#	queryParams (object) - The query parameters to add the to the uri
+	#	doUpdate (boolean) - Should we replace the current hash or just updates it?
+	#
 	#
 	# Form 2:
-	#	Finch.navigate({hello: 'world', foo: 'bar'})
+	#	Finch.navigate('my/second/favorite/url', true)
+	#
+	#	Updates the url keeping the current query params
+	#
 	# Arguments:
-	#	queryParams (object) - An object to UPDATE the current list of query parameters (won't delete parameters from the list, only add and/or update current)use Finch.navigate(null, {params}) to change the list of query parameters
+	#	uri (string) - string of a uri to browse to
+	#	doUpdate (boolean) - Should we replace the current hash or just updates it?
+	#
+	#
+	# Form 3:
+	#	Finch.navigate({hello: 'world', foo: 'bar'}, true)
+	#
+	#	Updates the query params keeping the current url
+	#
+	# Arguments:
+	#	queryParams (object) - The query parameters to add the to the uri
+	#	doUpdate (boolean) - Should we replace the current hash or just updates it?
 	#---------------------------------------------------
-	navigate: (uri, queryParams) ->
+	navigate: (uri, queryParams, doUpdate) ->
 
-		#if the uri is an object, we'll assume we're just updating the hash
-		if isObject(uri)
-			queryParams = uri
-			uri = null
-			currentQueryString = window.location.hash.split("?", 2)[1] ? ""
-			currentQueryParams = parseQueryString(currentQueryString)
+		#Get the current uri and params
+		[ currentUri, currentQueryString ] = getHash().split("?", 2)
+		currentUri ?= ""
+		currentQueryString ?= ""
 
+		#format the current uri appropriately
+		currentUri = currentUri[1..] if currentUri[0..0] is "#"
+		currentUri = unescape(currentUri)
+
+		#format the currentParams
+		currentQueryParams = parseQueryString( currentQueryString )
+
+		#Make sure our arguments are valid
+		doUpdate = queryParams if isBoolean(queryParams)
+		queryParams = uri if isObject(uri)
+
+		uri = "" unless isString(uri)
+		queryParams = {} unless isObject(queryParams)
+		doUpdate = false unless isBoolean(doUpdate)
+
+		uri = trim(uri)
+		uri = null if uri.length is 0
+
+		#If we're just updating, extend the currnet params
+		if doUpdate
 			#Unescape things fromthe current query params
 			do ->
 				newQueryParams = {}
@@ -875,32 +1005,43 @@ Finch = {
 
 			#udpate the query params
 			queryParams = extend(currentQueryParams, queryParams)
-			queryParams = compact(queryParams)
 
-		#otherwise assume they're trying to browser to a completely new route
-		else
-			uri = null unless isString(uri)
-			queryParams = {} unless isObject(queryParams)
-			queryParams = compact(queryParams)
+
+		#Start trying to create the new uri
+		uri = currentUri if uri is null
+		[uri, uriParamString] = uri.split("?", 2)
+		uri = uri[1..] if uri[0..0] is "#"
+
+		#Check if they're trying to use relative routing
+		if startsWith(uri, "./") or startsWith(uri, "../")
+			builtUri = currentUri
+
+			while startsWith(uri, "./") or startsWith(uri, "../")
+				slashIndex = uri.indexOf("/")
+				piece = uri.slice(0, slashIndex)
+				uri = uri.slice(slashIndex+1)
+				builtUri = builtUri.slice(0, builtUri.lastIndexOf("/")) if piece is ".."
+
+			uri = if uri.length > 0 then "#{builtUri}/#{uri}" else builtUri
+
+		#Make sure the uri param string is valid
+		uriQueryParams = if isString(uriParamString) then parseQueryString(uriParamString) else {}
+
+		#Get and format the query params
+		queryParams = extend(uriQueryParams, queryParams)
+		queryParams = compact(queryParams)
+
+		#Build the final uri
+		uri = escape(uri)
 
 		#Generate a query string
 		queryString = (escape(key) + "=" + escape(value) for key, value of queryParams).join("&")
 
-		#if the uri is null, use the current uri
-		if uri is null
-			uri = window.location.hash.split("?", 2)[0] ? ""
-			uri = uri.slice(1) if uri.slice(0,1) is "#"
-
-		#escape the uri
-		uri = escape(uri)
-
 		#try to attach the query string
-		if queryString.length > 0
-			uri += if uri.indexOf("?") > -1 then "&" else "?"
-			uri += queryString
+		uri += "?" + queryString if queryString.length > 0
 
 		#update the hash
-		window.location.hash = uri
+		setHash(uri)
 
 	#END Finch.navigate()
 
@@ -921,51 +1062,6 @@ Finch = {
 
 	#END Finch.reset()
 }
-
-###
-# FOR NOW, we'll just comment this out instead of having a debug flag
-Finch.private = {
-	# utility
-	isObject
-	isFunction
-	isArray
-	isString
-	isNumber
-	trim
-	trimSlashes
-	startsWith
-	endsWith
-	contains
-	extend
-	objectsEqual
-	arraysEqual
-
-	# constants
-	NullPath
-	NodeType
-
-	# classes
-	RouteSettings
-	RoutePath
-	RouteNode
-
-	#functions
-	parseQueryString
-	splitUri
-	parseRouteString
-	getComponentType
-	getComponentName
-	addRoute
-	findPath
-	findNearestCommonAncestor
-
-	globals: -> return {
-		RootNode
-		CurrentPath
-		CurrentParameters
-	}
-}
-###
 
 #Expose Finch to the window
 @Finch = Finch

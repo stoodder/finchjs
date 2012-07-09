@@ -363,6 +363,48 @@ test "Calling with context", sinon.test ->
 	Finch.call "/bar"
 	ok teardown_foo.calledOn(context), 'foo teardown called on same context as setup'
 
+test "Checking Parent Context", ->
+	Finch.route "/", ->
+		equal @parent, null, "Parent is null"
+
+		@someData = "Free Bird"
+
+	Finch.route "[/]home", ->
+		ok @parent isnt null, "Parent is defined in simple version"
+		equal @parent.someData, "Free Bird", "Correct parent passed in"
+
+		@moreData = "Hello World"
+
+	Finch.route "[/home]/news",
+		setup: ->
+			ok @parent isnt null, "Parent is defined in setup"
+			equal @parent.moreData, "Hello World", "Correct parent passed in"
+			equal @parent.parent.someData, "Free Bird", "Correct parent's parent passed in"
+
+		load: ->
+			ok @parent isnt null, "Parent is defined in load"
+			equal @parent.moreData, "Hello World", "Correct parent passed in"
+			equal @parent.parent.someData, "Free Bird", "Correct parent's parent passed in"
+
+		teardown: ->
+			ok @parent isnt null, "Parent is defined in teardown"
+			equal @parent.moreData, "Hello World", "Correct parent passed in"
+			equal @parent.parent.someData, "Free Bird", "Correct parent's parent passed in"
+
+	Finch.route "/foo",
+		setup: ->
+			equal @parent, null, "Parent is null"
+
+		load: ->
+			equal @parent, null, "Parent is null"
+
+		teardown: ->
+			equal @parent, null, "Parent is null"
+
+	Finch.call("/home/news")
+	Finch.call("/foo")
+	Finch.call("/home/news")
+
 test "Hierarchical calling with context", sinon.test ->
 
 	Finch.route "foo",
@@ -376,7 +418,6 @@ test "Hierarchical calling with context", sinon.test ->
 	Finch.route "baz", @stub()
 
 	# Test routes
-
 	Finch.call "/foo"
 
 	calledOnce setup_foo, 'foo setup called once'
@@ -399,6 +440,306 @@ test "Hierarchical calling with context", sinon.test ->
 
 	ok teardown_foo_bar.calledOn(foo_bar_context), 'foo/bar teardown called on same context as setup'
 	ok teardown_foo.calledOn(foo_context), 'foo teardown called on same context as'
+
+test 'Testing synchronous and asynchronous unload method and context', sinon.test ->
+
+	cb = callbackGroup()
+	cb.home_setup = @stub()
+	cb.home_load = @stub()
+	cb.home_unload = @stub()
+	cb.home_teardown = @stub()
+
+	Finch.route "/home",
+		setup: (bindings, next) -> 
+			cb.home_setup()
+			next()
+		load: (bindings, next) ->
+			cb.home_load() 
+			next()
+		unload: (bindings, next) -> 
+			cb.home_unload()
+			next()
+		teardown: (bindings, next) -> 
+			cb.home_teardown()
+			next()
+
+	cb.home_news_setup = @stub()
+	cb.home_news_load = @stub()
+	cb.home_news_unload = @stub()
+	cb.home_news_teardown = @stub()
+
+	Finch.route "[/home]/news"
+		setup: (bindings, next) -> 
+			@did_setup = true
+			cb.home_news_setup()
+			next()
+		load: (bindings, next) ->
+			@did_load = true
+			cb.home_news_load() 
+			next()
+		unload: (bindings, next) -> 
+			@did_unload = true
+			cb.home_news_unload(this, next)
+		teardown: (bindings, next) -> 
+			@did_teardown = true
+			cb.home_news_teardown()
+			next()
+
+	Finch.route "/foo", cb.foo = @stub()
+
+	Finch.call("/home")
+
+	calledOnce cb.home_setup, "Called Home Setup"
+	calledOnce cb.home_load, "Called Home Load"
+	neverCalled cb.home_unload, "Never Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	neverCalled cb.home_news_load, "Never Called Home News Load"
+	neverCalled cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+	neverCalled cb.foo, "Never Called Foo"
+
+	ok cb.home_setup.calledBefore(cb.home_load), "Called Home setup before load"
+
+	cb.reset()
+
+	Finch.call("/home/news")
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	neverCalled cb.home_load, "Never Called Home Load"
+	calledOnce cb.home_unload, "Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	calledOnce cb.home_news_setup, "Called Home News Setup"
+	calledOnce cb.home_news_load, "Called Home News Load"
+	neverCalled cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+	neverCalled cb.foo, "Never Called Foo"
+
+	ok cb.home_unload.calledBefore(cb.home_news_setup), "Home unload called before Home/News setup"
+	ok cb.home_news_setup.calledBefore(cb.home_news_load), "Home/News setup called before Home/News load"
+
+	cb.reset()
+
+	Finch.call("/foo")
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	neverCalled cb.home_load, "Never Called Home Load"
+	neverCalled cb.home_unload, "Never Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	neverCalled cb.home_news_load, "Never Called Home News Load"
+	calledOnce cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+	neverCalled cb.foo, "Never Called Foo"
+
+	call = cb.home_news_unload.getCall(0)
+	call_context = call.args[0]
+	call_next = call.args[1]
+
+	ok call_context.did_setup?, "Setup was passed in context"
+	ok call_context.did_load?, "Load was passed in context"
+	ok call_context.did_unload?, "Unload was passed in context"
+	ok not call_context.did_teardown?, "Teardown was not passed in context"
+	
+	call_next()
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	neverCalled cb.home_load, "Never Called Home Load"
+	neverCalled cb.home_unload, "Never Called Home Unload"
+	calledOnce cb.home_teardown, "Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	neverCalled cb.home_news_load, "Never Called Home News Load"
+	calledOnce cb.home_news_unload, "Called Home News Unload"
+	calledOnce cb.home_news_teardown, "Called Home News Teardown"
+	calledOnce cb.foo, "Called Foo"
+
+	cb.reset()
+
+test "Reload", sinon.test ->
+
+	cb = callbackGroup()
+	cb.home_setup = @stub()
+	cb.home_load = @stub()
+	cb.home_unload = @stub()
+	cb.home_teardown = @stub()
+
+	Finch.route "/home",
+		setup: (bindings, next) -> 
+			cb.home_setup()
+			next()
+		load: (bindings, next) ->
+			cb.home_load() 
+			next()
+		unload: (bindings, next) -> 
+			cb.home_unload()
+			next()
+		teardown: (bindings, next) -> 
+			cb.home_teardown()
+			next()
+
+	cb.home_news_setup = @stub()
+	cb.home_news_load = @stub()
+	cb.home_news_unload = @stub()
+	cb.home_news_teardown = @stub()
+
+	Finch.route "[/home]/news"
+		setup: (bindings, next) -> 
+			@did_setup = true
+			cb.home_news_setup(this, next)
+		load: (bindings, next) ->
+			@did_load = true
+			cb.home_news_load(this, next) 
+		unload: (bindings, next) -> 
+			@did_unload = true
+			cb.home_news_unload(this, next)
+		teardown: (bindings, next) -> 
+			@did_teardown = true
+			cb.home_news_teardown()
+			next()
+
+	Finch.call("/home")
+
+	calledOnce cb.home_setup, "Called Home Setup"
+	calledOnce cb.home_load, "Called Home Load"
+	neverCalled cb.home_unload, "Never Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	neverCalled cb.home_news_load, "Never Called Home News Load"
+	neverCalled cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+
+	cb.reset()
+	Finch.reload()
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	calledOnce cb.home_load, "Called Home Load"
+	calledOnce cb.home_unload, "Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	neverCalled cb.home_news_load, "Never Called Home News Load"
+	neverCalled cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+
+	cb.reset()
+	Finch.call("/home/news")
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	neverCalled cb.home_load, "Never Called Home Load"
+	calledOnce cb.home_unload, "Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	calledOnce cb.home_news_setup, "Called Home News Setup"
+	neverCalled cb.home_news_load, "Never Called Home News Load"
+	neverCalled cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+
+	call = cb.home_news_setup.getCall(0)
+	call_context = call.args[0]
+	call_next = call.args[1]
+
+	ok call_context.did_setup?, "Setup was passed in context"
+	ok not call_context.did_load?, "Load was not passed in context"
+	ok not call_context.did_unload?, "Unload was not passed in context"
+	ok not call_context.did_teardown?, "Teardown was not passed in context"
+
+	cb.reset()
+	Finch.reload()
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	neverCalled cb.home_load, "Never Called Home Load"
+	neverCalled cb.home_unload, "Never Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	neverCalled cb.home_news_load, "Never Called Home News Load"
+	neverCalled cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+	
+	cb.reset()
+	call_next()
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	neverCalled cb.home_load, "Never Called Home Load"
+	neverCalled cb.home_unload, "Never Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	calledOnce cb.home_news_load, "Called Home News Load"
+	neverCalled cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+
+	call = cb.home_news_load.getCall(0)
+	call_context = call.args[0]
+	call_next = call.args[1]
+
+	ok call_context.did_setup?, "Setup was passed in context"
+	ok call_context.did_load?, "Load was passed in context"
+	ok not call_context.did_unload?, "Unload was not passed in context"
+	ok not call_context.did_teardown?, "Teardown was not passed in context"
+
+	cb.reset()
+	Finch.reload()
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	neverCalled cb.home_load, "Never Called Home Load"
+	neverCalled cb.home_unload, "Never Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	neverCalled cb.home_news_load, "Never Called Home News Load"
+	neverCalled cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+
+	cb.reset()
+	call_next()
+	Finch.reload()
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	neverCalled cb.home_load, "Never Called Home Load"
+	neverCalled cb.home_unload, "Never Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	neverCalled cb.home_news_load, "Never Called Home News Load"
+	calledOnce cb.home_news_unload, "Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+
+	call = cb.home_news_unload.getCall(0)
+	call_context = call.args[0]
+	call_next = call.args[1]
+
+	ok call_context.did_setup?, "Setup was passed in context"
+	ok call_context.did_load?, "Load was passed in context"
+	ok call_context.did_unload?, "Unload was passed in context"
+	ok not call_context.did_teardown?, "Teardown was not passed in context"
+
+	cb.reset()
+	Finch.reload()
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	neverCalled cb.home_load, "Never Called Home Load"
+	neverCalled cb.home_unload, "Never Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	neverCalled cb.home_news_load, "Never Called Home News Load"
+	neverCalled cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+
+	cb.reset()
+	call_next()
+
+	neverCalled cb.home_setup, "Never Called Home Setup"
+	neverCalled cb.home_load, "Never Called Home Load"
+	neverCalled cb.home_unload, "Never Called Home Unload"
+	neverCalled cb.home_teardown, "Never Called Home Teardown"
+	neverCalled cb.home_news_setup, "Never Called Home News Setup"
+	calledOnce cb.home_news_load, "Called Home News Load"
+	neverCalled cb.home_news_unload, "Never Called Home News Unload"
+	neverCalled cb.home_news_teardown, "Never Called Home News Teardown"
+
+	call = cb.home_news_load.getCall(0)
+	call_context = call.args[0]
+	call_next = call.args[1]
+
+	ok call_context.did_setup?, "Setup was passed in context"
+	ok call_context.did_load?, "Load was passed in context"
+	ok call_context.did_unload?, "Unload was passed in context"
+	ok not call_context.did_teardown?, "Teardown was not passed in context"
 
 test "Route sanitation", sinon.test ->
 
@@ -424,7 +765,7 @@ test "Route sanitation", sinon.test ->
 
 	Finch.call "foo"
 	neverCalled slash,	"/ not called again"
-	calledOnce foo,          	"foo called once"
+	calledOnce foo,   	"foo called once"
 	slash.reset()
 	foo.reset()
 
@@ -447,9 +788,9 @@ test "Route sanitation", sinon.test ->
 	foo.reset()
 
 	Finch.call "foo/bar"
-	neverCalled slash,	"/ not called again"
-	neverCalled foo,  	"foo not called again"
-	calledOnce foo_bar,      	"foo/bar called once"
+	neverCalled slash, 	"/ not called again"
+	neverCalled foo,   	"foo not called again"
+	calledOnce foo_bar,	"foo/bar called once"
 	slash.reset()
 	foo.reset()
 	foo_bar.reset()
@@ -535,7 +876,7 @@ test "Asynchronous setup, load, and teardown", sinon.test ->
 	# Call /quux before the call to /foo/bar/baz completes
 	Finch.call "/quux"
 
-	calledOnce cb.setup_foo_bar,            	"/quux (before /foo/bar callback): foo/bar setup not called again"
+	calledOnce cb.setup_foo_bar,     	"/quux (before /foo/bar callback): foo/bar setup not called again"
 	neverCalled cb.setup_foo_bar_baz,	"/quux (before /foo/bar callback): foo/bar/baz setup not called"
 	neverCalled cb.setup_quux,       	"/quux (before /foo/bar callback): quux setup not called yet"
 
@@ -548,8 +889,8 @@ test "Asynchronous setup, load, and teardown", sinon.test ->
 	equal cb.setup_quux.callCount, 1,          	"/quux (after /foo/bar callback): quux setup called"
 	calledOnce cb.setup_foo_bar,               	"/quux (after /foo/bar callback): foo/bar setup not called again"
 	calledOnce cb.teardown_foo_bar,            	"/quux (after /foo/bar callback): foo/bar teardown called"
-	neverCalled cb.setup_foo_bar_baz,   	"/quux (after /foo/bar callback): foo/bar/baz setup not called"
-	neverCalled cb.teardown_foo_bar_baz,	"/quux (after /foo/bar callback): foo/bar/baz teardown not called"
+	neverCalled cb.setup_foo_bar_baz,          	"/quux (after /foo/bar callback): foo/bar/baz setup not called"
+	neverCalled cb.teardown_foo_bar_baz,       	"/quux (after /foo/bar callback): foo/bar/baz teardown not called"
 	calledOnce cb.setup_quux,                  	"/quux (after /foo/bar callback): quux setup called"
 
 do ->
@@ -819,6 +1160,151 @@ test "Binding value types", sinon.test ->
 	lastCalledWithExactly stub, ["stuff"],	"/ called with correct stuff"
 	stub.reset()
 
+test "Finch.navigate", sinon.test ->
+
+	window.location.hash = ""
+
+	hash = ->
+		return "#" + ( window.location.href.split("#", 2)[1] ? "" )
+
+	homeRegex = /^#?\/home/
+	homeNewsRegex = /^#?\/home\/news/
+	homeAccountRegex = /^#?\/home\/account/
+	homeNewsArticleRegex = /^#?\/home\/news\/article/
+	helloWorldRegex = /^#?\/hello%20world/
+
+	#Navigate to just a single route
+	Finch.navigate("/home")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+
+	Finch.navigate("/home/news")
+	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news"
+
+	Finch.navigate("/home")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+
+	#navigate to a route and query parameters
+	Finch.navigate("/home", foo:"bar")
+	ok homeRegex.test(hash()), "Navigate remained on the /home route"
+	ok hash().indexOf("foo=bar") > -1, "Had correct query parameter set"
+
+	#navigate to a route and query parameters
+	Finch.navigate("/home", hello:"world")
+	ok homeRegex.test(hash()), "Navigate remained on the /home route"
+	ok hash().indexOf("foo=bar") is -1, "Removed foo=bar"
+	ok hash().indexOf("hello=world") > -1, "Added hello=world"
+
+	#Navigate to only a new hash
+	Finch.navigate(foos:"bars")
+	ok homeRegex.test(hash()), "Navigate remained on the /home route"
+	ok hash().indexOf("hello=world") is -1, "Removed hello=world"
+	ok hash().indexOf("foos=bars") > -1, "Added foos=bars"
+
+	#Only update the hash
+	Finch.navigate(foos:"baz")
+	ok homeRegex.test(hash()), "Navigate remained on the /home route"
+	ok hash().indexOf("foos=baz") > -1, "Changed to foos=baz"
+
+	Finch.navigate(hello:"world", true)
+	ok homeRegex.test(hash()), "Navigate remained on the /home route"
+	ok hash().indexOf("foos=baz") > -1, "Kept foos=baz"
+	ok hash().indexOf("hello=world") > -1, "Added hello=world"
+
+	#Remove a paremeter
+	Finch.navigate(foos:null, true)
+	ok homeRegex.test(hash()), "Navigate remained on the /home route"
+	ok hash().indexOf("foos=baz") is -1, "Removed foos=baz"
+	ok hash().indexOf("hello=world") > -1, "Kept hello=world"
+
+	#Make siure the doUpdate navigate keeps the query string
+	Finch.navigate("/home/news", true)
+	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news"
+	ok hash().indexOf("hello=world") > -1, "Kept hello=world"
+
+	#Make sure we add proper escaping
+	Finch.navigate("/hello world", {})
+	ok helloWorldRegex.test(hash()), "Navigated to /hello%20world"
+	ok hash().indexOf("hello=world") is -1, "Removed hello=world"
+
+	Finch.navigate("/hello world", foo:"bar bar")
+	ok helloWorldRegex.test(hash()), "Navigate remained at /hello%20world"
+	ok hash().indexOf("foo=bar%20bar") > -1, "Added and escaped foo=bar bar"
+
+	Finch.navigate(foo:"baz baz")
+	ok helloWorldRegex.test(hash()), "Navigate remained at /hello%20world"
+	ok hash().indexOf("foo=bar%20bar") is -1, "Removed foo=bar bar"
+	ok hash().indexOf("foo=baz%20baz") > -1, "Added and escaped foo=baz baz"
+
+	Finch.navigate(hello:'world world', true)
+	ok helloWorldRegex.test(hash()), "Navigate remained at /hello%20world"
+	ok hash().indexOf("foo=baz%20baz") > -1, "Kept and escaped foo=baz baz"
+	ok hash().indexOf("hello=world%20world") > -1, "Added and escaped hello=world world"
+
+	#Make sure we don't add multiple '?'
+	Finch.navigate("/home?foo=bar",hello:"world")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("foo=bar") > -1, "Had correct query parameter set foo=bar"
+	ok hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world"
+	equal hash().split("?").length-1, 1, "Correct number of '?'"
+	equal hash().split("&").length-1, 1, "Correct number of '&'"
+
+	Finch.navigate("/home?foo=bar",{hello:"world",foo:"baz"})
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("foo=bar") is -1, "foo=bar not set"
+	ok hash().indexOf("foo=baz") > -1, "Had correct query parameter set foo=baz"
+	ok hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world"
+	equal hash().split("?").length-1, 1, "Correct number of '?'"
+	equal hash().split("&").length-1, 1, "Correct number of '&'"
+
+	Finch.navigate("/home?foo=bar",{hello:"world",free:"bird"})
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("foo=bar") > -1, "Had correct query parameter set foo=bar"
+	ok hash().indexOf("free=bird") > -1, "Had correct query parameter set free=bird"
+	ok hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world"
+	equal hash().split("?").length-1, 1, "Correct number of '?'"
+	equal hash().split("&").length-1, 2, "Correct number of '&'"
+
+	#Account for the hash character
+	Finch.navigate("#/home", true)
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("free=bird") > -1, "Had correct query parameter set free=bird"
+	ok hash().indexOf("hello=world") > -1, "Had correct query parameter set hello=world"
+
+	Finch.navigate("#/home")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("free=bird") is -1, "Had correct query parameter set free=bird"
+	ok hash().indexOf("hello=world") is -1, "Had correct query parameter set hello=world"
+
+	Finch.navigate("#/home/news",{free:"birds",hello:"worlds"})
+	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("free=birds") > -1, "Had correct query parameter set free=birds"
+	ok hash().indexOf("hello=worlds") > -1, "Had correct query parameter set hello=worlds"
+
+	Finch.navigate("#/home/news", {foo:"bar"}, true)
+	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok hash().indexOf("free=birds") > -1, "Had correct query parameter set free=birds"
+	ok hash().indexOf("hello=worlds") > -1, "Had correct query parameter set hello=worlds"
+	ok hash().indexOf("foo=bar") > -1, "Had correct query parameter set hello=worlds"
+
+	#Test relative navigation
+	Finch.navigate("/home/news")
+	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news"
+
+	Finch.navigate("../")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+
+	Finch.navigate("./")
+	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+
+	Finch.navigate("./news")
+	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news"
+
+	Finch.navigate("/home/news/article")
+	ok homeNewsArticleRegex.test(hash()), "Navigate called and changed hash to /home/news/article"
+
+	Finch.navigate("../../account")
+	ok homeAccountRegex.test(hash()), "Navigate called and changed hash to /home/account"
+
 test "Finch.listen and Finch.ignore", sinon.test ->
 
 	#Default the necessary window methods, if they don't exist
@@ -889,6 +1375,36 @@ test "Finch.listen and Finch.ignore", sinon.test ->
 	equal cb.removeEventListener.callCount, 0, "removeEventListener not called"
 	equal cb.detachEvent.callCount, 1, "detachEvent called once"
 	equal cb.clearInterval.callCount, 0, "clearInterval not called"
+
+test "Finch.abort", sinon.test ->
+
+	homeStub = @stub()
+	fooStub = @stub()
+
+	Finch.route "/home", (bindings, continuation) -> homeStub()
+	Finch.route "/foo", (bindings, continuation) -> fooStub()
+
+	#make a call to home
+	Finch.call("home")
+	equal homeStub.callCount, 1, "Home called correctly"
+	equal fooStub.callCount, 0, "Foo not called"
+
+	homeStub.reset()
+	fooStub.reset()
+
+	#Call foo
+	Finch.call("foo")
+	equal homeStub.callCount, 0, "Home not called"
+	equal fooStub.callCount, 0, "Foo not called"
+
+	homeStub.reset()
+	fooStub.reset()
+
+	#abort first, then call foo
+	Finch.abort()
+	Finch.call("foo")
+	equal homeStub.callCount, 0, "Home not called"
+	equal fooStub.callCount, 1, "Foo called correctly"
 
 test "Route finding backtracking 1", sinon.test ->
 

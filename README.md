@@ -27,6 +27,5 @@ Take a look at our [website](http://stoodder.github.com/finchjs) for the most up
 Finch is available for sue under the [MIT License](https://github.com/stoodder/finchjs/blob/master/LICENSE.md)
 
 ## TODO List
-* __Finch.abort()__ - If we're using asynchronous routes and for some reason the callback isn't executed (perhaps an ajax request failed), Finch will hang completely until the page is refresh, Finch.abort() will force control back to Finch.
-* __Finch.navigate( uri, _null_ )__ - Adding another permutation to Finch.navigate, we we pass null in as the second parameter then the uri is changed while keeping the query parameters untouched.
 * __Splats__ - Sometimes we might want an undetermined number of parameters at the end of a url, splats are useful for grabbing any number of url bindings and must be the last binding in the route pattern.  Example: "/home/news/:variables..."
+* __pushState__ - Add pushstate support ot finsh so that we don't always need to rely on the hash
