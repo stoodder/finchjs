@@ -48,10 +48,7 @@
 
   module("Finch", {
     teardown: function() {
-      Finch.reset();
-      return Finch.options({
-        CoerceParameterTypes: true
-      });
+      return Finch.reset();
     }
   });
 
@@ -88,7 +85,7 @@
     calledOnce(foo_bar_id, "foo/bar/id called once");
     lastCalledWithExactly(foo_bar_id, [
       {
-        id: 123
+        id: "123"
       }
     ], "foo/bar/id bindings");
     foo_bar_id.reset();
@@ -107,7 +104,7 @@
     ok(foo_baz.calledBefore(foo_baz_id), "foo/baz called before foo/baz/id");
     lastCalledWithExactly(foo_baz_id, [
       {
-        id: 456
+        id: "456"
       }
     ], "foo/baz/id bindings");
     foo_baz.reset();
@@ -118,7 +115,7 @@
     ok(quux.calledBefore(quux_id), "quux called before quux/id");
     return lastCalledWithExactly(quux_id, [
       {
-        id: 789
+        id: "789"
       }
     ], "quux/id bindings");
   }));
@@ -252,26 +249,31 @@
     Finch.route("foo", {
       setup: cb.setup_foo = this.stub(),
       load: cb.load_foo = this.stub(),
+      unload: cb.unload_foo = this.stub(),
       teardown: cb.teardown_foo = this.stub()
     });
     Finch.route("[foo]/bar", {
       setup: cb.setup_foo_bar = this.stub(),
       load: cb.load_foo_bar = this.stub(),
+      unload: cb.unload_foo_bar = this.stub(),
       teardown: cb.teardown_foo_bar = this.stub()
     });
     Finch.route("[foo/bar]/:id", {
       setup: cb.setup_foo_bar_id = this.stub(),
       load: cb.load_foo_bar_id = this.stub(),
+      unload: cb.unload_foo_bar_id = this.stub(),
       teardown: cb.teardown_foo_bar_id = this.stub()
     });
     Finch.route("[foo]/baz", {
       setup: cb.setup_foo_baz = this.stub(),
       load: cb.load_foo_baz = this.stub(),
+      unload: cb.unload_foo_baz = this.stub(),
       teardown: cb.teardown_foo_baz = this.stub()
     });
     Finch.route("[foo/baz]/:id", {
       setup: cb.setup_foo_baz_id = this.stub(),
       load: cb.load_foo_baz_id = this.stub(),
+      unload: cb.unload_foo_baz_id = this.stub(),
       teardown: cb.teardown_foo_baz_id = this.stub()
     });
     Finch.call("/foo");
@@ -279,6 +281,7 @@
     calledOnce(cb.load_foo, "/foo: foo load");
     cb.reset();
     Finch.call("/foo/bar");
+    calledOnce(cb.unload_foo, "/foo/bar: foo unload");
     neverCalled(cb.setup_foo, "/foo/bar: no foo setup");
     neverCalled(cb.load_foo, "/foo/bar: no foo load");
     neverCalled(cb.teardown_foo, "/foo/bar: no foo teardown");
@@ -286,11 +289,14 @@
     calledOnce(cb.load_foo_bar, "/foo/bar: foo/bar load");
     cb.reset();
     Finch.call("/foo");
+    calledOnce(cb.unload_foo_bar, "/foo: foo/bar unload");
     calledOnce(cb.teardown_foo_bar, "/foo return: foo/bar teardown");
     calledOnce(cb.load_foo, "/foo return: no foo load");
     neverCalled(cb.setup_foo, "/foo return: no foo setup");
     cb.reset();
     Finch.call("/foo/bar/123?x=abc");
+    calledOnce(cb.unload_foo, "/foo/bar/123: foo unload");
+    neverCalled(cb.unload_foo_bar, "/foo/bar/123: no foo/bar unload");
     neverCalled(cb.teardown_foo, "/foo/bar/123: no foo teardown");
     neverCalled(cb.load_foo, "/foo/bar/123: no foo load");
     neverCalled(cb.setup_foo, "/foo/bar/123: no foo setup");
@@ -300,21 +306,29 @@
     calledOnce(cb.load_foo_bar_id, "/foo/bar/123: foo/bar/id load");
     cb.reset();
     Finch.call("/foo/bar/456?x=aaa&y=zzz");
+    calledOnce(cb.unload_foo_bar_id, "/foo/bar/456?x=aaa&y=zzz: foo/bar/id unload");
     calledOnce(cb.teardown_foo_bar_id, "/foo/bar/456?x=aaa&y=zzz: foo/bar/id teardown");
     calledOnce(cb.setup_foo_bar_id, "/foo/bar/456?x=aaa&y=zzz: foo/bar/id setup");
     calledOnce(cb.load_foo_bar_id, "/foo/bar/456?x=aaa&y=zzz: foo/bar/id load");
     cb.reset();
     Finch.call("/foo/bar/456?x=bbb&y=zzz");
+    neverCalled(cb.unload_foo_bar_id, "/foo/bar/456?x=bbb&y=zzz: no foo/bar/id unload");
+    neverCalled(cb.teardown_foo_bar_id, "/foo/bar/456?x=bbb&y=zzz: no foo/bar/id teardown");
     neverCalled(cb.setup_foo_bar_id, "/foo/bar/456?x=bbb&y=zzz: no foo/bar/id setup");
     neverCalled(cb.load_foo_bar_id, "/foo/bar/456?x=bbb&y=zzz: no foo/bar/id load");
     cb.reset();
     Finch.call("/foo/bar/456?y=zzz&x=bbb");
+    neverCalled(cb.unload_foo_bar_id, "/foo/bar/456?x=bbb&y=zzz: no foo/bar/id unload");
+    neverCalled(cb.teardown_foo_bar_id, "/foo/bar/456?x=bbb&y=zzz: no foo/bar/id teardown");
     neverCalled(cb.setup_foo_bar_id, "/foo/bar/456?y=zzz&x=bbb: no foo/bar/id setup");
     neverCalled(cb.load_foo_bar_id, "/foo/bar/456?y=zzz&x=bbb: no foo/bar/id load");
     cb.reset();
     Finch.call("/foo/baz/789");
+    calledOnce(cb.unload_foo_bar_id, "/foo/baz/789: foo/baz/id unload");
     calledOnce(cb.teardown_foo_bar_id, "/foo/baz/789: foo/baz/id teardown");
+    neverCalled(cb.unload_foo_bar, "/foo/baz/789: no foo/bar unload");
     calledOnce(cb.teardown_foo_bar, "/foo/baz/789: foo/bar teardown");
+    neverCalled(cb.unload_foo, "/foo/baz/789: no foo unload");
     neverCalled(cb.teardown_foo, "/foo/baz/789: no foo teardown");
     neverCalled(cb.setup_foo, "/foo/baz/789: no foo setup");
     neverCalled(cb.load_foo, "/foo/baz/789: no foo load");
@@ -324,21 +338,24 @@
     calledOnce(cb.load_foo_baz_id, "/foo/baz/789: foo/baz/id load");
     cb.reset();
     Finch.call("/foo/baz/abc?term=Hello");
+    calledOnce(cb.unload_foo_baz_id, "/foo/baz/abc?term=Hello: foo/baz/id unload");
     calledOnce(cb.teardown_foo_baz_id, "/foo/baz/abc?term=Hello: foo/baz/id teardown");
     calledOnce(cb.setup_foo_baz_id, "/foo/baz/abc?term=Hello: foo/baz/id setup");
     calledOnce(cb.load_foo_baz_id, "/foo/baz/abc?term=Hello: foo/baz/id load");
     cb.reset();
     Finch.call("/foo/baz/abc?term=World");
+    neverCalled(cb.unload_foo_baz_id, "/foo/baz/abc?term=World: no foo/baz/id unload");
     neverCalled(cb.teardown_foo_baz_id, "/foo/baz/abc?term=World: no foo/baz/id teardown");
     neverCalled(cb.setup_foo_baz_id, "/foo/baz/abc?term=World: no foo/baz/id setup");
     return neverCalled(cb.load_foo_baz_id, "/foo/baz/abc?term=World: no foo/baz/id load");
   }));
 
   test("Calling with context", sinon.test(function() {
-    var context, load_foo, setup_foo, teardown_foo;
+    var context, load_foo, setup_foo, teardown_foo, unload_foo;
     Finch.route("foo", {
       setup: setup_foo = this.stub(),
       load: load_foo = this.stub(),
+      unload: unload_foo = this.stub(),
       teardown: teardown_foo = this.stub()
     });
     Finch.route("bar", this.stub());
@@ -347,6 +364,7 @@
     context = setup_foo.getCall(0).thisValue;
     ok(load_foo.calledOn(context), 'foo load called on same context as setup');
     Finch.call("/bar");
+    ok(unload_foo.calledOn(context), 'foo load called on same context as setup');
     return ok(teardown_foo.calledOn(context), 'foo teardown called on same context as setup');
   }));
 
@@ -371,6 +389,11 @@
         equal(this.parent.moreData, "Hello World", "Correct parent passed in");
         return equal(this.parent.parent.someData, "Free Bird", "Correct parent's parent passed in");
       },
+      unload: function() {
+        ok(this.parent !== null, "Parent is defined in unload");
+        equal(this.parent.moreData, "Hello World", "Correct parent passed in");
+        return equal(this.parent.parent.someData, "Free Bird", "Correct parent's parent passed in");
+      },
       teardown: function() {
         ok(this.parent !== null, "Parent is defined in teardown");
         equal(this.parent.moreData, "Hello World", "Correct parent passed in");
@@ -379,18 +402,42 @@
     });
     Finch.route("/foo", {
       setup: function() {
-        return equal(this.parent, null, "Parent is null");
+        return equal(this.parent, null, "Parent is null in setup");
       },
       load: function() {
-        return equal(this.parent, null, "Parent is null");
+        return equal(this.parent, null, "Parent is null in load");
+      },
+      unload: function() {
+        return equal(this.parent, null, "Parent is null in unload");
       },
       teardown: function() {
-        return equal(this.parent, null, "Parent is null");
+        return equal(this.parent, null, "Parent is null in teardown");
       }
     });
+    Finch.route("[/]bar", {
+      setup: function() {
+        ok(this.parent !== null, "Parent is defined in simple version");
+        return equal(this.parent.someData, "Free Bird", "Correct parent passed in");
+      },
+      load: function() {
+        ok(this.parent !== null, "Parent is defined in simple version");
+        return equal(this.parent.someData, "Free Bird", "Correct parent passed in");
+      },
+      unload: function() {
+        ok(this.parent !== null, "Parent is defined in simple version");
+        return equal(this.parent.someData, "Free Bird", "Correct parent passed in");
+      },
+      teardown: function() {
+        ok(this.parent !== null, "Parent is defined in simple version");
+        return equal(this.parent.someData, "Free Bird", "Correct parent passed in");
+      }
+    });
+    Finch.call("/bar");
     Finch.call("/home/news");
     Finch.call("/foo");
-    return Finch.call("/home/news");
+    Finch.call("/home/news");
+    Finch.call("/bar");
+    return Finch.call("/foo");
   });
 
   test("Hierarchical calling with context", sinon.test(function() {
@@ -960,9 +1007,9 @@
     });
     Finch.call("/foo/bar?&a=1&b=2&c=3");
     calledOnce(foo, "foo callback called once");
-    lastCalledWithExactly(foo, [1], "foo callback args");
+    lastCalledWithExactly(foo, ["1"], "foo callback args");
     calledOnce(bar, "bar callback called once");
-    lastCalledWithExactly(bar, [2], "bar callback args");
+    lastCalledWithExactly(bar, ["2"], "bar callback args");
     neverCalled(id, "id callback not called");
     foo.reset();
     bar.reset();
@@ -976,7 +1023,7 @@
     id.reset();
     Finch.call("/foo?a=21&b=2&c=23");
     calledOnce(foo, "foo callback called once");
-    lastCalledWithExactly(foo, [21], "foo callback args");
+    lastCalledWithExactly(foo, ["21"], "foo callback args");
     neverCalled(bar, "bar callback not called");
     neverCalled(id, "id callback not called");
     foo.reset();
@@ -984,7 +1031,7 @@
     id.reset();
     Finch.call("/foo?a=31&b=32&c=23");
     calledOnce(foo, "foo callback called once");
-    lastCalledWithExactly(foo, [31], "foo callback args");
+    lastCalledWithExactly(foo, ["31"], "foo callback args");
     neverCalled(bar, "bar callback not called");
     return neverCalled(id, "id callback not called");
   }));
@@ -1017,11 +1064,11 @@
     });
     Finch.call("/foo/bar?x=0&a=1&b=2&c=3");
     calledOnce(slash, "/ callback called once");
-    lastCalledWithExactly(slash, [0], "/ callback args");
+    lastCalledWithExactly(slash, ["0"], "/ callback args");
     calledOnce(foo, "foo callback called once");
-    lastCalledWithExactly(foo, [1], "foo callback args");
+    lastCalledWithExactly(foo, ["1"], "foo callback args");
     calledOnce(bar, "bar callback called once");
-    lastCalledWithExactly(bar, [2], "bar callback args");
+    lastCalledWithExactly(bar, ["2"], "bar callback args");
     neverCalled(id, "id callback not called");
     slash.reset();
     foo.reset();
@@ -1031,7 +1078,7 @@
     neverCalled(slash, "/ callback not called");
     neverCalled(foo, "foo callback not called");
     calledOnce(bar, "bar callback called once");
-    lastCalledWithExactly(bar, [10], "bar callback args");
+    lastCalledWithExactly(bar, ["10"], "bar callback args");
     return neverCalled(id, "id callback not called");
   }));
 
@@ -1042,6 +1089,29 @@
       return Finch.observe(["x"], function(x) {
         return stub(x);
       });
+    });
+    Finch.call("/?x=123");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, ["123"], "/ called with correct 123");
+    stub.reset();
+    Finch.call("/?x=123.456");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, ["123.456"], "/ called with correct 123.456");
+    stub.reset();
+    Finch.call("/?x=true");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, ["true"], "/ called with correct true");
+    stub.reset();
+    Finch.call("/?x=false");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, ["false"], "/ called with correct false");
+    stub.reset();
+    Finch.call("/?x=stuff");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, ["stuff"], "/ called with correct stuff");
+    stub.reset();
+    Finch.options({
+      CoerceParameterTypes: true
     });
     Finch.call("/?x=123");
     calledOnce(stub, "/ callback called once");
@@ -1072,6 +1142,29 @@
       var x;
       x = _arg.x;
       return stub(x);
+    });
+    Finch.call("/123");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, ['123'], "/ called with correct 123");
+    stub.reset();
+    Finch.call("/123.456");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, ['123.456'], "/ called with correct 123.456");
+    stub.reset();
+    Finch.call("/true");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, ['true'], "/ called with correct true");
+    stub.reset();
+    Finch.call("/false");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, ['false'], "/ called with correct false");
+    stub.reset();
+    Finch.call("/stuff");
+    calledOnce(stub, "/ callback called once");
+    lastCalledWithExactly(stub, ["stuff"], "/ called with correct stuff");
+    stub.reset();
+    Finch.options({
+      CoerceParameterTypes: true
     });
     Finch.call("/123");
     calledOnce(stub, "/ callback called once");
@@ -1112,7 +1205,7 @@
     Finch.navigate("/home/news");
     ok(homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news");
     Finch.navigate("/home");
-    ok(homeRegex.test(hash()), "Navigate called and changed hash to /home");
+    ok(homeRegex.test(hash()), "fNavigate called and changed hash to /home");
     Finch.navigate("/home", {
       foo: "bar"
     });
@@ -1389,19 +1482,19 @@
     calledOnce(foo, "foo called once");
     lastCalledWithExactly(foo, [
       {
-        id: 1234
+        id: "1234"
       }
     ], "foo called with int parameter");
     foo.reset();
     Finch.options({
-      CoerceParameterTypes: false
+      CoerceParameterTypes: true
     });
     Finch.call("/");
     Finch.call("/home/news/1234");
     calledOnce(foo, "foo called once");
     return lastCalledWithExactly(foo, [
       {
-        id: "1234"
+        id: 1234
       }
     ], "foo called with string parameter");
   }));

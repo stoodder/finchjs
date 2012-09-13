@@ -17,7 +17,6 @@ callbackGroup = () ->
 module "Finch",
 	teardown: ->
 		Finch.reset()
-		Finch.options { CoerceParameterTypes: true }
 
 test "Trivial routing", sinon.test ->
 
@@ -61,7 +60,7 @@ test "Simple hierarchical routing", sinon.test ->
 	neverCalled foo, "foo not called again"
 	neverCalled foo_bar, "foo/bar not called again"
 	calledOnce foo_bar_id, "foo/bar/id called once"
-	lastCalledWithExactly foo_bar_id, [{ id: 123 }], "foo/bar/id bindings"
+	lastCalledWithExactly foo_bar_id, [{ id: "123" }], "foo/bar/id bindings"
 	foo_bar_id.reset()
 
 	Finch.call "/foo/bar/123"
@@ -82,7 +81,7 @@ test "Simple hierarchical routing", sinon.test ->
 	calledOnce foo_baz, "foo/baz called"
 	calledOnce foo_baz_id, "foo/baz/id called"
 	ok foo_baz.calledBefore(foo_baz_id), "foo/baz called before foo/baz/id"
-	lastCalledWithExactly foo_baz_id, [{ id: 456 }], "foo/baz/id bindings"
+	lastCalledWithExactly foo_baz_id, [{ id: "456" }], "foo/baz/id bindings"
 	foo_baz.reset()
 	foo_baz_id.reset()
 
@@ -91,7 +90,7 @@ test "Simple hierarchical routing", sinon.test ->
 	calledOnce quux, "quux called"
 	calledOnce quux_id, "quux/id called"
 	ok quux.calledBefore(quux_id), "quux called before quux/id"
-	lastCalledWithExactly quux_id, [{ id: 789 }], "quux/id bindings"
+	lastCalledWithExactly quux_id, [{ id: "789" }], "quux/id bindings"
 
 test "More hierarchical routing", sinon.test ->
 
@@ -248,22 +247,27 @@ test "Hierarchical routing with setup, load, and teardown", sinon.test ->
 	Finch.route "foo",
 		setup:   	cb.setup_foo = @stub()
 		load:    	cb.load_foo = @stub()
+		unload:  	cb.unload_foo = @stub()
 		teardown:	cb.teardown_foo = @stub()
 	Finch.route "[foo]/bar",
 		setup:   	cb.setup_foo_bar = @stub()
 		load:    	cb.load_foo_bar = @stub()
+		unload:  	cb.unload_foo_bar = @stub()
 		teardown:	cb.teardown_foo_bar = @stub()
 	Finch.route "[foo/bar]/:id",
 		setup:   	cb.setup_foo_bar_id = @stub()
 		load:    	cb.load_foo_bar_id = @stub()
+		unload:  	cb.unload_foo_bar_id = @stub()
 		teardown:	cb.teardown_foo_bar_id = @stub()
 	Finch.route "[foo]/baz",
 		setup:   	cb.setup_foo_baz = @stub()
 		load:    	cb.load_foo_baz = @stub()
+		unload:  	cb.unload_foo_baz = @stub()
 		teardown:	cb.teardown_foo_baz = @stub()
 	Finch.route "[foo/baz]/:id",
 		setup:   	cb.setup_foo_baz_id = @stub()
 		load:    	cb.load_foo_baz_id = @stub()
+		unload:  	cb.unload_foo_baz_id = @stub()
 		teardown:	cb.teardown_foo_baz_id = @stub()
 
 	# Test routes
@@ -276,6 +280,7 @@ test "Hierarchical routing with setup, load, and teardown", sinon.test ->
 
 	Finch.call "/foo/bar"
 
+	calledOnce cb.unload_foo,   	"/foo/bar: foo unload"
 	neverCalled cb.setup_foo,   	"/foo/bar: no foo setup"
 	neverCalled cb.load_foo,    	"/foo/bar: no foo load"
 	neverCalled cb.teardown_foo,	"/foo/bar: no foo teardown"
@@ -285,12 +290,15 @@ test "Hierarchical routing with setup, load, and teardown", sinon.test ->
 
 	Finch.call "/foo"
 
+	calledOnce cb.unload_foo_bar,  	"/foo: foo/bar unload"
 	calledOnce cb.teardown_foo_bar,	"/foo return: foo/bar teardown"
 	calledOnce cb.load_foo,        	"/foo return: no foo load"
 	neverCalled cb.setup_foo,      	"/foo return: no foo setup"
 	cb.reset()
 
 	Finch.call "/foo/bar/123?x=abc"
+	calledOnce cb.unload_foo,      	"/foo/bar/123: foo unload"
+	neverCalled cb.unload_foo_bar, 	"/foo/bar/123: no foo/bar unload"
 	neverCalled cb.teardown_foo,   	"/foo/bar/123: no foo teardown"
 	neverCalled cb.load_foo,       	"/foo/bar/123: no foo load"
 	neverCalled cb.setup_foo,      	"/foo/bar/123: no foo setup"
@@ -302,6 +310,7 @@ test "Hierarchical routing with setup, load, and teardown", sinon.test ->
 
 	Finch.call "/foo/bar/456?x=aaa&y=zzz"
 
+	calledOnce cb.unload_foo_bar_id,  	"/foo/bar/456?x=aaa&y=zzz: foo/bar/id unload"
 	calledOnce cb.teardown_foo_bar_id,	"/foo/bar/456?x=aaa&y=zzz: foo/bar/id teardown"
 	calledOnce cb.setup_foo_bar_id,   	"/foo/bar/456?x=aaa&y=zzz: foo/bar/id setup"
 	calledOnce cb.load_foo_bar_id,    	"/foo/bar/456?x=aaa&y=zzz: foo/bar/id load"
@@ -309,20 +318,27 @@ test "Hierarchical routing with setup, load, and teardown", sinon.test ->
 
 	Finch.call "/foo/bar/456?x=bbb&y=zzz"
 
-	neverCalled cb.setup_foo_bar_id,	"/foo/bar/456?x=bbb&y=zzz: no foo/bar/id setup"
-	neverCalled cb.load_foo_bar_id, 	"/foo/bar/456?x=bbb&y=zzz: no foo/bar/id load"
+	neverCalled cb.unload_foo_bar_id,  	"/foo/bar/456?x=bbb&y=zzz: no foo/bar/id unload"
+	neverCalled cb.teardown_foo_bar_id,	"/foo/bar/456?x=bbb&y=zzz: no foo/bar/id teardown"
+	neverCalled cb.setup_foo_bar_id,   	"/foo/bar/456?x=bbb&y=zzz: no foo/bar/id setup"
+	neverCalled cb.load_foo_bar_id,    	"/foo/bar/456?x=bbb&y=zzz: no foo/bar/id load"
 	cb.reset()
 
 	Finch.call "/foo/bar/456?y=zzz&x=bbb"
 
-	neverCalled cb.setup_foo_bar_id,	"/foo/bar/456?y=zzz&x=bbb: no foo/bar/id setup"
-	neverCalled cb.load_foo_bar_id, 	"/foo/bar/456?y=zzz&x=bbb: no foo/bar/id load"
+	neverCalled cb.unload_foo_bar_id,  	"/foo/bar/456?x=bbb&y=zzz: no foo/bar/id unload"
+	neverCalled cb.teardown_foo_bar_id,	"/foo/bar/456?x=bbb&y=zzz: no foo/bar/id teardown"
+	neverCalled cb.setup_foo_bar_id,   	"/foo/bar/456?y=zzz&x=bbb: no foo/bar/id setup"
+	neverCalled cb.load_foo_bar_id,    	"/foo/bar/456?y=zzz&x=bbb: no foo/bar/id load"
 	cb.reset()
 
 	Finch.call "/foo/baz/789"
 
+	calledOnce cb.unload_foo_bar_id,  	"/foo/baz/789: foo/baz/id unload"
 	calledOnce cb.teardown_foo_bar_id,	"/foo/baz/789: foo/baz/id teardown"
+	neverCalled cb.unload_foo_bar,    	"/foo/baz/789: no foo/bar unload"
 	calledOnce cb.teardown_foo_bar,   	"/foo/baz/789: foo/bar teardown"
+	neverCalled cb.unload_foo,        	"/foo/baz/789: no foo unload"
 	neverCalled cb.teardown_foo,      	"/foo/baz/789: no foo teardown"
 	neverCalled cb.setup_foo,         	"/foo/baz/789: no foo setup"
 	neverCalled cb.load_foo,          	"/foo/baz/789: no foo load"
@@ -334,6 +350,7 @@ test "Hierarchical routing with setup, load, and teardown", sinon.test ->
 
 	Finch.call "/foo/baz/abc?term=Hello"
 
+	calledOnce cb.unload_foo_baz_id,  	"/foo/baz/abc?term=Hello: foo/baz/id unload"
 	calledOnce cb.teardown_foo_baz_id,	"/foo/baz/abc?term=Hello: foo/baz/id teardown"
 	calledOnce cb.setup_foo_baz_id,   	"/foo/baz/abc?term=Hello: foo/baz/id setup"
 	calledOnce cb.load_foo_baz_id,    	"/foo/baz/abc?term=Hello: foo/baz/id load"
@@ -341,6 +358,7 @@ test "Hierarchical routing with setup, load, and teardown", sinon.test ->
 
 	Finch.call "/foo/baz/abc?term=World"
 
+	neverCalled cb.unload_foo_baz_id,  	"/foo/baz/abc?term=World: no foo/baz/id unload"
 	neverCalled cb.teardown_foo_baz_id,	"/foo/baz/abc?term=World: no foo/baz/id teardown"
 	neverCalled cb.setup_foo_baz_id,   	"/foo/baz/abc?term=World: no foo/baz/id setup"
 	neverCalled cb.load_foo_baz_id,    	"/foo/baz/abc?term=World: no foo/baz/id load"
@@ -350,6 +368,7 @@ test "Calling with context", sinon.test ->
 	Finch.route "foo",
 		setup:   	setup_foo = @stub()
 		load:    	load_foo = @stub()
+		unload:  	unload_foo = @stub()
 		teardown:	teardown_foo = @stub()
 	Finch.route "bar", @stub()
 
@@ -362,6 +381,7 @@ test "Calling with context", sinon.test ->
 	ok load_foo.calledOn(context), 'foo load called on same context as setup'
 
 	Finch.call "/bar"
+	ok unload_foo.calledOn(context), 'foo load called on same context as setup'
 	ok teardown_foo.calledOn(context), 'foo teardown called on same context as setup'
 
 test "Checking Parent Context", ->
@@ -387,6 +407,11 @@ test "Checking Parent Context", ->
 			equal @parent.moreData, "Hello World", "Correct parent passed in"
 			equal @parent.parent.someData, "Free Bird", "Correct parent's parent passed in"
 
+		unload: ->
+			ok @parent isnt null, "Parent is defined in unload"
+			equal @parent.moreData, "Hello World", "Correct parent passed in"
+			equal @parent.parent.someData, "Free Bird", "Correct parent's parent passed in"
+
 		teardown: ->
 			ok @parent isnt null, "Parent is defined in teardown"
 			equal @parent.moreData, "Hello World", "Correct parent passed in"
@@ -394,17 +419,41 @@ test "Checking Parent Context", ->
 
 	Finch.route "/foo",
 		setup: ->
-			equal @parent, null, "Parent is null"
+			equal @parent, null, "Parent is null in setup"
 
 		load: ->
-			equal @parent, null, "Parent is null"
+			equal @parent, null, "Parent is null in load"
+
+		unload: ->
+			equal @parent, null, "Parent is null in unload"
 
 		teardown: ->
-			equal @parent, null, "Parent is null"
+			equal @parent, null, "Parent is null in teardown"
 
+	Finch.route "[/]bar",
+		setup: ->
+			ok @parent isnt null, "Parent is defined in simple version"
+			equal @parent.someData, "Free Bird", "Correct parent passed in"
+
+		load: ->
+			ok @parent isnt null, "Parent is defined in simple version"
+			equal @parent.someData, "Free Bird", "Correct parent passed in"
+
+		unload: ->
+			ok @parent isnt null, "Parent is defined in simple version"
+			equal @parent.someData, "Free Bird", "Correct parent passed in"
+
+		teardown: ->
+			ok @parent isnt null, "Parent is defined in simple version"
+			equal @parent.someData, "Free Bird", "Correct parent passed in"
+	#End Finch.route /bar
+
+	Finch.call("/bar")
 	Finch.call("/home/news")
 	Finch.call("/foo")
 	Finch.call("/home/news")
+	Finch.call("/bar")
+	Finch.call("/foo")
 
 test "Hierarchical calling with context", sinon.test ->
 
@@ -1021,11 +1070,11 @@ test "Observable hierarchy 1", sinon.test ->
 
 	Finch.call "/foo/bar?&a=1&b=2&c=3"
 
-	calledOnce foo,                	"foo callback called once"
-	lastCalledWithExactly foo, [1],	"foo callback args"
-	calledOnce bar,                	"bar callback called once"
-	lastCalledWithExactly bar, [2],	"bar callback args"
-	neverCalled id,                	"id callback not called"
+	calledOnce foo,                  	"foo callback called once"
+	lastCalledWithExactly foo, ["1"],	"foo callback args"
+	calledOnce bar,                  	"bar callback called once"
+	lastCalledWithExactly bar, ["2"],	"bar callback args"
+	neverCalled id,                  	"id callback not called"
 
 	foo.reset()
 	bar.reset()
@@ -1043,10 +1092,10 @@ test "Observable hierarchy 1", sinon.test ->
 
 	Finch.call "/foo?a=21&b=2&c=23"
 
-	calledOnce foo,                 	"foo callback called once"
-	lastCalledWithExactly foo, [21],	"foo callback args"
-	neverCalled bar,                	"bar callback not called"
-	neverCalled id,                 	"id callback not called"
+	calledOnce foo,                   	"foo callback called once"
+	lastCalledWithExactly foo, ["21"],	"foo callback args"
+	neverCalled bar,                  	"bar callback not called"
+	neverCalled id,                   	"id callback not called"
 
 	foo.reset()
 	bar.reset()
@@ -1054,10 +1103,10 @@ test "Observable hierarchy 1", sinon.test ->
 
 	Finch.call "/foo?a=31&b=32&c=23"
 
-	calledOnce foo,                 	"foo callback called once"
-	lastCalledWithExactly foo, [31],	"foo callback args"
-	neverCalled bar,                	"bar callback not called"
-	neverCalled id,                 	"id callback not called"
+	calledOnce foo,                   	"foo callback called once"
+	lastCalledWithExactly foo, ["31"],	"foo callback args"
+	neverCalled bar,                  	"bar callback not called"
+	neverCalled id,                   	"id callback not called"
 
 test "Observable hierarchy 2", sinon.test ->
 
@@ -1077,13 +1126,13 @@ test "Observable hierarchy 2", sinon.test ->
 
 	Finch.call "/foo/bar?x=0&a=1&b=2&c=3"
 
-	calledOnce slash,                	"/ callback called once"
-	lastCalledWithExactly slash, [0],	"/ callback args"
-	calledOnce foo,                  	"foo callback called once"
-	lastCalledWithExactly foo, [1],  	"foo callback args"
-	calledOnce bar,                  	"bar callback called once"
-	lastCalledWithExactly bar, [2],  	"bar callback args"
-	neverCalled id,                  	"id callback not called"
+	calledOnce slash,                  	"/ callback called once"
+	lastCalledWithExactly slash, ["0"],	"/ callback args"
+	calledOnce foo,                    	"foo callback called once"
+	lastCalledWithExactly foo, ["1"],  	"foo callback args"
+	calledOnce bar,                    	"bar callback called once"
+	lastCalledWithExactly bar, ["2"],  	"bar callback args"
+	neverCalled id,                    	"id callback not called"
 
 	slash.reset()
 	foo.reset()
@@ -1092,11 +1141,11 @@ test "Observable hierarchy 2", sinon.test ->
 
 	Finch.call "/foo/bar?x=0&a=1&b=10&c=11"
 
-	neverCalled slash,              	"/ callback not called"
-	neverCalled foo,                	"foo callback not called"
-	calledOnce bar,                 	"bar callback called once"
-	lastCalledWithExactly bar, [10],	"bar callback args"
-	neverCalled id,                 	"id callback not called"
+	neverCalled slash,                	"/ callback not called"
+	neverCalled foo,                  	"foo callback not called"
+	calledOnce bar,                   	"bar callback called once"
+	lastCalledWithExactly bar, ["10"],	"bar callback args"
+	neverCalled id,                   	"id callback not called"
 
 test "Observable value types", sinon.test ->
 
@@ -1104,6 +1153,33 @@ test "Observable value types", sinon.test ->
 
 	Finch.route "/", (bindings) ->
 		Finch.observe ["x"], (x) -> stub(x)
+
+	Finch.call "/?x=123"
+	calledOnce stub,                    	"/ callback called once"
+	lastCalledWithExactly stub, ["123"],	"/ called with correct 123"
+	stub.reset()
+
+	Finch.call "/?x=123.456"
+	calledOnce stub,                        	"/ callback called once"
+	lastCalledWithExactly stub, ["123.456"],	"/ called with correct 123.456"
+	stub.reset()
+
+	Finch.call "/?x=true"
+	calledOnce stub,                     	"/ callback called once"
+	lastCalledWithExactly stub, ["true"],	"/ called with correct true"
+	stub.reset()
+
+	Finch.call "/?x=false"
+	calledOnce stub,                      	"/ callback called once"
+	lastCalledWithExactly stub, ["false"],	"/ called with correct false"
+	stub.reset()
+
+	Finch.call "/?x=stuff"
+	calledOnce stub,                      	"/ callback called once"
+	lastCalledWithExactly stub, ["stuff"],	"/ called with correct stuff"
+	stub.reset()
+
+	Finch.options(CoerceParameterTypes: true)
 
 	Finch.call "/?x=123"
 	calledOnce stub,                  	"/ callback called once"
@@ -1135,6 +1211,33 @@ test "Binding value types", sinon.test ->
 	stub = @stub()
 
 	Finch.route "/:x", ({x}) -> stub(x)
+
+	Finch.call "/123"
+	calledOnce stub,                    	"/ callback called once"
+	lastCalledWithExactly stub, ['123'],	"/ called with correct 123"
+	stub.reset()
+
+	Finch.call "/123.456"
+	calledOnce stub,                        	"/ callback called once"
+	lastCalledWithExactly stub, ['123.456'],	"/ called with correct 123.456"
+	stub.reset()
+
+	Finch.call "/true"
+	calledOnce stub,                     	"/ callback called once"
+	lastCalledWithExactly stub, ['true'],	"/ called with correct true"
+	stub.reset()
+
+	Finch.call "/false"
+	calledOnce stub,                      	"/ callback called once"
+	lastCalledWithExactly stub, ['false'],	"/ called with correct false"
+	stub.reset()
+
+	Finch.call "/stuff"
+	calledOnce stub,                      	"/ callback called once"
+	lastCalledWithExactly stub, ["stuff"],	"/ called with correct stuff"
+	stub.reset()
+
+	Finch.options(CoerceParameterTypes: true)
 
 	Finch.call "/123"
 	calledOnce stub,                  	"/ callback called once"
@@ -1182,7 +1285,7 @@ test "Finch.navigate", sinon.test ->
 	ok homeNewsRegex.test(hash()), "Navigate called and changed hash to /home/news"
 
 	Finch.navigate("/home")
-	ok homeRegex.test(hash()), "Navigate called and changed hash to /home"
+	ok homeRegex.test(hash()), "fNavigate called and changed hash to /home"
 
 	#navigate to a route and query parameters
 	Finch.navigate("/home", foo:"bar")
@@ -1457,14 +1560,14 @@ test "Optional parameter parsing", sinon.test ->
 	Finch.call "/home/news/1234"
 
 	calledOnce foo, "foo called once"
-	lastCalledWithExactly foo, [{id: 1234}], "foo called with int parameter"
+	lastCalledWithExactly foo, [{id: "1234"}], "foo called with int parameter"
 
 	foo.reset()
 
-	Finch.options { CoerceParameterTypes: false }
+	Finch.options { CoerceParameterTypes: true }
 
 	Finch.call "/"
 	Finch.call "/home/news/1234"
 
 	calledOnce foo, "foo called once"
-	lastCalledWithExactly foo, [{id: "1234"}], "foo called with string parameter"
+	lastCalledWithExactly foo, [{id: 1234}], "foo called with string parameter"

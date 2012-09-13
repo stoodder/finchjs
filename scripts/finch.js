@@ -543,7 +543,7 @@
   LoadCompleted = false;
 
   Options = {
-    CoerceParameterTypes: true
+    CoerceParameterTypes: false
   };
 
   (resetGlobals = function() {
@@ -887,6 +887,9 @@
       return setHash(uri);
     },
     reset: function() {
+      Finch.options({
+        CoerceParameterTypes: false
+      });
       CurrentTargetPath = NullPath;
       step();
       Finch.ignore();

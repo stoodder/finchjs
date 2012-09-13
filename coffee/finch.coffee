@@ -490,7 +490,7 @@ HashListening = false
 IgnoreObservables = SetupCalled = false # Used to handle cases of same load/setup methods
 LoadCompleted = false
 Options = {
-	CoerceParameterTypes: true
+	CoerceParameterTypes: false
 }
 
 do resetGlobals = ->
@@ -1058,6 +1058,7 @@ Finch = {
 	#---------------------------------------------------
 	reset: ->
 		# Tear down the entire route
+		Finch.options(CoerceParameterTypes: false)
 		CurrentTargetPath = NullPath
 		step()
 		Finch.ignore()
@@ -1074,7 +1075,7 @@ Finch = {
 	#	newOptions (object) - The new options to set.
 	#
 	# Options:
-	#	CoerceParameterTypes (boolean, default: true)
+	#	CoerceParameterTypes (boolean, default: false)
 	#		Whether to coerce parameters from strings into other types. For example,
 	#		the route /home/news/:id called with /home/news/1234 will fill the
 	#		"id" parameter with the integer 1234 instead of the string "1234".
