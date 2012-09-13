@@ -146,6 +146,10 @@ Finch.route "[/Home]/News", {
       console.log @parent.nametag
       $("#news").show('fast', next)
 
+   unload: (bindings, next) ->
+      console.log "Unloading home/news"
+      next()
+
    teardown: (bindings, next) ->
       console.log "Tore down home/news"
       clearInterval( @interval )
@@ -162,6 +166,7 @@ Finch.route "[/Home]/News", {
 
 >> Calling "/Home"
 
+"Unloading home/news"
 "Tore down home/news"
 ... clears this.interval
 ... fades out the news element
