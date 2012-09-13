@@ -2,11 +2,11 @@
 a,
 a:active,
 a:focus {
-  color: #5588ff;
+  color: #66aaff;
 }
 
 a:hover {
-  color: #88ccff;
+  color: #99ccff;
   text-decoration: underline;
 }
 
@@ -22,11 +22,11 @@ ol {
   list-style: numbered;
 }
 ol li {
-  color: #113377;
+  color: #225599;
 }
 
 h1, h2, h3, h4, h5, h6, h7 {
-  color: white;
+  color: #eeeeff;
   font-weight: normal;
 }
 
@@ -42,7 +42,7 @@ pre {
   padding: 10px 20px;
   margin: 0px 10px 30px 10px;
   background-color: #000011;
-  color: #77aaff;
+  color: #88bbff;
   border: 1px solid #001144;
   overflow: hidden;
 }
@@ -50,7 +50,7 @@ pre {
 body {
   background-color: #000622;
   background-image: url("../images/shade.png");
-  color: white;
+  color: #eeeeff;
   font-size: 11pt;
   text-shadow: 1px 1px 1px black;
   overflow: scroll;
@@ -173,7 +173,7 @@ body {
   margin-top: 0px;
   border-top: 0px;
   background-color: #000009;
-  color: #7788aa;
+  color: #99bbee;
 }
 #content #home #showMe pre.console .change {
   color: #aaccff;

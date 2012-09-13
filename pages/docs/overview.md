@@ -47,6 +47,8 @@ Examples: "/hello/world", "/home/news/:id", "[/home]/news/:id/comments", etc.
 
 * **{load}** _(function)_ - A callback method to execute when this route is the current route.  In otherwords, this method duplicates a 'page load' event. The arguments are the same as the callback in the basic form of Finch.route().  
 
+* **{unload}** _(function)_ - A callback method to execute when this route was the current route and is leaving to load a new route.
+
 * **{teardown}** _(function)_ - A callback method to execute when the stack steps upwards towards its new node in the routing tree.  Think of this as the opposite of setup. The arguments are the same as the callback in the basic form of Finch.route().  
 
 __Note:__ &nbsp; setup, load, and teardown all carry the same context for 'this'.  Therefore in a setup you could make an interval ( _this.interval = setInterval(...)_ ) and in the teardown you could clear it ( _clearTimeout(this.interval)_ )
@@ -264,3 +266,16 @@ Sometimes, especially when heavily utilizing asynchronous routes, we'll need to 
 
 #### See Also
 <a href="#docs/advancedTopics/Asynchronous routes/How do I abort a call?" alt="How do I abort a call?" title="How do I abort a call?">How do I abort a call?</a>
+
+## &nbsp;
+## Finch.options()
+Finch.options() is a method that assigns options to Finch in order to handle certain scenarios differently.
+
+#### Arguments
+* **options** _(object)_ - The options to update
+ * **CoerceParameterTypes** _(boolean)_ - Should Finch attempt to coecre bindings and parameters to their appropriate types? Default: false
+
+#### See Also
+<a href="#docs/introduction/responding to url changes" alt="Responding to URL Changes" title="Responding to URL Changes">Responding to URL Changes</a>&nbsp; - &nbsp;
+<a href="#docs/parameters/working with inline parameters (bindings)" alt="Working with Inline Parameters" title="Working with Inline Parameters">Working with Inline Parameters (Bindings)</a>
+

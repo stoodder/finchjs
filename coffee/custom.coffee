@@ -40,7 +40,7 @@ class DocsViewModel
 #------------------------------------
 Finch.route "/", ({}, callback) -> 
 	
-	mpq.track("Viewing Home", {}, (->))
+	mixpanel.track("Viewing Home", {}, (->))
 	
 	$("#content").animate {'opacity':0}, complete: ->
 		$.get "./pages/home.tmpl", (data) ->
@@ -54,7 +54,7 @@ Finch.route "/", ({}, callback) ->
 
 Finch.route "download", ({}, callback) ->
 	
-	mpq.track("Viewing Download", {}, (->))
+	mixpanel.track("Viewing Download", {}, (->))
 
 	$("#content").animate {'opacity':0}, complete: ->
 		$.get "./pages/download.tmpl", (data) ->
@@ -69,7 +69,7 @@ Finch.route "download", ({}, callback) ->
 Finch.route "docs", 
 	setup: ({}, callback) ->
 	
-		mpq.track("Viewing Documentation", {}, (->))
+		mixpanel.track("Viewing Documentation", {}, (->))
 
 		$("#content").animate {'opacity':0}, complete: ->
 			$.get "./pages/docs.tmpl", (data) ->
