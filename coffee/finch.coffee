@@ -431,17 +431,17 @@ findPath = (rootNode, uri) ->
 
 		component = uriComponents[0]
 
-		# Try to find a matching literal component
-		if currentNode.childLiterals[component]?
-			result = recur(currentNode.childLiterals[component], uriComponents[1..])
-			return result if result?
-
 		# Try to find a matching variable component
 		if currentNode.childVariable?
 			boundValues.push(component)
 			result = recur(currentNode.childVariable, uriComponents[1..])
 			return result if result?
 			boundValues.pop()
+
+		# Try to find a matching literal component
+		if currentNode.childLiterals[component]?
+			result = recur(currentNode.childLiterals[component], uriComponents[1..])
+			return result if result?
 
 		# No matching route found in this traversal branch
 		return null
