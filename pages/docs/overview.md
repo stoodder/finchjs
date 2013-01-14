@@ -36,7 +36,7 @@ __With an Asynchronous Callback__
 <a href="#docs/advancedTopics/Asynchronous routes" alt="Asynchronous Routes" title="Asynchronous Routes">Asynchronous Routes</a>
 
 ### &nbsp;
-### Finch.route( route, {setup, load, teardown} )
+### Finch.route( route, {setup, load, unload, teardown} )
 Expanded form of Finch.route() which allows us to specify what to do when calling a parent route in the stack, what happens when a specific route is loaded, and what happens when we leave a route.
 
 #### Arguments
@@ -63,8 +63,11 @@ __Synchronous Form:__
 		load: (bindings) ->
 			console.log("Some Route has been loaed! :D")
 
+		unload: (bindings) ->
+			console.log("Some Route has been loaed! :(")
+
 		teardown: (bindings) ->
-			console.log("Some Route has been torndown! :(")
+			console.log("Some Route has been torndown! :'(")
 	}
 
 __Asynchronous Form:__
@@ -78,13 +81,17 @@ __Asynchronous Form:__
 			console.log("Some Route has been loaed! :D")
 			childCallback()
 
+		unload: (bindings, childCallback) ->
+			console.log("Some Route has been loaed! :(")
+			childCallback()
+
 		teardown: (bindings, childCallback) ->
-			console.log("Some Route has been torndown! :(")
+			console.log("Some Route has been torndown! :'(")
 			childCallback()
 	}
 
 #### See Also
-<a href="#docs/advancedTopics/Setup, Load, and Teardown" alt="Setup, Load, and Teardown" title="Setup, Load, and Teardown">Setup, Load, and Teardown</a>
+<a href="#docs/advancedTopics/Setup, Load, Unload, and Teardown" alt="Setup, Load, Unload, and Teardown" title="Setup, Load, Unload, and Teardown">Setup, Load, Unload, and Teardown</a>
 
 ## &nbsp;
 ## Finch.call()

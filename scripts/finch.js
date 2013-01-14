@@ -2,7 +2,7 @@
 	Finch.js - Powerfully simple javascript routing
 	by Rick Allen (stoodder) and Greg Smith (smrq)
 
-	Version 0.5.0
+	Version 0.5.2
 	Full source at https://github.com/stoodder/finchjs
 	Copyright (c) 2011 RokkinCat, http://www.rokkincat.com
 
@@ -490,7 +490,7 @@
     boundValues = [];
     return (recur = function(currentNode, uriComponents) {
       var component, result;
-      if (uriComponents.length <= 0) {
+      if (uriComponents.length <= 0 && (currentNode.routeSettings != null)) {
         return new RoutePath({
           node: currentNode,
           boundValues: boundValues
