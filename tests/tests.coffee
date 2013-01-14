@@ -1571,3 +1571,45 @@ test "Optional parameter parsing", sinon.test ->
 
 	calledOnce foo, "foo called once"
 	lastCalledWithExactly foo, [{id: 1234}], "foo called with string parameter"
+
+test "Variable parent routes called if no children found", sinon.test ->
+	cb = callbackGroup()
+
+	Finch.route "/", 
+		'setup': cb.slash_setup = @stub()
+		'load': cb.slash_load = @stub()
+		'unload': cb.slash_unload = @stub()
+		'teardown': cb.slash_teardown = @stub()
+
+	Finch.route "[/]users/profile", 
+		'setup': cb.profile_setup = @stub()
+		'load': cb.profile_load = @stub()
+		'unload': cb.profile_unload = @stub()
+		'teardown': cb.profile_teardown = @stub()
+
+	Finch.route "[/]:page", 
+		'setup': cb.page_setup = @stub()
+		'load': cb.page_load = @stub()
+		'unload': cb.page_unload = @stub()
+		'teardown': cb.page_teardown = @stub()
+
+	Finch.call "/users"
+
+	calledOnce cb.slash_setup, "slash setup called once"
+	neverCalled cb.slash_load, "slash load never called"
+	neverCalled cb.slash_unload, "slash unload never called"
+	neverCalled cb.slash_teardown, "slash teardown never called"
+
+	calledOnce cb.page_setup, "page setup called once"
+	calledOnce cb.page_load, "page load called once"
+	neverCalled cb.page_unload, "page unload never called"
+	neverCalled cb.page_teardown, "page unload never called"
+
+	neverCalled cb.profile_setup, "profile setup never called"
+	neverCalled cb.profile_load, "profile load never called"
+	neverCalled cb.profile_unload, "profile unload never called"
+	neverCalled cb.profile_teardown, "profile teardown never called"
+
+	lastCalledWithExactly cb.page_setup, [{page: "users"}], "page setup called with correct parameters"
+	lastCalledWithExactly cb.page_load, [{page: "users"}], "page setup called with correct parameters"
+

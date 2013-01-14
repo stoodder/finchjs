@@ -1,0 +1,185 @@
+<div id="home">
+	<div class="row">
+		<div class="ten columns offset-by-one" style="text-align: justify">
+			<h2 style="text-align: center">Powerfully Simple Javascript Routing</h2>
+			<p id="whatIsIt">
+				Finch.js is a whole new take on handling routes in javascript web apps.
+				It utilizes the natural hierarchy of routes, simplified pattern matching,
+				and powerful parameter dependencies in order to speed up and organize
+				web apps that rely highly on interacting with the browser's url.
+			</p>
+			<h2 style="text-align: center" id="downloadNow">
+				<a href="#download" alt="download">Download v0.5.0 Now!</a>
+			</h2>
+		</div>
+	</div>
+	<div id="showMe">
+
+
+		<div class="row">
+			<div class="question four columns">
+				<p>
+					Alright, show me some Finch...
+				</p>
+			</div>
+			<div class="answer eight columns">
+
+<pre class="script">
+Finch.route "/Some/Route/:someId", ({someId}) ->
+   console.log "Woohoo! Here's Some Id: #{someId}"</pre><pre class="console">
+ >> Calling '/Some/Route/33'
+ "Woohoo! Here's Some Id: 33"</pre>
+
+			<div class="readMore">
+				<a href="#docs/introduction">Introduction →</a>
+			</div>
+
+			</div>
+		</div>
+
+
+		<div class="row">
+			<div class="question four columns">
+				<p>
+					Well, that's not very revolutionary, what's all this about
+					<em>"utilizing route hierarchy"</em>?
+				</p>
+			</div>
+			<div class="answer eight columns">
+
+<pre class="script">
+Finch.route "/Home", ->
+   console.log "Hey! We called home!"
+
+Finch.route "[/Home]/News", ->
+   console.log "Now we're on Home/News!"</pre><pre class="console">
+ >> Calling '/Home/News'
+ "Hey! We called Home!"
+ "Now we're on Home/News!"</pre>
+
+			<div class="readMore">
+				<a href="#docs/parentRoutes">Parent Routes →</a>
+			</div>
+
+			</div>
+		</div>
+
+
+		<div class="row">
+			<div class="question four columns">
+				<p>
+					Hmm, nifty.  How do I get at the query string parameters?  Do I
+					Just assume that they are passed into the callback argument, or no?
+				</p>
+			</div>
+			<div class="answer eight columns">
+
+<pre class="script">
+Finch.route "Home", ->
+   Finch.observe "sort", (sort) ->
+      console.log "Sorting by #{sort}"
+
+   Finch.observe (params) ->
+      if params('greatSuccess')
+         console.log params('successMessage')
+      else
+         console.log params('errorMessage')</pre><pre class="console">
+>> Calling /Home?sort=Ascending
+           &greatSuccess=true
+           &successMessage=Great Success!
+           &errorMessage=Never Gonna Give You Up
+
+"Sorting by Ascending"
+"Great Success"
+
+>> Calling /Home?sort=Ascending
+           &greatSuccess=true
+           &successMessage=Great Success!
+           <span class="change">&errorMessage=You've been Roll'd</span>
+
+... nothing happens
+
+>> Calling /Home?sort=Ascending
+           <span class="change">&greatSuccess=false</span>
+           &successMessage=Great Success!
+           &errorMessage=You've been Roll'd
+
+"You've been Roll'd"</pre>
+
+			<div class="readMore">
+				<a href="#docs/parameters">Parameters →</a>
+			</div>
+
+			</div>
+		</div>
+
+
+		<div class="row">
+			<div class="question four columns">
+				<p>
+					Wow that's definitely different than what I was expecting.
+					It makes sense though to only execute code that is needed
+					based on which values are updated.  Cool.  Okay, this is getting
+					interesting, can you show me something more complex?
+				</p>
+			</div>
+			<div class="answer eight columns">
+
+<pre class="script">
+Finch.route "/Home",
+   setup: (bindings, next) ->
+      console.log "Setup the home route"
+      @nametag = "Hello I am /Home"
+      $.get "trackUser.json", ->
+         next()
+
+   load: (bindings) ->
+      console.log "We're looking at the home screen"
+
+Finch.route "[/Home]/News", {
+   setup: (bindings) ->
+      console.log "Setup at home/news"
+      @interval = setInterval( someMethod, 1000 )
+
+   load: (bindings, next) ->
+      console.log "Looking at home/news"
+      console.log @parent.nametag
+      $("#news").show('fast', next)
+
+   unload: (bindings, next) ->
+      console.log "Unloading home/news"
+      next()
+
+   teardown: (bindings, next) ->
+      console.log "Tore down home/news"
+      clearInterval( @interval )
+      $("#news").hide('fast', next)</pre><pre class="console">
+>> Calling "/Home/News"
+
+"Setup the home route"
+... tracks the user
+"Setup at home/news"
+... sets this.interval
+"Looking at home/news"
+"Hello I am /Home"
+... fades in the news element
+
+>> Calling "/Home"
+
+"Unloading home/news"
+"Tore down home/news"
+... clears this.interval
+... fades out the news element
+"We're looking at the home screen"</pre>
+
+			<div class="readMore">
+				<a href="#docs/advancedTopics">Advanced Topics →</a>
+			</div>
+
+			</div>
+		</div>
+
+
+	</div>
+</div>
+<div></div>

@@ -426,7 +426,7 @@ findPath = (rootNode, uri) ->
 
 	(recur = (currentNode, uriComponents) ->
 		# Are we done traversing the uri?
-		if uriComponents.length <= 0
+		if uriComponents.length <= 0 and currentNode.routeSettings?
 			return new RoutePath( node: currentNode, boundValues: boundValues )
 
 		component = uriComponents[0]

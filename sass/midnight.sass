@@ -1,0 +1,206 @@
+@import "mixins.sass"
+
+a,
+a:active,
+a:focus
+	color: #66AAFF
+
+a:hover
+	color: #99CCFF
+	text-decoration: underline
+
+ul, ol
+	margin-left: 15px
+
+ul
+	list-style: disc
+
+
+ol
+	list-style: numbered
+
+	li
+		color: #225599
+
+h1, h2, h3, h4, h5, h6, h7
+	color: #EEEEFF
+	font-weight: normal
+
+p
+	font-size: 11pt
+	padding: 0px 15px
+
+pre
+	@include border-radius(6px)
+	font-family: "courier new"
+	padding: 10px 20px
+	margin: 0px 10px 30px 10px
+	background-color: #000011
+	color: #88BBFF
+	border: 1px solid #001144
+	overflow: hidden
+
+body
+	background-color: #000622
+	background-image: url('../images/shade.png')
+	color: #EEEEFF
+	font-size: 11pt
+	text-shadow: 1px 1px 1px #000000
+	overflow: scroll
+
+#background
+	position: fixed
+	z-index: -1
+	height: 300px
+	width: 300px
+	top: 100%
+	left: 0px
+	margin-top: -300px
+	margin-left: 0px
+	background-image: url('../images/background-full.png')
+	background-position: bottom left
+	background-repeat: no-repeat
+
+#header
+	position: fixed
+	top: 0px
+	left: 0px
+	z-index: 200
+	height: 60px
+	background-color: #000622
+	width: 100%
+
+	#logo
+		height: 60px
+		margin-top: 10px
+
+
+	.menu
+		float: right
+		list-style: none
+		margin-right: 20px
+
+	li
+		float: left
+		line-height: 60px
+		margin: 0px 10px 0px 30px
+
+#forkMe
+	position: fixed
+	z-index: 100
+	top: 60px
+	left: 100%
+	margin-left: -130px
+	height: 130px
+	width: 130px
+	border: 0px
+
+#content
+	.row
+		background-image: url('../images/shade.png')
+
+	#home
+		margin-top: 120px
+
+		p#whatIsIt
+			font-size: 13pt
+			padding: 10px 0px
+			width: 520px
+			margin: 10px auto 15px auto
+		
+		#downloadNow
+			margin-top: 20px
+		
+		#showMe
+			padding-top: 30px
+			
+			.question
+				padding-top: 25px
+
+				p
+					margin: 0px
+					padding: 0px 0px 0px 10px
+					font-size: 13pt
+					line-height: 1.5em
+
+			.answer
+				position: relative
+				padding-top: 15px
+				font-size: 12pt
+
+				.readMore
+					position: absolute
+					top: 100%
+					left: 0%
+					text-align: right
+					width: 300px
+					margin-left: -320px
+					margin-top: -65px
+			
+			pre
+				padding: 15px 20px
+
+			pre.script
+				@include border-top-radius(6px)
+				@include border-bottom-radius(0px)
+				margin-bottom: 0px
+				border-bottom: 1px solid #001122
+					
+			pre.console
+				@include border-top-radius(0px)
+				@include border-bottom-radius(6px)
+				margin-top: 0px
+				border-top: 0px
+
+				background-color: #000009
+				color: #99BBEE
+				
+				.change
+					color: #AACCFF
+					font-style: italic
+		
+	#download
+		margin-top: 120px
+
+		.title
+			text-align: center
+			margin-bottom: 50px
+		
+		.zip, .tar, .version
+			text-align: center
+		
+		.zip, .tar
+			img
+				height: 130px
+
+		.version
+			@include opacity(.5)
+			font-size: 20pt
+			line-height: 85px
+		
+		#gitRow
+			margin-top: 100px
+			text-align: center
+
+			pre
+				text-align: left
+
+	#docs
+		margin-top: 80px
+
+	#tableOfContents
+		position: relative
+		margin-top: 30px
+
+		ol
+			padding: 0px
+			margin: 0px 0px 5px 20px
+
+		li
+			margin: 3px 0px 5px 0px
+
+
+	#tableOfContents > ol
+		position: fixed
+		margin-top: 60px
+

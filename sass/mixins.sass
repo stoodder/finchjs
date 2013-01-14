@@ -1,0 +1,140 @@
+/** Define the mixins **/
+@mixin border-radius($radius)
+	border-radius: $radius
+	-moz-border-radius: $radius
+
+@mixin border-bottom-radius($radius)
+	border-bottom-left-radius: $radius
+	-moz-border-bottom-left-radius: $radius
+	border-bottom-right-radius: $radius
+	-moz-border-bottom-right-radius: $radius
+	
+@mixin border-top-radius($radius)
+	border-top-left-radius: $radius
+	-moz-border-top-left-radius: $radius
+	border-top-right-radius: $radius
+	-moz-border-top-right-radius: $radius
+
+@mixin border-left-radius($radius)
+	border-top-left-radius: $radius
+	-moz-border-top-left-radius: $radius
+	border-bottom-left-radius: $radius
+	-moz-border-bottom-left-radius: $radius
+
+@mixin border-top-left-radius($radius)
+	border-top-left-radius: $radius
+	-moz-border-top-left-radius: $radius
+
+@mixin border-bottom-left-radius($radius)
+	border-bottom-left-radius: $radius
+	-moz-border-bottom-left-radius: $radius
+
+@mixin border-right-radius($radius)
+	border-top-right-radius: $radius
+	-moz-border-top-right-radius: $radius
+	border-bottom-right-radius: $radius
+	-moz-border-bottom-right-radius: $radius
+
+@mixin border-top-right-radius($radius)
+	border-top-right-radius: $radius
+	-moz-border-top-right-radius: $radius
+
+@mixin border-bottom-right-radius($radius)
+	border-bottom-right-radius: $radius
+	-moz-border-bottom-right-radius: $radius
+
+@mixin box-shadow($left, $top, $amount, $color)
+	box-shadow: $left $top $amount $color
+	-webkit-box-shadow: $left $top $amount $color
+	-moz-box-shadow: $left $top $amount $color
+	
+@mixin glow($amount, $color)
+	box-shadow: 0px 0px $amount $color
+	-webkit-box-shadow: 0px 0px $amount $color
+	-moz-box-shadow: 0px 0px $amount $color
+	
+@mixin shadow($amount, $color: #000000)
+	box-shadow: 0px $amount/3 $amount $color
+	-webkit-box-shadow: 0px $amount/3 $amount $color
+	-moz-box-shadow: 0px $amount/3 $amount $color
+
+@mixin inner-shadow($amount, $color: #000000)
+	box-shadow: inset 0px $amount/3 $amount $color
+	-webkit-box-shadow: inset 0px $amount/3 $amount $color
+	-moz-box-shadow: inset 0px $amount/3 $amount $color
+
+@mixin opacity($opacity)
+	opacity: $opacity
+	-moz-opacity: $opacity
+	-webkit-opacity: $opacity
+	-o-opacity: $opacity
+	filter: alpha(opacity=$opacity*100)
+
+@mixin picture-glow($width)
+	@include box-shadow(0px, 1px, $width*3, #d8d8d8)
+	@include border-radius($width)
+	border: $width solid #ffffff
+	
+@mixin picture-border($width, $color: #ffffff, $shadow: #999999)
+	@include glow($width - 1, $shadow)
+	border: $width solid $color
+
+@mixin gradient($start, $finish)  
+	background-color: mix($start,$finish)
+	filter: progid:DXImageTransform.Microsoft.Gradient(GradientType=0, startColorstr='#{$start}', endColorstr='#{$finish}')
+	-ms-filter: "progid:DXImageTransform.Microsoft.gradient(GradientType=0, startColorstr='#{$start}', endColorstr='#{$finish}')"
+	background: -webkit-gradient(linear, left top, left bottom, from($start), to($finish))
+	background: -moz-linear-gradient(top,  $start,  $finish)
+	background: -o-linear-gradient(top, $start, $finish)
+
+@mixin horizontal-gradient($start, $finish)  
+	background-color: mix($start,$finish)
+	filter: progid:DXImageTransform.Microsoft.Gradient(GradientType=1, startColorstr='#{$start}', endColorstr='#{$finish}')
+	-ms-filter: "progid:DXImageTransform.Microsoft.gradient(GradientType=1, startColorstr='#{$start}', endColorstr='#{$finish}')"
+	background: -webkit-gradient(linear, left top, right top, from($start), to($finish))
+	background: -moz-linear-gradient(left,  $start,  $finish)
+	background: -o-linear-gradient(left, $start,$finish)
+
+@mixin rotate($deg)
+	-webkit-transform: rotate(#{$deg}deg)
+	-moz-transform: rotate(#{$deg}deg)
+	-o-transform: rotate(#{$deg}deg)
+	-ms-transform: rotate(#{$deg}deg)
+	filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=#{$deg/180})
+	transform: rotate(#{$deg}deg)
+
+@mixin rotateX($deg)
+	-webkit-transform: rotateX(#{$deg}deg)
+	-moz-transform: rotateX(#{$deg}deg)
+	-o-transform: rotateX(#{$deg}deg)
+	-ms-transform: rotateX(#{$deg}deg)
+	filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=#{$deg/180})
+	transform: rotateX(#{$deg}deg)
+
+@mixin transition-property($property)
+	-moz-transition-property: #{$property}
+	-webkit-transition-property: #{$property}
+	-o-transition-property: #{$property}
+	-ms-transition-property: #{$property}
+	transition-property: #{$property}
+
+@mixin transition-duration($duration)
+	-moz-transition-duration: #{$duration}
+	-webkit-transition-duration: #{$duration}
+	-o-transition-duration: #{$duration}
+	-ms-transition-duration: #{$duration}
+	transition-duration: #{$duration}
+
+@mixin transition-timing-function($timingFunction)
+	-moz-transition-timing-function: #{$timingFunction}
+	-webkit-transition-timing-function: #{$timingFunction}
+	-o-transition-timing-function: #{$timingFunction}
+	-ms-transition-timing-function: #{$timingFunction}
+	transition-timing-function: #{$timingFunction}
+
+@mixin transition-delay($delay)
+	-moz-transition-delay: $delay
+	-webkit-transition-delay: $delay
+	-o-transition-delay: $delay
+	-ms-transition-delay: $delay
+	transition-delay: $delay

@@ -1,0 +1,52 @@
+/*Define the mixins */
+a, li, h1, h2, h3, h4, h5, h6, h7 {
+  -moz-transition-property: color;
+  -webkit-transition-property: color;
+  -o-transition-property: color;
+  -ms-transition-property: color;
+  transition-property: color;
+  -moz-transition-duration: 1s;
+  -webkit-transition-duration: 1s;
+  -o-transition-duration: 1s;
+  -ms-transition-duration: 1s;
+  transition-duration: 1s;
+}
+
+pre {
+  -moz-transition-property: background-color, border-color, color;
+  -webkit-transition-property: background-color, border-color, color;
+  -o-transition-property: background-color, border-color, color;
+  -ms-transition-property: background-color, border-color, color;
+  transition-property: background-color, border-color, color;
+  -moz-transition-duration: 1s, 1s, 1s;
+  -webkit-transition-duration: 1s, 1s, 1s;
+  -o-transition-duration: 1s, 1s, 1s;
+  -ms-transition-duration: 1s, 1s, 1s;
+  transition-duration: 1s, 1s, 1s;
+}
+
+body {
+  -moz-transition-property: background-color, color;
+  -webkit-transition-property: background-color, color;
+  -o-transition-property: background-color, color;
+  -ms-transition-property: background-color, color;
+  transition-property: background-color, color;
+  -moz-transition-duration: 1s, 1s;
+  -webkit-transition-duration: 1s, 1s;
+  -o-transition-duration: 1s, 1s;
+  -ms-transition-duration: 1s, 1s;
+  transition-duration: 1s, 1s;
+}
+
+#header {
+  -moz-transition-property: background-color;
+  -webkit-transition-property: background-color;
+  -o-transition-property: background-color;
+  -ms-transition-property: background-color;
+  transition-property: background-color;
+  -moz-transition-duration: 1s;
+  -webkit-transition-duration: 1s;
+  -o-transition-duration: 1s;
+  -ms-transition-duration: 1s;
+  transition-duration: 1s;
+}

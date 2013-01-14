@@ -490,7 +490,7 @@
     boundValues = [];
     return (recur = function(currentNode, uriComponents) {
       var component, result;
-      if (uriComponents.length <= 0) {
+      if (uriComponents.length <= 0 && (currentNode.routeSettings != null)) {
         return new RoutePath({
           node: currentNode,
           boundValues: boundValues

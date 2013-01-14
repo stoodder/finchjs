@@ -1,0 +1,228 @@
+/*Define the mixins */
+a,
+a:active,
+a:focus {
+  color: #66aaff;
+}
+
+a:hover {
+  color: #99ccff;
+  text-decoration: underline;
+}
+
+ul, ol {
+  margin-left: 15px;
+}
+
+ul {
+  list-style: disc;
+}
+
+ol {
+  list-style: numbered;
+}
+ol li {
+  color: #225599;
+}
+
+h1, h2, h3, h4, h5, h6, h7 {
+  color: #eeeeff;
+  font-weight: normal;
+}
+
+p {
+  font-size: 11pt;
+  padding: 0px 15px;
+}
+
+pre {
+  border-radius: 6px;
+  -moz-border-radius: 6px;
+  font-family: "courier new";
+  padding: 10px 20px;
+  margin: 0px 10px 30px 10px;
+  background-color: #000011;
+  color: #88bbff;
+  border: 1px solid #001144;
+  overflow: hidden;
+}
+
+body {
+  background-color: #000622;
+  background-image: url("../images/shade.png");
+  color: #eeeeff;
+  font-size: 11pt;
+  text-shadow: 1px 1px 1px black;
+  overflow: scroll;
+}
+
+#background {
+  position: fixed;
+  z-index: -1;
+  height: 300px;
+  width: 300px;
+  top: 100%;
+  left: 0px;
+  margin-top: -300px;
+  margin-left: 0px;
+  background-image: url("../images/background-full.png");
+  background-position: bottom left;
+  background-repeat: no-repeat;
+}
+
+#header {
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  z-index: 200;
+  height: 60px;
+  background-color: #000622;
+  width: 100%;
+}
+#header #logo {
+  height: 60px;
+  margin-top: 10px;
+}
+#header .menu {
+  float: right;
+  list-style: none;
+  margin-right: 20px;
+}
+#header li {
+  float: left;
+  line-height: 60px;
+  margin: 0px 10px 0px 30px;
+}
+
+#forkMe {
+  position: fixed;
+  z-index: 100;
+  top: 60px;
+  left: 100%;
+  margin-left: -130px;
+  height: 130px;
+  width: 130px;
+  border: 0px;
+}
+
+#content .row {
+  background-image: url("../images/shade.png");
+}
+#content #home {
+  margin-top: 120px;
+}
+#content #home p#whatIsIt {
+  font-size: 13pt;
+  padding: 10px 0px;
+  width: 520px;
+  margin: 10px auto 15px auto;
+}
+#content #home #downloadNow {
+  margin-top: 20px;
+}
+#content #home #showMe {
+  padding-top: 30px;
+}
+#content #home #showMe .question {
+  padding-top: 25px;
+}
+#content #home #showMe .question p {
+  margin: 0px;
+  padding: 0px 0px 0px 10px;
+  font-size: 13pt;
+  line-height: 1.5em;
+}
+#content #home #showMe .answer {
+  position: relative;
+  padding-top: 15px;
+  font-size: 12pt;
+}
+#content #home #showMe .answer .readMore {
+  position: absolute;
+  top: 100%;
+  left: 0%;
+  text-align: right;
+  width: 300px;
+  margin-left: -320px;
+  margin-top: -65px;
+}
+#content #home #showMe pre {
+  padding: 15px 20px;
+}
+#content #home #showMe pre.script {
+  border-top-left-radius: 6px;
+  -moz-border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  -moz-border-top-right-radius: 6px;
+  border-bottom-left-radius: 0px;
+  -moz-border-bottom-left-radius: 0px;
+  border-bottom-right-radius: 0px;
+  -moz-border-bottom-right-radius: 0px;
+  margin-bottom: 0px;
+  border-bottom: 1px solid #001122;
+}
+#content #home #showMe pre.console {
+  border-top-left-radius: 0px;
+  -moz-border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
+  -moz-border-top-right-radius: 0px;
+  border-bottom-left-radius: 6px;
+  -moz-border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  -moz-border-bottom-right-radius: 6px;
+  margin-top: 0px;
+  border-top: 0px;
+  background-color: #000009;
+  color: #99bbee;
+}
+#content #home #showMe pre.console .change {
+  color: #aaccff;
+  font-style: italic;
+}
+#content #download {
+  margin-top: 120px;
+}
+#content #download .title {
+  text-align: center;
+  margin-bottom: 50px;
+}
+#content #download .zip, #content #download .tar, #content #download .version {
+  text-align: center;
+}
+#content #download .zip img, #content #download .tar img {
+  height: 130px;
+}
+#content #download .version {
+  opacity: 0.5;
+  -moz-opacity: 0.5;
+  -webkit-opacity: 0.5;
+  -o-opacity: 0.5;
+  filter: alpha(opacity=50);
+  font-size: 20pt;
+  line-height: 85px;
+}
+#content #download #gitRow {
+  margin-top: 100px;
+  text-align: center;
+}
+#content #download #gitRow pre {
+  text-align: left;
+}
+#content #docs {
+  margin-top: 80px;
+}
+#content #tableOfContents {
+  position: relative;
+  margin-top: 30px;
+}
+#content #tableOfContents ol {
+  padding: 0px;
+  margin: 0px 0px 5px 20px;
+}
+#content #tableOfContents li {
+  margin: 3px 0px 5px 0px;
+}
+#content #tableOfContents > ol {
+  position: fixed;
+  margin-top: 60px;
+}
