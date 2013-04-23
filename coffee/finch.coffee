@@ -66,7 +66,7 @@ diffObjects = (oldObject = {}, newObject = {}) ->
 #------------------
 # Ensure that console exists (for non-compatible browsers)
 #------------------
-console = {} unless console?
+console = window.console ? {}
 console.log ?= (->)
 console.warn ?= (->)
 
@@ -299,19 +299,19 @@ parseRouteString = (routeString) ->
 		# Validate []s match
 		startCount = countSubstrings(routeString, "[")
 		unless startCount is 1
-			console.warn "Parsing failed on \"#{routeString}\": Extra [" if startCount > 1
-			console.warn "Parsing failed on \"#{routeString}\": Missing [" if startCount < 1
+			console.warn "[FINCH] Parsing failed on \"#{routeString}\": Extra [" if startCount > 1
+			console.warn "[FINCH] Parsing failed on \"#{routeString}\": Missing [" if startCount < 1
 			return null
 
 		endCount = countSubstrings(routeString, "]")
 		unless endCount is 1
-			console.warn "Parsing failed on \"#{routeString}\": Extra ]" if endCount > 1
-			console.warn "Parsing failed on \"#{routeString}\": Missing ]" if endCount < 1
+			console.warn "[FINCH] Parsing failed on \"#{routeString}\": Extra ]" if endCount > 1
+			console.warn "[FINCH] Parsing failed on \"#{routeString}\": Missing ]" if endCount < 1
 			return null
 
 		# Validate the string starts with [
 		unless startsWith(routeString, "[")
-			console.warn "Parsing failed on \"#{routeString}\": [ not at beginning"
+			console.warn "[FINCH] Parsing failed on \"#{routeString}\": [ not at beginning"
 			return null
 
 	# Remove [] from string
@@ -324,7 +324,7 @@ parseRouteString = (routeString) ->
 	# Validate individual components
 	for component in components
 		if component is ""
-			console.warn "Parsing failed on \"#{routeString}\": Blank component"
+			console.warn "[FINCH] Parsing failed on \"#{routeString}\": Blank component"
 			return null
 
 	# Find the index into the components list where the child route starts
@@ -333,10 +333,10 @@ parseRouteString = (routeString) ->
 		[parentString] = routeString.split("]")
 		parentComponents = splitUri(parentString.replace("[", ""))
 		if parentComponents[parentComponents.length-1] isnt components[parentComponents.length-1]
-			console.warn "Parsing failed on \"#{routeString}\": ] in the middle of a component"
+			console.warn "[FINCH] Parsing failed on \"#{routeString}\": ] in the middle of a component"
 			return null
 		if parentComponents.length is components.length
-			console.warn "Parsing failed on \"#{routeString}\": No child components"
+			console.warn "[FINCH] Parsing failed on \"#{routeString}\": No child components"
 			return null
 		childIndex = parentComponents.length
 
@@ -768,7 +768,6 @@ Finch = {
 	#	route - The route to try and call
 	#---------------------------------------------------
 	call: (uri) ->
-
 		#Make sure we have valid arguments
 		uri = "/" unless isString(uri)
 		uri = "/" if uri is ""
@@ -779,7 +778,7 @@ Finch = {
 		# Find matching route in route tree, returning false if there is none
 		newPath = findPath(RootNode, uri)
 		unless newPath?
-			console.log("FINCH WARNING: Could not find route for: #{uri}")
+			console.warn "[FINCH] Could not find route for: #{uri}"
 			return false 
 		#END unless
 
