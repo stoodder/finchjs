@@ -518,7 +518,7 @@ test 'Testing synchronous and asynchronous unload method and context', sinon.tes
 	cb.home_news_unload = @stub()
 	cb.home_news_teardown = @stub()
 
-	Finch.route "[/home]/news"
+	Finch.route "[/home]/news",
 		setup: (bindings, next) -> 
 			@did_setup = true
 			cb.home_news_setup()
@@ -538,7 +538,6 @@ test 'Testing synchronous and asynchronous unload method and context', sinon.tes
 	Finch.route "/foo", cb.foo = @stub()
 
 	Finch.call("/home")
-
 	calledOnce cb.home_setup, "Called Home Setup"
 	calledOnce cb.home_load, "Called Home Load"
 	neverCalled cb.home_unload, "Never Called Home Unload"
@@ -632,7 +631,7 @@ test "Reload", sinon.test ->
 	cb.home_news_unload = @stub()
 	cb.home_news_teardown = @stub()
 
-	Finch.route "[/home]/news"
+	Finch.route "[/home]/news",
 		setup: (bindings, next) -> 
 			@did_setup = true
 			cb.home_news_setup(this, next)
@@ -1612,4 +1611,45 @@ test "Variable parent routes called if no children found", sinon.test ->
 
 	lastCalledWithExactly cb.page_setup, [{page: "users"}], "page setup called with correct parameters"
 	lastCalledWithExactly cb.page_load, [{page: "users"}], "page setup called with correct parameters"
+
+test "Test double deep variable basic routes up and down", sinon.test ->
+	cb = callbackGroup()
+	Finch.route "/project/:project_id", cb.project_id_load = @stub()
+	Finch.route "[/project/:project_id]/milestone", cb.milestone_load = @stub()
+	Finch.route "[/project/:project_id/milestone]/:milestone_id", cb.milestone_id_load = @stub()
+
+	Finch.call "/project/1234"
+	calledOnce cb.project_id_load
+	neverCalled cb.milestone_load
+	neverCalled cb.milestone_id_load
+	lastCalledWithExactly cb.project_id_load, [{project_id: "1234"}]
+	cb.reset()
+
+	Finch.call "/project/1234/milestone"
+	neverCalled cb.project_id_load
+	calledOnce cb.milestone_load
+	neverCalled cb.milestone_id_load
+	lastCalledWithExactly cb.milestone_load, [{project_id: "1234"}]
+	cb.reset()
+
+	Finch.call "/project/1234/milestone/5678"
+	neverCalled cb.project_id_load
+	neverCalled cb.milestone_load
+	calledOnce cb.milestone_id_load
+	lastCalledWithExactly cb.milestone_id_load, [{project_id: "1234", milestone_id: "5678"}]
+	cb.reset()
+
+	Finch.call "/project/1234/milestone"
+	neverCalled cb.project_id_load
+	calledOnce cb.milestone_load
+	neverCalled cb.milestone_id_load
+	lastCalledWithExactly cb.milestone_load, [{project_id: "1234"}]
+	cb.reset()
+
+	Finch.call "/project/1234"
+	calledOnce cb.project_id_load
+	neverCalled cb.milestone_load
+	neverCalled cb.milestone_id_load
+	lastCalledWithExactly cb.project_id_load, [{project_id: "1234"}]
+	cb.reset()
 

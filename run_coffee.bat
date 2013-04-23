@@ -1,1 +1,0 @@
-coffee -o scripts/ -wc coffee/

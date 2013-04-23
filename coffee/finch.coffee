@@ -66,7 +66,7 @@ diffObjects = (oldObject = {}, newObject = {}) ->
 #------------------
 # Ensure that console exists (for non-compatible browsers)
 #------------------
-console ?= {}
+console = {} unless console?
 console.log ?= (->)
 console.warn ?= (->)
 
@@ -778,7 +778,10 @@ Finch = {
 
 		# Find matching route in route tree, returning false if there is none
 		newPath = findPath(RootNode, uri)
-		return false unless newPath?
+		unless newPath?
+			console.log("FINCH WARNING: Could not find route for: #{uri}")
+			return false 
+		#END unless
 
 		queryParameters = parseQueryString(queryString)
 		bindings = newPath.getBindings()
