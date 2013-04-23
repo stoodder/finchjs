@@ -443,12 +443,10 @@ task 'patch', 'Executing a patch version update', () ->
 task 'release', 'build, tag the current release, and push', ->
 	console.log "Trying to tag #{version_tag()}..."
 	with_clean_repo( ->
-		without_existing_tag( ->
-			push_repo [], ( ->
-				push_repo ['--tags'], ( ->
-					console.log "Successfully tagged #{version_tag()}: https://github.com/stoodder/finchjs/tree/#{version_tag()}"
+		push_repo [], ( ->
+			push_repo ['--tags'], ( ->
+				console.log "Successfully tagged #{version_tag()}: https://github.com/stoodder/finchjs/tree/#{version_tag()}"
 
-				), git_untag
 			), git_untag
-		)
+		), git_untag
 	)
