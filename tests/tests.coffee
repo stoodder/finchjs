@@ -1653,3 +1653,71 @@ test "Test double deep variable basic routes up and down", sinon.test ->
 	lastCalledWithExactly cb.project_id_load, [{project_id: "1234"}]
 	cb.reset()
 
+test "Test double deep variable basic routes up and down", sinon.test ->
+	cb = callbackGroup()
+	Finch.route "/project/:project_id/milestone",
+		setup: cb.milestone_setup = @stub()
+		load: cb.milestone_load = @stub()
+		unload: cb.milestone_unload = @stub()
+		teardown: cb.milestone_teardown = @stub()
+	#END rout
+
+	Finch.route "[/project/:project_id/milestone]/:milestone_id",
+		setup: cb.milestone_id_setup = @stub()
+		load: cb.milestone_id_load = @stub()
+		unload: cb.milestone_id_unload = @stub()
+		teardown: cb.milestone_id_teardown = @stub()
+	#END rout
+
+	Finch.call "/project/1234/milestone"
+	calledOnce cb.milestone_setup
+	calledOnce cb.milestone_load
+	neverCalled cb.milestone_unload
+	neverCalled cb.milestone_teardown
+
+	neverCalled cb.milestone_id_setup
+	neverCalled cb.milestone_id_load
+	neverCalled cb.milestone_id_unload
+	neverCalled cb.milestone_id_teardown
+
+	lastCalledWithExactly cb.milestone_setup, [{project_id: "1234"}]
+	lastCalledWithExactly cb.milestone_load, [{project_id: "1234"}]
+
+	cb.reset()
+
+	Finch.call "/project/1234/milestone/5678"
+	neverCalled cb.milestone_setup
+	neverCalled cb.milestone_load
+	calledOnce cb.milestone_unload
+	neverCalled cb.milestone_teardown
+
+	calledOnce cb.milestone_id_setup
+	calledOnce cb.milestone_id_load
+	neverCalled cb.milestone_id_unload
+	neverCalled cb.milestone_id_teardown
+
+	lastCalledWithExactly cb.milestone_unload, [{project_id: "1234"}]
+
+	lastCalledWithExactly cb.milestone_id_setup, [{project_id: "1234", milestone_id: "5678"}]
+	lastCalledWithExactly cb.milestone_id_load, [{project_id: "1234", milestone_id: "5678"}]
+	cb.reset()
+
+
+	Finch.call "/project/1234/milestone"
+	neverCalled cb.milestone_setup
+	calledOnce cb.milestone_load
+	neverCalled cb.milestone_unload
+	neverCalled cb.milestone_teardown
+
+	neverCalled cb.milestone_id_setup
+	neverCalled cb.milestone_id_load
+	calledOnce cb.milestone_id_unload
+	calledOnce cb.milestone_id_teardown
+
+	lastCalledWithExactly cb.milestone_load, [{project_id: "1234"}]
+
+	lastCalledWithExactly cb.milestone_id_unload, [{project_id: "1234", milestone_id: "5678"}]
+	lastCalledWithExactly cb.milestone_id_teardown, [{project_id: "1234", milestone_id: "5678"}]
+	cb.reset()
+#END test
+

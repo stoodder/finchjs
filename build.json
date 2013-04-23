@@ -23,9 +23,7 @@
 
 	"COPIED": {
 		"releases/finch-latest.js": "scripts/finch.js",
-		"releases/finch-latest.min.js": "scripts/finch.min.js",
-		"releases/finch-{{VERSION}}.js": "scripts/finch.js",
-		"releases/finch-{{VERSION}}.min.js": "scripts/finch.min.js"
+		"releases/finch-latest.min.js": "scripts/finch.min.js"
 	},
 
 	"HAML": {},
