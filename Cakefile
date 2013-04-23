@@ -394,7 +394,7 @@ task 'major', 'Executing a major version update', () ->
 
 		git_tag(->)
 
-		console.log "Finished updating major version"
+		console.log "Finished updating major version to #{version}"
 
 
 # --------------------------------------------------------
@@ -416,7 +416,7 @@ task 'minor', 'Executing a minor version update', () ->
 
 		git_tag(->)
 
-		console.log "Finished updating minor version"
+		console.log "Finished updating minor version to #{version}"
 
 
 # --------------------------------------------------------
@@ -437,19 +437,4 @@ task 'patch', 'Executing a patch version update', () ->
 
 		git_tag(->)
 
-		console.log "Finished updating patch version"
-
-
-# --------------------------------------------------------
-#
-# --------------------------------------------------------
-task 'release', 'build, tag the current release, and push', ->
-	console.log "Trying to tag #{version_tag()}..."
-	with_clean_repo( ->
-		push_repo [], ( ->
-			push_repo ['--tags'], ( ->
-				console.log "Successfully tagged #{version_tag()}: https://github.com/stoodder/finchjs/tree/#{version_tag()}"
-
-			), git_untag
-		), git_untag
-	)
+		console.log "Finished updating patch version to #{version}"
