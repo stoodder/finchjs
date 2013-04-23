@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<script src="../scripts/jquery.min-1.7.1.js" type="text/javascript" language="javascript"></script>
+		<script src="../scripts/finch.js" type="text/javascript" language="javascript"></script>
+		<script type="text/javascript" language="javascript">
+			var xconsolex = {
+				log: function(){},
+				clear: function(){}
+			};
+
+			$(function(){
+				var $console = $("#console");
+				xconsolex.log = function()
+				{
+					var message = "\r\n";
+					for(i in arguments)
+					{
+						message += arguments[i] + " ";
+					}
+					$console.append(message)
+				};
+
+				xconsolex.clear = function()
+				{
+					$console.empty()
+				};
+			});
+
+			Finch.route("/project/:project_id", {
+				setup: function(bindings) {
+					xconsolex.log( "SETUP PROJECT_ID", bindings.project_id );
+				},
+				
+				load: function(bindings) {
+					xconsolex.log( "LOAD PROJECT_ID", bindings.project_id );
+				},
+				
+				unload: function(bindings) {
+					xconsolex.log( "UNLOAD PROJECT_ID", bindings.project_id );
+				},
+				
+				teardown: function(bindings) {
+					xconsolex.log( "TEARDOWN PROJECT_ID", bindings.project_id );
+				}
+			});
+
+			Finch.route("[/project/:project_id/]milestone", {
+				setup: function(bindings) {
+					xconsolex.log( "SETUP PROJECT_ID -> MILESTONE", bindings.project_id );
+				},
+				
+				load: function(bindings) {
+					xconsolex.log( "LOAD PROJECT_ID -> MILESTONE", bindings.project_id );
+				},
+				
+				unload: function(bindings) {
+					xconsolex.log( "UNLOAD PROJECT_ID -> MILESTONE", bindings.project_id );
+				},
+				
+				teardown: function(bindings) {
+					xconsolex.log( "TEARDOWN PROJECT_ID -> MILESTONE", bindings.project_id );
+				}
+			});
+
+			Finch.route("[/project/:project_id/milestone/]:milestone_id", {
+				setup: function(bindings) {
+					xconsolex.log( "SETUP MILESTONE -> MILESTONE_ID", bindings.project_id, bindings.milestone_id );
+				},
+				
+				load: function(bindings) {
+					xconsolex.log( "LOAD MILESTONE -> MILESTONE_ID", bindings.project_id, bindings.milestone_id );
+				},
+				
+				unload: function(bindings) {
+					xconsolex.log( "UNLOAD MILESTONE -> MILESTONE_ID", bindings.project_id, bindings.milestone_id );
+				},
+				
+				teardown: function(bindings) {
+					xconsolex.log( "TEARDOWN MILESTONE -> MILESTONE_ID", bindings.project_id, bindings.milestone_id );
+				}
+			});
+
+			Finch.listen()
+		</script>
+	</head>
+	<body>
+		<a href="javascript:void(xconsolex.clear())">clear</a> |
+		<a href="#project/1234">project/1234</a> |
+		<a href="#project/1234/milestone">project/1234/milestone</a> |
+		<a href="#project/1234/milestone/5678">project/1234/miletsone/5678</a> |
+		<a href="#invalid">invalid route</a>
+		<pre id="console" width="100%"></pre>
+	</body>
+</html>
