@@ -382,18 +382,19 @@ task 'major', 'Executing a major version update', () ->
 
 	console.log "Trying to run a major version update"
 
-	v = version.match(/^([0-9]+)\.([0-9]+)\.([0-9]+)$/)
-	v[1]++
-	v[2] = v[3] = 0
-	version = "#{v[1]}.#{v[2]}.#{v[3]}"
+	with_clean_repo ->
+		v = version.match(/^([0-9]+)\.([0-9]+)\.([0-9]+)$/)
+		v[1]++
+		v[2] = v[3] = 0
+		version = "#{v[1]}.#{v[2]}.#{v[3]}"
 
-	fs.writeFileSync(version_file, version)
+		fs.writeFileSync(version_file, version)
 
-	git_commit("\"Updating to Major version #{version}\"")
+		git_commit("\"Updating to Major version #{version}\"")
 
-	git_tag(->)
+		git_tag(->)
 
-	console.log "Finished updating major version"
+		console.log "Finished updating major version"
 
 
 # --------------------------------------------------------
@@ -403,18 +404,19 @@ task 'minor', 'Executing a minor version update', () ->
 
 	console.log "Trying to run a minor versino update"
 
-	v = version.match(/^([0-9]+)\.([0-9]+)\.([0-9]+)$/)
-	v[2]++
-	v[3] = 0
-	version = "#{v[1]}.#{v[2]}.#{v[3]}"
+	with_clean_repo ->
+		v = version.match(/^([0-9]+)\.([0-9]+)\.([0-9]+)$/)
+		v[2]++
+		v[3] = 0
+		version = "#{v[1]}.#{v[2]}.#{v[3]}"
 
-	fs.writeFileSync(version_file, version)
+		fs.writeFileSync(version_file, version)
 
-	git_commit("\"Updating to Minor version #{version}\"")
+		git_commit("\"Updating to Minor version #{version}\"")
 
-	git_tag(->)
+		git_tag(->)
 
-	console.log "Finished updating minor version"
+		console.log "Finished updating minor version"
 
 
 # --------------------------------------------------------
@@ -424,17 +426,18 @@ task 'patch', 'Executing a patch version update', () ->
 
 	console.log "Trying to run a patch version update"
 
-	v = version.match(/^([0-9]+)\.([0-9]+)\.([0-9]+)$/)
-	v[3]++
-	version = "#{v[1]}.#{v[2]}.#{v[3]}"
+	with_clean_repo ->
+		v = version.match(/^([0-9]+)\.([0-9]+)\.([0-9]+)$/)
+		v[3]++
+		version = "#{v[1]}.#{v[2]}.#{v[3]}"
 
-	fs.writeFileSync(version_file, version)
+		fs.writeFileSync(version_file, version)
 
-	git_commit("\"Updating to Patch version #{version}\"")
+		git_commit("\"Updating to Patch version #{version}\"")
 
-	git_tag(->)
+		git_tag(->)
 
-	console.log "Finished updating patch version"
+		console.log "Finished updating patch version"
 
 
 # --------------------------------------------------------
