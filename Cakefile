@@ -295,6 +295,18 @@ task 'watch', 'watch coffee/ and tests/ for changes and build', ->
 		watch()
 	#END fs.watch
 
+	if fs.existsSync( version_file )
+		fs.watch version_file, ->
+			console.log("ENDING WATCH ROUTINE")
+
+			watcher.close() for watcher in watchers
+			watchers = []
+
+			console.log("REBOOTING")
+			watch()
+		#END fs.watch
+	#END if
+
 	watch()
 #END watch task
 
