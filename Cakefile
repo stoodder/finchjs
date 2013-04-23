@@ -303,7 +303,10 @@ task 'watch', 'watch coffee/ and tests/ for changes and build', ->
 			watchers = []
 
 			console.log("REBOOTING")
-			version = if fs.existsSync( version_file ) then "#{fs.readFileSync(version_file)}".replace( /[^0-9a-zA-Z.]*/gm, '' ) else ""
+			version = "#{fs.readFileSync(version_file)}".replace( /[^0-9a-zA-Z.]*/gm, '' )
+			console.log "\r\n\r\n\r\n"
+			console.log(version)
+			console.log "\r\n\r\n\r\n"
 			watch()
 		#END fs.watch
 	#END if
