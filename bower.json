@@ -22,6 +22,11 @@
     "test",
     "tests",
     "scripts",
-    "coffee"
+    "coffee",
+    "finch.sublime-project",
+    "finch.sublime-workspace",
+    "Gruntfile.coffee",
+    "package.coffee",
+    ".gitignore"
   ]
 }

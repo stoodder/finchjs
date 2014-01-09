@@ -61,7 +61,7 @@ module.exports = (grunt) ->
 				#END options
 
 				files:
-					'releases/<%= pkg.name %>.js': [
+					'<%= pkg.name %>.js': [
 						"coffee/banner.coffee"
 						"coffee/<%= pkg.name %>.coffee"
 					]
@@ -81,7 +81,7 @@ module.exports = (grunt) ->
 					'banner': '' #Updated lated in the update_banner task
 				#END options
 				files:
-					'releases/<%= pkg.name %>.min.js': 'releases/<%= pkg.name %>.js'
+					'<%= pkg.name %>.min.js': '<%= pkg.name %>.js'
 				#END files
 			#END uglifY:dist
 		#END uglify
