@@ -1,0 +1,27 @@
+{
+  "name": "Finch JS",
+  "version": "0.5.13",
+  "homepage": "https://github.com/stoodder/finchjs",
+  "authors": [
+    "Rick Allen <stoodder@gmail.com>"
+  ],
+  "description": "Simple Hierarchical Javascript Routing",
+  "main": [
+    "releases/finch.js",
+    "releases/finch.min.js"
+  ],
+  "keywords": [
+    "Javascript",
+    "Routing"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests",
+    "scripts",
+    "coffee"
+  ]
+}

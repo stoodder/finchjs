@@ -11,7 +11,6 @@
 
   lastCalledWithExactly = function(fake, expectedArgs, message) {
     var actualArgs, result, _ref;
-
     result = (fake.lastCall != null) && QUnit.equiv(fake.lastCall.args, expectedArgs);
     actualArgs = (_ref = fake.lastCall) != null ? _ref.args : void 0;
     return QUnit.push(result, actualArgs, expectedArgs, message);
@@ -19,11 +18,9 @@
 
   callbackGroup = function() {
     var group;
-
     group = {};
     group.reset = function() {
       var key, value, _results;
-
       _results = [];
       for (key in group) {
         value = group[key];
@@ -46,7 +43,6 @@
 
   test("Trivial routing", sinon.test(function() {
     var baz_quux, foo_bar;
-
     Finch.route("foo/bar", foo_bar = this.stub());
     Finch.route("baz/quux", baz_quux = this.stub());
     Finch.call("/foo/bar");
@@ -57,7 +53,6 @@
 
   test("Simple hierarchical routing", sinon.test(function() {
     var foo, foo_bar, foo_bar_id, foo_baz, foo_baz_id, quux, quux_id;
-
     Finch.route("foo", foo = this.stub());
     Finch.route("[foo]/bar", foo_bar = this.stub());
     Finch.route("[foo/bar]/:id", foo_bar_id = this.stub());
@@ -116,7 +111,6 @@
 
   test("More hierarchical routing", sinon.test(function() {
     var foo, foo_bar, foo_bar_baz, foo_bar_quux;
-
     Finch.route("foo", foo = this.stub());
     Finch.route("[foo]/bar/baz", foo_bar_baz = this.stub());
     Finch.route("foo/bar", foo_bar = this.stub());
@@ -137,7 +131,6 @@
 
   test("Even more hierarchical routing", sinon.test(function() {
     var foo, foo_bar;
-
     Finch.route("foo", foo = this.stub());
     Finch.route("[foo]/bar", foo_bar = this.stub());
     Finch.call("/foo");
@@ -157,7 +150,6 @@
 
   test("Hierarchical routing with /", sinon.test(function() {
     var bar, foo, slash;
-
     Finch.route("/", slash = this.stub());
     Finch.route("[/]foo", foo = this.stub());
     Finch.route("[/foo]/bar", bar = this.stub());
@@ -176,7 +168,6 @@
 
   test("Simple routing with setup, load, and teardown", sinon.test(function() {
     var cb;
-
     cb = callbackGroup();
     Finch.route("/", {
       setup: cb.setup_slash = this.stub(),
@@ -243,7 +234,6 @@
 
   test("Hierarchical routing with setup, load, and teardown", sinon.test(function() {
     var cb;
-
     cb = callbackGroup();
     Finch.route("foo", {
       setup: cb.setup_foo = this.stub(),
@@ -351,7 +341,6 @@
 
   test("Calling with context", sinon.test(function() {
     var context, load_foo, setup_foo, teardown_foo, unload_foo;
-
     Finch.route("foo", {
       setup: setup_foo = this.stub(),
       load: load_foo = this.stub(),
@@ -442,7 +431,6 @@
 
   test("Hierarchical calling with context", sinon.test(function() {
     var foo_bar_context, foo_context, load_foo, load_foo_bar, setup_foo, setup_foo_bar, teardown_foo, teardown_foo_bar;
-
     Finch.route("foo", {
       setup: setup_foo = this.stub(),
       load: load_foo = this.stub(),
@@ -473,7 +461,6 @@
 
   test('Testing synchronous and asynchronous unload method and context', sinon.test(function() {
     var call, call_context, call_next, cb;
-
     cb = callbackGroup();
     cb.home_setup = this.stub();
     cb.home_load = this.stub();
@@ -580,7 +567,6 @@
 
   test("Reload", sinon.test(function() {
     var call, call_context, call_next, cb;
-
     cb = callbackGroup();
     cb.home_setup = this.stub();
     cb.home_load = this.stub();
@@ -749,7 +735,6 @@
 
   test("Route sanitation", sinon.test(function() {
     var foo, foo_bar, slash;
-
     Finch.route("/", slash = this.stub());
     Finch.route("/foo", foo = this.stub());
     Finch.route("/foo/bar", foo_bar = this.stub());
@@ -817,7 +802,6 @@
 
   test("Asynchronous setup, load, and teardown", sinon.test(function() {
     var cb;
-
     cb = callbackGroup();
     cb.setup_foo = this.stub();
     cb.load_foo = this.stub();
@@ -891,7 +875,6 @@
 
   (function() {
     var trivialObservableTest;
-
     trivialObservableTest = function(fn) {
       Finch.call("/foo");
       calledOnce(fn, "observable callback called once");
@@ -925,7 +908,6 @@
     };
     test("Trivial observable test (accessor form)", sinon.test(function() {
       var fn;
-
       fn = this.stub();
       Finch.route("foo", function(bindings) {
         return Finch.observe(function(params) {
@@ -936,7 +918,6 @@
     }));
     test("Trivial observable test (binding array form)", sinon.test(function() {
       var fn;
-
       fn = this.stub();
       Finch.route("foo", function(bindings) {
         return Finch.observe(["sort", "query"], function(sort, query) {
@@ -947,7 +928,6 @@
     }));
     return test("Trivial observable test (binding list form)", sinon.test(function() {
       var fn;
-
       fn = this.stub();
       Finch.route("foo", function(bindings) {
         return Finch.observe("sort", "query", function(sort, query) {
@@ -960,7 +940,6 @@
 
   test("Observable dependency tracking", sinon.test(function() {
     var bar_off, bar_on;
-
     bar_on = this.stub();
     bar_off = this.stub();
     Finch.route("bar", function(bindings) {
@@ -997,7 +976,6 @@
 
   test("Observable hierarchy 1", sinon.test(function() {
     var bar, foo, id;
-
     foo = this.stub();
     bar = this.stub();
     id = this.stub();
@@ -1049,7 +1027,6 @@
 
   test("Observable hierarchy 2", sinon.test(function() {
     var bar, foo, id, slash;
-
     slash = this.stub();
     foo = this.stub();
     bar = this.stub();
@@ -1096,7 +1073,6 @@
 
   test("Observable value types", sinon.test(function() {
     var stub;
-
     stub = this.stub();
     Finch.route("/", function(bindings) {
       return Finch.observe(["x"], function(x) {
@@ -1150,11 +1126,9 @@
 
   test("Binding value types", sinon.test(function() {
     var stub;
-
     stub = this.stub();
     Finch.route("/:x", function(_arg) {
       var x;
-
       x = _arg.x;
       return stub(x);
     });
@@ -1205,11 +1179,9 @@
 
   test("Finch.navigate", sinon.test(function() {
     var hash, helloWorldRegex, homeAccountRegex, homeNewsArticleRegex, homeNewsRegex, homeRegex;
-
     window.location.hash = "";
     hash = function() {
       var _ref;
-
       return "#" + ((_ref = window.location.href.split("#", 2)[1]) != null ? _ref : "");
     };
     homeRegex = /^#?\/home/;
@@ -1345,9 +1317,8 @@
   }));
 
   test("Finch.listen and Finch.ignore", sinon.test(function() {
-    var cb, clearWindowMethods, _ref;
-
-    if ((_ref = window.hasOwnProperty) == null) {
+    var cb, clearWindowMethods;
+    if (window.hasOwnProperty == null) {
       window.hasOwnProperty = function(prop) {
         return prop in this;
       };
@@ -1421,7 +1392,6 @@
 
   test("Finch.abort", sinon.test(function() {
     var fooStub, homeStub;
-
     homeStub = this.stub();
     fooStub = this.stub();
     Finch.route("/home", function(bindings, continuation) {
@@ -1448,7 +1418,6 @@
 
   test("Route finding backtracking 1", sinon.test(function() {
     var bar, baz, foo, var1, var2, var3;
-
     Finch.route("/foo", foo = this.stub());
     Finch.route("[/foo]/bar", bar = this.stub());
     Finch.route("[/foo/bar]/baz", baz = this.stub());
@@ -1474,7 +1443,6 @@
 
   test("Route finding backtracking 2", sinon.test(function() {
     var bar, baz, foo, var1, var2, var3;
-
     Finch.route("/foo", foo = this.stub());
     Finch.route("[/foo]/bar", bar = this.stub());
     Finch.route("[/foo/bar]/baz", baz = this.stub());
@@ -1509,7 +1477,6 @@
 
   test("Optional parameter parsing", sinon.test(function() {
     var foo;
-
     Finch.route("/");
     Finch.route("/home/news/:id", foo = this.stub());
     Finch.call("/home/news/1234");
@@ -1535,7 +1502,6 @@
 
   test("Variable parent routes called if no children found", sinon.test(function() {
     var cb;
-
     cb = callbackGroup();
     Finch.route("/", {
       'setup': cb.slash_setup = this.stub(),
@@ -1582,7 +1548,6 @@
 
   test("Test double deep variable basic routes up and down", sinon.test(function() {
     var cb;
-
     cb = callbackGroup();
     Finch.route("/project/:project_id", cb.project_id_load = this.stub());
     Finch.route("[/project/:project_id]/milestone", cb.milestone_load = this.stub());
@@ -1642,7 +1607,6 @@
 
   test("Test double deep variable basic routes up and down", sinon.test(function() {
     var cb;
-
     cb = callbackGroup();
     Finch.route("/project/:project_id/milestone", {
       setup: cb.milestone_setup = this.stub(),
