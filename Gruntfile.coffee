@@ -13,12 +13,14 @@ npm install grunt --save-dev
 npm install grunt-contrib-coffee --save-dev
 npm install grunt-contrib-uglify --save-dev
 npm install grunt-contrib-watch --save-dev
+npm install grunt-contrib-jasmine --save-dev
 
 ###
 module.exports = (grunt) ->
 	grunt.loadNpmTasks('grunt-contrib-coffee')
 	grunt.loadNpmTasks('grunt-contrib-uglify')
 	grunt.loadNpmTasks('grunt-contrib-watch')
+	grunt.loadNpmTasks('grunt-contrib-jasmine')
 	grunt.registerTask('default', [
 		'coffee:banner'
 		'update_banner'
@@ -40,6 +42,8 @@ module.exports = (grunt) ->
 
 		grunt.config('uglify', uglfiy_cfg)
 	#END registerTask
+
+	grunt.registerTask 'test', ['coffee:test', 'jasmine:dist']
 	
 	grunt.initConfig
 		'pkg': grunt.file.readJSON('package.json')
@@ -70,7 +74,8 @@ module.exports = (grunt) ->
 
 			'test':
 				files:
-					"tests/tests.js": "tests/tests.coffee"
+					"jasmine-tests/jasmine2.0.0-sinon.js": "jasmine-tests/jasmine2.0.0-sinon.coffee"
+					"jasmine-tests/tests.js": "jasmine-tests/tests.coffee"
 				#END files
 			#END coffee:test
 		#END coffee
@@ -86,6 +91,19 @@ module.exports = (grunt) ->
 			#END uglifY:dist
 		#END uglify
 
+		'jasmine':
+			'dist':
+				src: 'finch.min.js'
+				options:
+					vendor: [
+						'bower_components/sinonjs/sinon.js'
+						'jasmine-tests/jasmine2.0.0-sinon.js'
+					]
+					specs: 'jasmine-tests/tests.js'
+				#END options
+			#END jasmine:dist
+		#END jasmine
+
 		'watch':
 			'banner_coffee':
 				'files': ["coffee/banner.coffee"]
@@ -98,7 +116,7 @@ module.exports = (grunt) ->
 			#END watch:dist_coffee
 
 			'test_coffee':
-				'files': ['tests/tests.coffee']
+				'files': ['jasmine-tests/*.coffee']
 				'tasks': ['coffee:test']
 			#END watch:test_coffee
 		#END watch

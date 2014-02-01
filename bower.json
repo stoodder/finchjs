@@ -28,5 +28,8 @@
     "Gruntfile.coffee",
     "package.json",
     ".gitignore"
-  ]
+  ],
+  "devDependencies": {
+    "jasmine-sinon": "~0.3.1"
+  }
 }

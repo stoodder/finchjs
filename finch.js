@@ -348,8 +348,8 @@
   });
 
   NodeType = {
-    Literal: 'Literal',
-    Variable: 'Variable'
+    'Literal': 'Literal',
+    'Variable': 'Variable'
   };
 
   parseQueryString = function(queryString) {

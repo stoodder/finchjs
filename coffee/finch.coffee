@@ -157,10 +157,7 @@ class ParameterObservable
 #------------------
 
 NullPath = new RoutePath(node: null)
-NodeType = {
-	Literal: 'Literal'
-	Variable: 'Variable'
-}
+NodeType = {'Literal', 'Variable'}
 
 #------------------
 # Functions
