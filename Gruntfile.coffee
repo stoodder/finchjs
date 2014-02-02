@@ -74,8 +74,8 @@ module.exports = (grunt) ->
 
 			'test':
 				files:
-					"jasmine-tests/jasmine2.0.0-sinon.js": "jasmine-tests/jasmine2.0.0-sinon.coffee"
-					"jasmine-tests/tests.js": "jasmine-tests/tests.coffee"
+					"tests/jasmine2.0.0-sinon.js": "tests/jasmine2.0.0-sinon.coffee"
+					"tests/tests.js": "tests/tests.coffee"
 				#END files
 			#END coffee:test
 		#END coffee
@@ -96,10 +96,10 @@ module.exports = (grunt) ->
 				src: 'finch.min.js'
 				options:
 					vendor: [
-						'bower_components/sinonjs/sinon.js'
-						'jasmine-tests/jasmine2.0.0-sinon.js'
+						'tests/sinon-1.7.3.js'
+						'tests/jasmine2.0.0-sinon.js'
 					]
-					specs: 'jasmine-tests/tests.js'
+					specs: 'tests/tests.js'
 				#END options
 			#END jasmine:dist
 		#END jasmine
@@ -116,7 +116,7 @@ module.exports = (grunt) ->
 			#END watch:dist_coffee
 
 			'test_coffee':
-				'files': ['jasmine-tests/*.coffee']
+				'files': ['tests/*.coffee']
 				'tasks': ['coffee:test']
 			#END watch:test_coffee
 		#END watch
