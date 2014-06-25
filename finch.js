@@ -2,7 +2,7 @@
 	Finch.js - Powerfully simple javascript routing
 	by Rick Allen (stoodder) and Greg Smith (smrq)
 
-	Version 0.5.14
+	Version 0.5.14-supplierselect-fork
 	Full source at https://github.com/stoodder/finchjs
 	Copyright (c) 2011 RokkinCat, http://www.rokkincat.com
 
@@ -848,13 +848,18 @@
       return true;
     },
     reload: function() {
+      var saveCurrentPath;
       if (!LoadCompleted) {
         return this;
       }
       if (!((CurrentPath != null) && (CurrentPath.node != null))) {
         return this;
       }
-      CurrentTargetPath = CurrentPath;
+      saveCurrentPath = CurrentPath;
+      CurrentTargetPath = NullPath;
+      step();
+      LoadCompleted = false;
+      CurrentTargetPath = CurrentPath = saveCurrentPath;
       step();
       return this;
     },
