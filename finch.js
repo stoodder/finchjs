@@ -227,8 +227,10 @@
 
     LoadPath.prototype.bindings = null;
 
-    function LoadPath(nodes, route_components) {
-      var node, _i, _len;
+    LoadPath.prototype.params = null;
+
+    function LoadPath(nodes, route_components, params) {
+      var key, node, value, _i, _len;
       if (nodes == null) {
         nodes = [];
       }
@@ -254,6 +256,14 @@
       this.route_components = route_components;
       this.length = this.nodes.length;
       this.bindings = {};
+      if (!isObject(params)) {
+        params = {};
+      }
+      this.params = {};
+      for (key in params) {
+        value = params[key];
+        this.params[key] = value;
+      }
     }
 
     LoadPath.prototype.push = function(node, route_component) {
@@ -347,6 +357,23 @@
       return this.nodes[index];
     };
 
+    LoadPath.prototype.prepareParams = function(params) {
+      var key, output_params, value, _ref, _ref1;
+      this.params = params != null ? params : this.params;
+      output_params = {};
+      _ref = this.params;
+      for (key in _ref) {
+        value = _ref[key];
+        output_params[key] = value;
+      }
+      _ref1 = this.bindings;
+      for (key in _ref1) {
+        value = _ref1[key];
+        output_params[key] = value;
+      }
+      return output_params;
+    };
+
     LoadPath.prototype.traverseTo = function(target_load_path) {
       var ancestor_node, current_node, end_node, start_node, target_node_chain;
       if (!(target_load_path instanceof Finch.LoadPath)) {
@@ -364,16 +391,13 @@
       this.current_operation_queue = new Finch.OperationQueue({
         before_start: (function(_this) {
           return function() {
-            console.log(_this.route_components.join("/"), " -> ", target_load_path.route_components.join("/"));
             return _this.is_traversing = true;
           };
         })(this),
         after_finish: (function(_this) {
           return function(did_abort) {
             _this.is_traversing = false;
-            _this.current_operation_queue = null;
-            console.log(_this.route_components.join("/"));
-            return console.log("\n");
+            return _this.current_operation_queue = null;
           };
         })(this)
       });
@@ -382,7 +406,7 @@
           this.current_operation_queue.appendOperation(Finch.Operation.UNLOAD, start_node, {
             setup_params: (function(_this) {
               return function(action, node) {
-                return _this.bindings;
+                return _this.prepareParams();
               };
             })(this),
             after_step: (function(_this) {
@@ -399,7 +423,7 @@
             })(this),
             setup_params: (function(_this) {
               return function(action, node) {
-                return _this.bindings;
+                return _this.prepareParams(target_load_path.params);
               };
             })(this)
           });
@@ -407,7 +431,7 @@
           this.current_operation_queue.appendOperation(Finch.Operation.UNLOAD, start_node, {
             setup_params: (function(_this) {
               return function(action, node) {
-                return _this.bindings;
+                return _this.prepareParams();
               };
             })(this)
           });
@@ -416,7 +440,7 @@
             this.current_operation_queue.appendOperation(Finch.Operation.TEARDOWN, current_node, {
               setup_params: (function(_this) {
                 return function(action, node) {
-                  return _this.bindings;
+                  return _this.prepareParams();
                 };
               })(this),
               after_step: (function(_this) {
@@ -442,7 +466,7 @@
               })(this),
               setup_params: (function(_this) {
                 return function(action, node) {
-                  return _this.bindings;
+                  return _this.prepareParams(target_load_path.params);
                 };
               })(this)
             });
@@ -450,7 +474,7 @@
           this.current_operation_queue.appendOperation(Finch.Operation.LOAD, end_node, {
             setup_params: (function(_this) {
               return function(action, node) {
-                return _this.bindings;
+                return _this.prepareParams(target_load_path.params);
               };
             })(this)
           });
@@ -471,7 +495,7 @@
             })(this),
             setup_params: (function(_this) {
               return function(action, node) {
-                return _this.bindings;
+                return _this.prepareParams(target_load_path.params);
               };
             })(this)
           });
@@ -479,7 +503,7 @@
         this.current_operation_queue.appendOperation(Finch.Operation.LOAD, end_node, {
           setup_params: (function(_this) {
             return function(action, node) {
-              return _this.bindings;
+              return _this.prepareParams(target_load_path.params);
             };
           })(this)
         });
@@ -487,7 +511,7 @@
         this.current_operation_queue.appendOperation(Finch.Operation.UNLOAD, start_node, {
           setup_params: (function(_this) {
             return function(action, node) {
-              return _this.bindings;
+              return _this.prepareParams();
             };
           })(this)
         });
@@ -496,7 +520,7 @@
           this.current_operation_queue.appendOperation(Finch.Operation.TEARDOWN, current_node, {
             setup_params: (function(_this) {
               return function(action, node) {
-                return _this.bindings;
+                return _this.prepareParams();
               };
             })(this),
             after_step: (function(_this) {
@@ -564,6 +588,25 @@
         }
       }
       return true;
+    };
+
+    LoadPath.prototype.toString = function() {
+      var key, params, url, value;
+      url = this.route_components.join("/");
+      params = ((function() {
+        var _ref, _results;
+        _ref = this.params;
+        _results = [];
+        for (key in _ref) {
+          value = _ref[key];
+          _results.push("" + key + "=" + value);
+        }
+        return _results;
+      }).call(this)).join("&");
+      if (params.length > 0) {
+        url += "?" + params;
+      }
+      return url;
     };
 
     return LoadPath;
@@ -1045,12 +1088,12 @@
       params = this.extractQueryParameters(route_string);
       route_string = this.extractRouteString(route_string);
       route_components = this.splitRouteString(route_string);
-      target_load_path = this.createLoadPath(route_components);
+      target_load_path = this.createLoadPath(route_components, params);
       this.load_path.traverseTo(target_load_path);
       return this;
     };
 
-    Tree.prototype.createLoadPath = function(route_components) {
+    Tree.prototype.createLoadPath = function(route_components, params) {
       var current_node, nodes, route_component, _i, _len;
       if (!isArray(route_components)) {
         throw new Finch.Error("route_components must be an Array");
@@ -1072,7 +1115,7 @@
         }
         nodes.push(current_node);
       }
-      return new Finch.LoadPath(nodes, route_components);
+      return new Finch.LoadPath(nodes, route_components, params);
     };
 
     return Tree;

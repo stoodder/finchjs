@@ -5,8 +5,9 @@ class Finch.LoadPath
 	is_traversing: false
 	current_operation_queue: null
 	bindings: null
+	params: null
 
-	constructor: (nodes, route_components) ->
+	constructor: (nodes, route_components, params) ->
 		nodes ?= []
 		route_components ?= []
 
@@ -30,6 +31,9 @@ class Finch.LoadPath
 		@route_components = route_components
 		@length = @nodes.length
 		@bindings = {}
+		params = {} unless isObject(params)
+		@params = {}
+		@params[key] = value for key, value of params
 	#END constructor
 
 	push: (node, route_component) ->
@@ -121,6 +125,14 @@ class Finch.LoadPath
 		return null unless index >= 0 and index < @length
 		return @nodes[index]
 	#END nodeAt
+
+	prepareParams: (params) ->
+		@params = params ? @params
+		output_params = {}
+		output_params[key] = value for key, value of @params
+		output_params[key] = value for key, value of @bindings
+		return output_params
+	#END prepareParams
 			
 	traverseTo: (target_load_path) ->
 		unless target_load_path instanceof Finch.LoadPath
@@ -139,38 +151,35 @@ class Finch.LoadPath
 
 		@current_operation_queue = new Finch.OperationQueue({
 			before_start: =>
-				console.log(@route_components.join("/"), " -> ", target_load_path.route_components.join("/"))
 				@is_traversing = true
 			#END before_started
 
 			after_finish: (did_abort) =>
 				@is_traversing = false
 				@current_operation_queue = null
-				console.log(@route_components.join("/"))
-				console.log("\n")
 			#END after_finish
 		})
 
 		if start_node instanceof Finch.Node and end_node instanceof Finch.Node
 			if start_node.parent is end_node.parent
 				@current_operation_queue.appendOperation(Finch.Operation.UNLOAD, start_node, {
-					setup_params: (action, node) => @bindings
+					setup_params: (action, node) => @prepareParams()
 					after_step: (action, node) => @popUntil(ancestor_node)
 				})
 
 				@current_operation_queue.appendOperation(Finch.Operation.LOAD, end_node, {
 					before_step: (action, node) => @pushUntil(target_load_path, end_node)
-					setup_params: (action, node) => @bindings
+					setup_params: (action, node) => @prepareParams(target_load_path.params)
 				})
 			else
 				@current_operation_queue.appendOperation(Finch.Operation.UNLOAD, start_node, {
-					setup_params: (action, node) => @bindings
+					setup_params: (action, node) => @prepareParams()
 				})
 
 				current_node = start_node
 				while current_node isnt ancestor_node
 					@current_operation_queue.appendOperation(Finch.Operation.TEARDOWN, current_node, {
-						setup_params: (action, node) => @bindings
+						setup_params: (action, node) => @prepareParams()
 						after_step: (action, node) => @popUntil(node.parent)
 					})
 
@@ -188,12 +197,12 @@ class Finch.LoadPath
 				while current_node = target_node_chain.pop()
 					@current_operation_queue.appendOperation(Finch.Operation.SETUP, current_node, {
 						before_step: (action, node) => @pushUntil(target_load_path, node)
-						setup_params: (action, node) => @bindings
+						setup_params: (action, node) => @prepareParams(target_load_path.params)
 					})
 				#END while
 
 				@current_operation_queue.appendOperation(Finch.Operation.LOAD, end_node, {
-					setup_params: (action, node) => @bindings
+					setup_params: (action, node) => @prepareParams(target_load_path.params)
 				})
 			#END if
 		else if end_node instanceof Finch.Node
@@ -208,22 +217,22 @@ class Finch.LoadPath
 			while current_node = target_node_chain.pop()
 				@current_operation_queue.appendOperation(Finch.Operation.SETUP, current_node, {
 					before_step: (action, node) => @pushUntil(target_load_path, node)
-					setup_params: (action, node) => @bindings
+					setup_params: (action, node) => @prepareParams(target_load_path.params)
 				})
 			#END while
 
 			@current_operation_queue.appendOperation(Finch.Operation.LOAD, end_node, {
-				setup_params: (action, node) => @bindings
+				setup_params: (action, node) => @prepareParams(target_load_path.params)
 			})
 		else if start_node instanceof Finch.Node
 			@current_operation_queue.appendOperation(Finch.Operation.UNLOAD, start_node, {
-				setup_params: (action, node) => @bindings
+				setup_params: (action, node) => @prepareParams()
 			})
 
 			current_node = start_node
 			while current_node isnt ancestor_node
 				@current_operation_queue.appendOperation(Finch.Operation.TEARDOWN, current_node, {
-					setup_params: (action, node) => @bindings
+					setup_params: (action, node) => @prepareParams()
 					after_step: (action, node) => @popUntil(node.parent)
 				})
 
@@ -286,4 +295,11 @@ class Finch.LoadPath
 
 		return true
 	#END isEqual
+
+	toString: ->
+		url = @route_components.join("/")
+		params = ("#{key}=#{value}" for key, value of @params).join("&")
+		url += "?#{params}" if params.length > 0
+		return url
+	#END toString
 #END LoadPath

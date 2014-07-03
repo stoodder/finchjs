@@ -141,13 +141,13 @@ class Finch.Tree
 		route_string = @extractRouteString(route_string)
 		route_components = @splitRouteString(route_string)
 
-		target_load_path = @createLoadPath(route_components)
+		target_load_path = @createLoadPath(route_components, params)
 		@load_path.traverseTo(target_load_path)
 
 		return @
 	#END callRoute
 
-	createLoadPath: (route_components) ->
+	createLoadPath: (route_components, params) ->
 		unless isArray(route_components)
 			throw new Finch.Error("route_components must be an Array")
 		#END unless
@@ -173,6 +173,6 @@ class Finch.Tree
 			nodes.push(current_node)
 		#END while
 
-		return new Finch.LoadPath(nodes, route_components)
+		return new Finch.LoadPath(nodes, route_components, params)
 	#END createLoadPath
 #END Tree
