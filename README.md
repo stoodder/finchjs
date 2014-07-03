@@ -23,8 +23,31 @@ Since Finch is a standalone library, this is all you'll need.  From here, take a
 ## Documentation
 Take a look at our [website](http://stoodder.github.com/finchjs) for the most up-to-date documention.
 
+## Development
+To develop for Finch, run the following commands from terminal/command line:
+### Step 0: Install Node.js
+[http://nodejs.org/download/](http://nodejs.org/download/)
+
+### Step 1: Clone the repo
+```bash
+git clone git@github.com:stoodder/finchjs.git
+```
+
+### Step 2: Install dependencies
+```bash
+cd finchjs
+npm install -g coffee-script
+npm install -g gulp
+npm install
+```
+
+### Step 3: Run
+```bash
+gulp
+```
+
 ## Licenese
-Finch is available for sue under the [MIT License](https://github.com/stoodder/finchjs/blob/master/LICENSE.md)
+Finch is available for use under the [MIT License](https://github.com/stoodder/finchjs/blob/master/LICENSE.md)
 
 ## TODO List
 * __Splats__ - Sometimes we might want an undetermined number of parameters at the end of a url, splats are useful for grabbing any number of url bindings and must be the last binding in the route pattern.  Example: "/home/news/:variables..."

@@ -1,17 +1,18 @@
 {
   "name": "finch",
-  "version": "0.5.14",
+  "version": "1.0.0",
   "engines": {
     "node": ">= 0.10.10"
   },
-  "dependencies": {
-    "coffee-script": "~1.6.2"
-  },
   "devDependencies": {
-    "grunt": "~0.4.2",
-    "grunt-contrib-uglify": "~0.2.7",
-    "grunt-contrib-watch": "~0.5.3",
-    "grunt-contrib-coffee": "~0.8.0",
-    "grunt-contrib-jasmine": "~0.6.1"
+    "gulp-coffee": "^2.0.1",
+    "gulp-util": "^2.2.19",
+    "gulp-concat": "^2.2.0",
+    "gulp-rename": "^1.2.0",
+    "gulp-jasmine": "^0.2.0",
+    "gulp-uglify": "^0.3.1",
+    "gulp-header": "^1.0.2",
+    "coffee-script": "^1.7.1",
+    "gulp": "^3.8.5"
   }
 }

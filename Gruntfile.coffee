@@ -67,7 +67,10 @@ module.exports = (grunt) ->
 				files:
 					'<%= pkg.name %>.js': [
 						"coffee/banner.coffee"
-						"coffee/<%= pkg.name %>.coffee"
+						"coffeeV2/finch.coffee"
+						"coffeeV2/finch.node.coffee"
+						"coffeeV2/finch.route.coffee"
+						"coffeeV2/finch.log.coffee"
 					]
 				#END files
 			#END coffee:dist
@@ -76,6 +79,7 @@ module.exports = (grunt) ->
 				files:
 					"tests/jasmine2.0.0-sinon.js": "tests/jasmine2.0.0-sinon.coffee"
 					"tests/tests.js": "tests/tests.coffee"
+					"tests/tests2.js": "tests/tests2.coffee"
 				#END files
 			#END coffee:test
 		#END coffee
@@ -99,7 +103,7 @@ module.exports = (grunt) ->
 						'tests/sinon-1.7.3.js'
 						'tests/jasmine2.0.0-sinon.js'
 					]
-					specs: 'tests/tests.js'
+					specs: 'tests/tests2.js'
 				#END options
 			#END jasmine:dist
 		#END jasmine
@@ -111,7 +115,7 @@ module.exports = (grunt) ->
 			#END watch:banner_coffee
 
 			'dist_coffee':
-				'files': ["coffee/<%= pkg.name %>.coffee"]
+				'files': ["coffee/<%= pkg.name %>2.coffee"]
 				'tasks': ['coffee:dist', 'uglify:dist']
 			#END watch:dist_coffee
 

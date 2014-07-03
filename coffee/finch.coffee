@@ -78,6 +78,8 @@ class ParsedRouteString
 	constructor: ({components, childIndex}) ->
 		@components = components ? []
 		@childIndex = childIndex ? 0
+	#END constructor
+#END ParsedRouteString
 
 class RouteNode
 	constructor: ({name, nodeType, parent} = {}) ->
@@ -90,6 +92,8 @@ class RouteNode
 		@childLiterals = {}
 		@childVariable = null
 		@bindings = []
+	#END constructor
+#END RouteNode
 
 class RouteSettings
 	constructor: ({setup, teardown, load, unload, context} = {}) ->
@@ -98,18 +102,22 @@ class RouteSettings
 		@unload = if isFunction(unload) then unload else (->)
 		@teardown = if isFunction(teardown) then teardown else (->)
 		@context = if isObject(context) then context else {}
+	#END constructor
+#END RouteSettings
 
 class RoutePath
 	constructor: ({node, boundValues, parameterObservables} = {}) ->
 		@node = node ? null
 		@boundValues = boundValues ? []
 		@parameterObservables = parameterObservables ? [[]]
+	#END constructor
 
 	getBindings: ->
 		bindings = {}
 		for binding, index in @node.bindings
 			bindings[binding] = @boundValues[index]
 		return parseParameters( bindings )
+	#END getBinding
 
 	isEqual: (path) -> path? and @node is path.node and arraysEqual(@boundValues, path.boundValues)
 
@@ -155,7 +163,6 @@ class ParameterObservable
 #------------------
 # Constants
 #------------------
-
 NullPath = new RoutePath(node: null)
 NodeType = {'Literal', 'Variable'}
 
