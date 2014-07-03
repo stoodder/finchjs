@@ -41,7 +41,7 @@ class Finch.Node
 			@variable_child = node
 		else
 			@literal_children ?= {}
-			
+
 			if @literal_children[node.name]
 				throw new Finch.Error("A node with the name '#{node.name}' is already a child of the node '#{@name}'")
 			#END if
@@ -87,6 +87,31 @@ class Finch.Node
 	#END setParentNode
 
 	updateCallbacks: (callbacks) ->
+		if isFunction(callbacks)
+			_callback = callbacks
+			_has_executed = false
+
+			downwards_callback = -> _has_executed = false
+			upwards_callback = (params, continuation) ->
+				return continuation() if _has_executed
+				_has_executed = true
+				
+				if _callback.length is 2
+					_callback.call(this, params, continuation)
+				else
+					_callback.call(this, params)
+					continuation()
+				#END if
+			#END upwards_callback
+
+			callbacks =
+				setup: upwards_callback
+				load: upwards_callback
+				unload: downwards_callback
+				teardown: downwards_callback
+			#END callbacks
+		#END if
+
 		return @ unless isObject(callbacks)
 
 		@setup_callback = callbacks.setup if isFunction(callbacks.setup)

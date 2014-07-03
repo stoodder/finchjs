@@ -708,6 +708,32 @@
     };
 
     Node.prototype.updateCallbacks = function(callbacks) {
+      var downwards_callback, upwards_callback, _callback, _has_executed;
+      if (isFunction(callbacks)) {
+        _callback = callbacks;
+        _has_executed = false;
+        downwards_callback = function() {
+          return _has_executed = false;
+        };
+        upwards_callback = function(params, continuation) {
+          if (_has_executed) {
+            return continuation();
+          }
+          _has_executed = true;
+          if (_callback.length === 2) {
+            return _callback.call(this, params, continuation);
+          } else {
+            _callback.call(this, params);
+            return continuation();
+          }
+        };
+        callbacks = {
+          setup: upwards_callback,
+          load: upwards_callback,
+          unload: downwards_callback,
+          teardown: downwards_callback
+        };
+      }
       if (!isObject(callbacks)) {
         return this;
       }
