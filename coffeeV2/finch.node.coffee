@@ -19,17 +19,22 @@ class Finch.Node
 	params: null
 	literal_children: null
 	variable_child: null
+	should_observe: true
+	is_endpoint: false
 
 	setup_callback: null
 	load_callback: null
 	unload_callback: null
 	teardown_callback: null
 
+	generalized_callback: null
+
 	constructor: (name, parent) ->
 		@name = name
 		@type = Finch.Node.resolveType(@name)
 		@parent = parent ? null
 		@params = {}
+		@context = {}
 	#END constructor
 
 	addChildNode: (node) ->
@@ -86,41 +91,51 @@ class Finch.Node
 		return @
 	#END setParentNode
 
-	updateCallbacks: (callbacks) ->
+	setCallbacks: (callbacks) ->
 		if isFunction(callbacks)
-			_callback = callbacks
-			_has_executed = false
-
-			downwards_callback = -> _has_executed = false
-			upwards_callback = (params, continuation) ->
-				return continuation() if _has_executed
-				_has_executed = true
-				
-				if _callback.length is 2
-					_callback.call(this, params, continuation)
-				else
-					_callback.call(this, params)
-					continuation()
-				#END if
-			#END upwards_callback
-
-			callbacks =
-				setup: upwards_callback
-				load: upwards_callback
-				unload: downwards_callback
-				teardown: downwards_callback
-			#END callbacks
+			@generalized_callback = callbacks
+			@setup_callback = @load_callback = @unload_callback = @teardown_callback = null
+		else if isObject(callbacks)
+			@generalized_callback = null
+			@setup_callback = if isFunction(callbacks.setup) then callbacks.setup else (->)
+			@load_callback = if isFunction(callbacks.load) then callbacks.load else (->)
+			@unload_callback = if isFunction(callbacks.unload) then callbacks.unload else (->)
+			@teardown_callback = if isFunction(callbacks.teardown) then callbacks.teardown else (->)
 		#END if
 
-		return @ unless isObject(callbacks)
-
-		@setup_callback = callbacks.setup if isFunction(callbacks.setup)
-		@load_callback = callbacks.load if isFunction(callbacks.load)
-		@unload_callback = callbacks.unload if isFunction(callbacks.unload)
-		@teardown_callback = callbacks.teardown if isFunction(callbacks.teardown)
-
 		return @
-	#END updateCallbacks
+	#END setCallbacks
+
+	getCallback: (action, previous_action, previous_node) ->
+		if isFunction(@generalized_callback)
+			return (->) if action is Finch.Operation.UNLOAD
+			return (->) if action is Finch.Operation.TEARDOWN
+			return (->) if previous_action is Finch.Operation.SETUP and previous_node is @
+			method = @generalized_callback
+			@should_observe = action is Finch.Operation.SETUP
+		else
+			method = switch action
+				when Finch.Operation.SETUP then @setup_callback
+				when Finch.Operation.LOAD then @load_callback
+				when Finch.Operation.UNLOAD then @unload_callback
+				when Finch.Operation.TEARDOWN then @teardown_callback
+				else throw new Finch.Error("Invalid action '#{action}' given")
+			#END method
+		#END if
+
+		return (->) unless isFunction(method)
+
+		_method = method.bind(@getContext())
+		_method.length = method.length
+
+		return _method
+	#END getCallback
+
+	getContext: ->
+		context = @context
+		context.parent = if @parent instanceof Finch.Node then @parent.context else null
+		return context
+	#END getContext
 
 	findCommonAncestor: (target_node) ->
 		unless target_node instanceof Finch.Node
@@ -151,4 +166,6 @@ class Finch.Node
 			throw new Finch.Error("Could not find common ancestor between '#{@name}' and '#{target_node.name}'")
 		#END unless
 	#END findCommonAncestor
+
+	toString: -> @name
 #END Finch.Node

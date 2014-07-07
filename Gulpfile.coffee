@@ -28,6 +28,20 @@ paths =
 		'coffeeV2/finch.coffee'
 		'coffeeV2/finch.error.coffee'
 		'coffeeV2/finch.*.coffee'
+		'coffeeV2/export.coffee'
+	]
+
+	'test_coffee': [
+		'tests/tests.coffee'
+	]
+
+	'jasmine_helpers': [
+		'./tests/sinon-1.7.3.js'
+		'./tests/jasmine2.0.0-sinon.js'
+	]
+
+	'jasmine': [
+		'./tests/tests.js'
 	]
 #END paths
 
@@ -52,9 +66,27 @@ gulp.task 'coffee', ->
 	#END gulp
 #END coffee
 
+gulp.task 'test_coffee', ->
+	gulp.src(paths.test_coffee)
+	    .pipe(concat('tests.coffee'))
+	    .pipe(coffee()).on('error', handleError)
+	    .pipe(rename('tests.js'))
+	    .pipe(gulp.dest('./tests/'))
+	#END gulp
+#END test_coffee
+
+gulp.task 'jasmine', ->
+	gulp.src(paths.jasmine)
+		.pipe(concat("_tests.js"))
+	    .pipe(jasmine())
+	#END gulp
+#END jasmine
+
 gulp.task 'watch', ->
 	gulp.watch(paths.coffee, ['coffee'])
+	gulp.watch(paths.test_coffee, ['test_coffee'])
 #END watch
 
-gulp.task 'build', ['coffee']
+gulp.task 'build', ['coffee', 'test_coffee']
+gulp.task 'test', ['jasmine']
 gulp.task 'default', ['build', 'watch']

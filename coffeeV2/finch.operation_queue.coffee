@@ -1,8 +1,9 @@
 class Finch.OperationQueue
-	queue: []
+	queue: null
 
 	before_start: null
 	after_finish: null
+	is_executing: false
 
 	constructor: (options) ->
 		options ?= {}
@@ -12,6 +13,8 @@ class Finch.OperationQueue
 
 		@before_start = (->) unless isFunction(@before_start)
 		@after_finish = (->) unless isFunction(@after_finish)
+
+		@queue = []
 	#END constructor
 
 	appendOperation: (action, node, step_callback) ->
@@ -21,13 +24,18 @@ class Finch.OperationQueue
 	#END appendOperation
 
 	execute: ->
+		return @ if @is_executing
+		@is_executing = true
 		@before_start()
+		operation = null
 		do recurse = =>
+			previous_operation = operation
 			operation = @queue.shift()
 			if operation instanceof Finch.Operation
-				operation.execute(recurse)
+				operation.execute(recurse, previous_operation)
 			else
 				@after_finish(false)
+				@is_executing = false
 			#END if
 		#END recurse
 		
@@ -39,6 +47,7 @@ class Finch.OperationQueue
 		@after_finish(true)
 		@before_start = (->)
 		@after_finish = (->)
+		@is_executing = false
 		return @
 	#END abort
 #END OperationQueue

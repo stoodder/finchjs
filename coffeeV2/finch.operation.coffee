@@ -29,16 +29,7 @@ class Finch.Operation
 		@setup_params = if isFunction(setup_params) then setup_params else (->{})
 	#END constructor
 
-	execute: (callback) ->
-		method = switch @action
-			when Finch.Operation.SETUP then @node.setup_callback
-			when Finch.Operation.LOAD then @node.load_callback
-			when Finch.Operation.UNLOAD then @node.unload_callback
-			when Finch.Operation.TEARDOWN then @node.teardown_callback
-			else (->)
-		#END switch
-
-		method = (->) unless isFunction(method)
+	execute: (callback, previous_operation) ->
 		continuation = =>
 			@after_step(@action, @node)
 			callback(@action, @node) if isFunction(callback)
@@ -49,10 +40,14 @@ class Finch.Operation
 		params = @setup_params(@action, @node)
 		params = {} unless isObject(params)
 
+		previous_node = previous_operation?.node ? null
+		previous_action = previous_operation?.action ? null
+		method = @node.getCallback(@action, previous_action, previous_node)
+		
 		if method.length is 2
-			method.call(@node, params, continuation)
+			method(params, continuation)
 		else
-			method.call(@node, params)
+			method(params)
 			continuation()
 		#END if
 

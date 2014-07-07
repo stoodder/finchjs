@@ -9,7 +9,8 @@
 	MIT License, https://github.com/stoodder/finchjs/blob/master/LICENSE.md
 */
 (function() {
-  var arrayRemove, arrayUnique, countSubstrings, endsWith, isArray, isBoolean, isEmpty, isFunction, isNaN, isNumber, isObject, isString, startsWith, trim, trimSlashes,
+  var Finch, arrayRemove, arrayUnique, countSubstrings, endsWith, finch_export, isArray, isBoolean, isEmpty, isFunction, isNaN, isNumber, isObject, isString, startsWith, trim, trimSlashes,
+    __slice = [].slice,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
     __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
@@ -129,77 +130,155 @@
     return str.split(substr).length - 1;
   };
 
-  this.Finch = new ((function() {
-    function _Class() {}
+  Finch = (function() {
+    Finch.prototype.tree = null;
 
-    _Class.prototype.tree = null;
-
-    _Class.prototype.route = function(route_string, callbacks) {
-      var node;
-      if (this.tree == null) {
-        this.tree = new Finch.Tree();
-      }
-      node = this.tree.addRoute(route_string);
-      node.updateCallbacks(callbacks);
-      return this;
-    };
-
-    _Class.prototype.call = function(route_string) {
-      if (!(this.tree instanceof Finch.Tree)) {
-        return this;
-      }
-      this.tree.callRoute(route_string);
-      return this;
-    };
-
-    _Class.prototype.reload = function() {};
-
-    _Class.prototype.peek = function() {};
-
-    _Class.prototype.observe = function() {};
-
-    _Class.prototype.abort = function() {};
-
-    _Class.prototype.listen = function() {};
-
-    _Class.prototype.ignore = function() {};
-
-    _Class.prototype.navigate = function() {};
-
-    _Class.prototype.reset = function() {};
-
-    _Class.prototype.on = function() {};
-
-    _Class.prototype.off = function() {};
-
-    _Class.prototype.trigger = function() {};
-
-    return _Class;
-
-  })());
-
-  Finch.Error = (function(_super) {
-    __extends(Error, _super);
-
-    function Error() {
-      return Error.__super__.constructor.apply(this, arguments);
+    function Finch() {
+      this.tree = new Finch.Tree();
     }
 
+    Finch.prototype.__run__ = function(default_return, routine) {
+      var ex;
+      try {
+        return routine.call(this);
+      } catch (_error) {
+        ex = _error;
+        if (ex instanceof Finch.Error) {
+          if (ex instanceof Finch.NotFoundError) {
+            this.trigger("not_found", ex);
+          } else {
+            this.trigger("error", ex);
+          }
+        } else {
+          throw ex;
+        }
+      }
+      return default_return;
+    };
+
+    Finch.prototype.route = function(route_string, callbacks) {
+      return this.__run__(this, function() {
+        var node;
+        node = this.tree.addRoute(route_string);
+        node.setCallbacks(callbacks);
+        return this;
+      });
+    };
+
+    Finch.prototype.call = function(route_string) {
+      return this.__run__(this, function() {
+        this.tree.callRoute(route_string);
+        return this;
+      });
+    };
+
+    Finch.prototype.reload = function() {
+      return this.__run__(this, function() {
+        this.tree.load_path.reload();
+        return this;
+      });
+    };
+
+    Finch.prototype.peek = function() {
+      return this.__run__(null, function() {
+        return "";
+      });
+    };
+
+    Finch.prototype.observe = function() {
+      var args;
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      return this.__run__(null, function() {
+        var observer;
+        observer = (function(func, args, ctor) {
+          ctor.prototype = func.prototype;
+          var child = new ctor, result = func.apply(child, args);
+          return Object(result) === result ? result : child;
+        })(Finch.Observer.create, args, function(){});
+        this.tree.load_path.addObserver(observer);
+        return observer;
+      });
+    };
+
+    Finch.prototype.abort = function() {
+      return this.__run__(this, function() {
+        this.tree.load_path.abort();
+        return this;
+      });
+    };
+
+    Finch.prototype.listen = function() {
+      return this.__run__(false, function() {
+        return Finch.UriManager.listen();
+      });
+    };
+
+    Finch.prototype.ignore = function() {
+      return this.__run__(false, function() {
+        return Finch.UriManager.ignore();
+      });
+    };
+
+    Finch.prototype.navigate = function(uri, params, do_update) {
+      return this.__run__(this, function() {
+        Finch.UriManager.navigate(uri, params, do_update);
+        return this;
+      });
+    };
+
+    Finch.prototype.reset = function() {
+      return this.__run__(this, function() {
+        this.tree.load_path.abort();
+        this.tree = new Finch.Tree();
+        return this;
+      });
+    };
+
+    Finch.prototype.options = function(key, value) {
+      return this.__run__(this, function() {
+        var k, v;
+        if (isObject(key)) {
+          for (k in key) {
+            v = key[k];
+            this.options(k, v);
+          }
+          return this;
+        }
+        switch (key) {
+          case 'coerce_types':
+          case 'CoerceParameterTypes':
+            this.tree.load_path.coerce_types = value;
+        }
+        return this;
+      });
+    };
+
+    Finch.prototype.on = function() {};
+
+    Finch.prototype.off = function() {};
+
+    Finch.prototype.trigger = function() {};
+
+    return Finch;
+
+  })();
+
+  Finch.Error = (function() {
     Error.prototype.name = "Finch.Error";
 
     Error.prototype.message = null;
 
-    Error.prototype.stack = function() {
-      return Error.__super__.stack.apply(this, arguments);
-    };
+    function Error(message) {
+      this.message = message;
+    }
 
     Error.prototype.toString = function() {
-      return "" + this.name + ": @{message}";
+      return "" + this.name + ": " + this.message;
     };
 
     return Error;
 
-  })(Error);
+  })();
 
   Finch.Console = new ((function() {
     function _Class() {}
@@ -227,7 +306,11 @@
 
     LoadPath.prototype.bindings = null;
 
+    LoadPath.prototype.observers = null;
+
     LoadPath.prototype.params = null;
+
+    LoadPath.prototype.coerce_types = false;
 
     function LoadPath(nodes, route_components, params) {
       var key, node, value, _i, _len;
@@ -256,6 +339,7 @@
       this.route_components = route_components;
       this.length = this.nodes.length;
       this.bindings = {};
+      this.observers = [];
       if (!isObject(params)) {
         params = {};
       }
@@ -265,6 +349,14 @@
         this.params[key] = value;
       }
     }
+
+    LoadPath.prototype.abort = function() {
+      if (this.current_operation_queue instanceof Finch.OperationQueue) {
+        this.current_operation_queue.abort();
+        this.current_operation_queue = null;
+      }
+      return this;
+    };
 
     LoadPath.prototype.push = function(node, route_component) {
       var name;
@@ -276,6 +368,7 @@
       }
       this.nodes.push(node);
       this.route_components.push(route_component);
+      this.observers.push([]);
       this.length++;
       if (node.type === Finch.Node.VARIABLE) {
         name = node.name.slice(1);
@@ -314,6 +407,7 @@
       }
       node = this.nodes.pop();
       route_component = this.route_components.pop();
+      this.observers.pop();
       this.length--;
       if (this.length <= 0) {
         this.bindings = {};
@@ -371,24 +465,34 @@
         value = _ref1[key];
         output_params[key] = value;
       }
-      return output_params;
+      return this.coerceObject(output_params);
     };
 
-    LoadPath.prototype.traverseTo = function(target_load_path) {
-      var ancestor_node, current_node, end_node, start_node, target_node_chain;
-      if (!(target_load_path instanceof Finch.LoadPath)) {
-        throw new Finch.Error("target_load_path must be an instanceof Finch.LoadPath");
+    LoadPath.prototype.coerceObject = function(obj) {
+      var key, output_obj, value;
+      if (!this.coerce_types) {
+        return obj;
       }
-      if (this.current_operation_queue instanceof Finch.OperationQueue) {
-        this.current_operation_queue.abort();
+      output_obj = {};
+      for (key in obj) {
+        value = obj[key];
+        if (value === "true") {
+          output_obj[key] = true;
+        } else if (value === "false") {
+          output_obj[key] = false;
+        } else if (/^[0-9]+$/.test(value)) {
+          output_obj[key] = parseInt(value);
+        } else if (/^[0-9]+\.[0-9]*$/.test(value)) {
+          output_obj[key] = parseFloat(value);
+        } else {
+          output_obj[key] = value;
+        }
       }
-      if (this.isEqual(target_load_path)) {
-        return this;
-      }
-      ancestor_node = this.findCommonAncestor(target_load_path);
-      start_node = this.nodeAt(this.length - 1);
-      end_node = target_load_path.nodeAt(target_load_path.length - 1);
-      this.current_operation_queue = new Finch.OperationQueue({
+      return output_obj;
+    };
+
+    LoadPath.prototype.createOperationQueue = function() {
+      return new Finch.OperationQueue({
         before_start: (function(_this) {
           return function() {
             return _this.is_traversing = true;
@@ -397,12 +501,66 @@
         after_finish: (function(_this) {
           return function(did_abort) {
             _this.is_traversing = false;
-            return _this.current_operation_queue = null;
+            _this.current_operation_queue = null;
+            if (!did_abort) {
+              return _this.notifyObservers();
+            }
           };
         })(this)
       });
+    };
+
+    LoadPath.prototype.reload = function() {
+      var node;
+      if (this.length <= 0) {
+        return this;
+      }
+      node = this.nodeAt(this.length - 1);
+      if (this.current_operation_queue == null) {
+        this.current_operation_queue = this.createOperationQueue();
+      }
+      this.current_operation_queue.appendOperation(Finch.Operation.UNLOAD, node, {
+        setup_params: (function(_this) {
+          return function(action, node) {
+            return _this.prepareParams();
+          };
+        })(this)
+      });
+      this.current_operation_queue.appendOperation(Finch.Operation.LOAD, node, {
+        setup_params: (function(_this) {
+          return function(action, node) {
+            return _this.prepareParams();
+          };
+        })(this)
+      });
+      this.current_operation_queue.execute();
+      return this;
+    };
+
+    LoadPath.prototype.traverseTo = function(target_load_path) {
+      var ancestor_node, current_node, end_node, start_node, target_node_chain;
+      if (!(target_load_path instanceof Finch.LoadPath)) {
+        throw new Finch.Error("target_load_path must be an instanceof Finch.LoadPath");
+      }
+      if (this.routesAreEqual(target_load_path)) {
+        if (this.paramsAreEqual(target_load_path)) {
+          return this;
+        }
+        this.params = target_load_path.params;
+        if (this.current_operation_queue != null) {
+          return this;
+        }
+        this.notifyObservers();
+        return this;
+      }
+      ancestor_node = this.findCommonAncestor(target_load_path);
+      start_node = this.nodeAt(this.length - 1);
+      end_node = target_load_path.nodeAt(target_load_path.length - 1);
+      if (this.current_operation_queue == null) {
+        this.current_operation_queue = this.createOperationQueue();
+      }
       if (start_node instanceof Finch.Node && end_node instanceof Finch.Node) {
-        if (start_node.parent === end_node.parent) {
+        if (start_node === end_node) {
           this.current_operation_queue.appendOperation(Finch.Operation.UNLOAD, start_node, {
             setup_params: (function(_this) {
               return function(action, node) {
@@ -571,7 +729,7 @@
       return ancestor_node;
     };
 
-    LoadPath.prototype.isEqual = function(target_load_path) {
+    LoadPath.prototype.routesAreEqual = function(target_load_path) {
       var i, route_component, target_route_component, _i, _len, _ref;
       if (!(target_load_path instanceof Finch.LoadPath)) {
         throw new Finch.Error("target_load_path must be an instanceof Finch.LoadPath");
@@ -588,6 +746,69 @@
         }
       }
       return true;
+    };
+
+    LoadPath.prototype.paramsAreEqual = function(target_load_path) {
+      var key, params_length, target_params_length, v, value, _ref, _ref1, _ref2;
+      if (!(target_load_path instanceof Finch.LoadPath)) {
+        throw new Finch.Error("target_load_path must be an instanceof Finch.LoadPath");
+      }
+      params_length = 0;
+      _ref = this.params;
+      for (key in _ref) {
+        value = _ref[key];
+        params_length++;
+      }
+      target_params_length = 0;
+      _ref1 = target_load_path.params;
+      for (key in _ref1) {
+        value = _ref1[key];
+        target_params_length++;
+      }
+      if (params_length !== target_params_length) {
+        return false;
+      }
+      _ref2 = this.params;
+      for (key in _ref2) {
+        value = _ref2[key];
+        if ((v = target_load_path.params[key]) === void 0) {
+          return false;
+        }
+        if (v !== value) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    LoadPath.prototype.addObserver = function(observer) {
+      if (!(this.length > 0)) {
+        return observer;
+      }
+      if (!this.nodes[this.length - 1].should_observe) {
+        return observer;
+      }
+      this.observers[this.length - 1].push(observer);
+      return observer;
+    };
+
+    LoadPath.prototype.notifyObservers = function() {
+      var i, new_observer_list, observer, observer_list, _i, _j, _len, _len1, _ref;
+      _ref = this.observers;
+      for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+        observer_list = _ref[i];
+        new_observer_list = [];
+        for (_j = 0, _len1 = observer_list.length; _j < _len1; _j++) {
+          observer = observer_list[_j];
+          if (!(!observer.is_disposed)) {
+            continue;
+          }
+          observer.notify(this.coerceObject(this.params));
+          new_observer_list.push(observer);
+        }
+        this.observers[i] = new_observer_list;
+      }
+      return this;
     };
 
     LoadPath.prototype.toString = function() {
@@ -644,6 +865,10 @@
 
     Node.prototype.variable_child = null;
 
+    Node.prototype.should_observe = true;
+
+    Node.prototype.is_endpoint = false;
+
     Node.prototype.setup_callback = null;
 
     Node.prototype.load_callback = null;
@@ -652,11 +877,14 @@
 
     Node.prototype.teardown_callback = null;
 
+    Node.prototype.generalized_callback = null;
+
     function Node(name, parent) {
       this.name = name;
       this.type = Finch.Node.resolveType(this.name);
       this.parent = parent != null ? parent : null;
       this.params = {};
+      this.context = {};
     }
 
     Node.prototype.addChildNode = function(node) {
@@ -707,49 +935,63 @@
       return this;
     };
 
-    Node.prototype.updateCallbacks = function(callbacks) {
-      var downwards_callback, upwards_callback, _callback, _has_executed;
+    Node.prototype.setCallbacks = function(callbacks) {
       if (isFunction(callbacks)) {
-        _callback = callbacks;
-        _has_executed = false;
-        downwards_callback = function() {
-          return _has_executed = false;
-        };
-        upwards_callback = function(params, continuation) {
-          if (_has_executed) {
-            return continuation();
-          }
-          _has_executed = true;
-          if (_callback.length === 2) {
-            return _callback.call(this, params, continuation);
-          } else {
-            _callback.call(this, params);
-            return continuation();
-          }
-        };
-        callbacks = {
-          setup: upwards_callback,
-          load: upwards_callback,
-          unload: downwards_callback,
-          teardown: downwards_callback
-        };
-      }
-      if (!isObject(callbacks)) {
-        return this;
-      }
-      if (isFunction(callbacks.setup)) {
-        this.setup_callback = callbacks.setup;
-      }
-      if (isFunction(callbacks.load)) {
-        this.load_callback = callbacks.load;
-      }
-      if (isFunction(callbacks.unload)) {
-        this.unload_callback = callbacks.unload;
-      }
-      if (isFunction(callbacks.teardown)) {
-        this.teardown_callback = callbacks.teardown;
+        this.generalized_callback = callbacks;
+        this.setup_callback = this.load_callback = this.unload_callback = this.teardown_callback = null;
+      } else if (isObject(callbacks)) {
+        this.generalized_callback = null;
+        this.setup_callback = isFunction(callbacks.setup) ? callbacks.setup : (function() {});
+        this.load_callback = isFunction(callbacks.load) ? callbacks.load : (function() {});
+        this.unload_callback = isFunction(callbacks.unload) ? callbacks.unload : (function() {});
+        this.teardown_callback = isFunction(callbacks.teardown) ? callbacks.teardown : (function() {});
       }
       return this;
+    };
+
+    Node.prototype.getCallback = function(action, previous_action, previous_node) {
+      var method, _method;
+      if (isFunction(this.generalized_callback)) {
+        if (action === Finch.Operation.UNLOAD) {
+          return (function() {});
+        }
+        if (action === Finch.Operation.TEARDOWN) {
+          return (function() {});
+        }
+        if (previous_action === Finch.Operation.SETUP && previous_node === this) {
+          return (function() {});
+        }
+        method = this.generalized_callback;
+        this.should_observe = action === Finch.Operation.SETUP;
+      } else {
+        method = (function() {
+          switch (action) {
+            case Finch.Operation.SETUP:
+              return this.setup_callback;
+            case Finch.Operation.LOAD:
+              return this.load_callback;
+            case Finch.Operation.UNLOAD:
+              return this.unload_callback;
+            case Finch.Operation.TEARDOWN:
+              return this.teardown_callback;
+            default:
+              throw new Finch.Error("Invalid action '" + action + "' given");
+          }
+        }).call(this);
+      }
+      if (!isFunction(method)) {
+        return (function() {});
+      }
+      _method = method.bind(this.getContext());
+      _method.length = method.length;
+      return _method;
+    };
+
+    Node.prototype.getContext = function() {
+      var context;
+      context = this.context;
+      context.parent = this.parent instanceof Finch.Node ? this.parent.context : null;
+      return context;
     };
 
     Node.prototype.findCommonAncestor = function(target_node) {
@@ -783,6 +1025,10 @@
       }
     };
 
+    Node.prototype.toString = function() {
+      return this.name;
+    };
+
     return Node;
 
   })();
@@ -799,6 +1045,103 @@
     return NotFoundError;
 
   })(Finch.Error);
+
+  Finch.Observer = (function() {
+    Observer.create = function() {
+      var callback, key, keys, _callback;
+      if (!(arguments.length > 0)) {
+        throw new Finch.Error("Invalid arguments given for creating an observer");
+      }
+      if (isFunction(arguments[0])) {
+        return new Finch.Observer(arguments[0]);
+      } else if (isArray(arguments[0])) {
+        keys = arguments[0], _callback = arguments[1];
+      } else if (isString(arguments[0])) {
+        keys = Array.prototype.slice.call(arguments, 0, arguments.length - 1);
+        _callback = arguments[arguments.length - 1];
+      } else {
+        throw new Finch.Error("Invalid arguments given for creating an observer");
+      }
+      for (key in keys) {
+        if (!isString(key)) {
+          throw new Finch.Error("requested parameters must be string values");
+        }
+      }
+      if (!isFunction(_callback)) {
+        throw new Finch.Error("callback must be a function");
+      }
+      callback = function(accessor) {
+        var values, _i, _len;
+        values = [];
+        for (_i = 0, _len = keys.length; _i < _len; _i++) {
+          key = keys[_i];
+          values.push(accessor(key));
+        }
+        return _callback.apply(this, values);
+      };
+      return new Finch.Observer(callback);
+    };
+
+    Observer.prototype.callback = null;
+
+    Observer.prototype.dependencies = null;
+
+    Observer.prototype.is_disposed = false;
+
+    function Observer(callback) {
+      if (!isFunction(callback)) {
+        throw new Finch.Error("callback must be a Function");
+      }
+      this.callback = callback;
+    }
+
+    Observer.prototype.willMutate = function(params) {
+      var key, value, _ref;
+      if (!isObject(params)) {
+        return false;
+      }
+      if (!isObject(this.dependencies)) {
+        return true;
+      }
+      _ref = this.dependencies;
+      for (key in _ref) {
+        value = _ref[key];
+        if (value !== params[key]) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    Observer.prototype.notify = function(params) {
+      var dependencies;
+      if (this.is_disposed) {
+        return this;
+      }
+      if (!isObject(params)) {
+        return this;
+      }
+      if (!this.willMutate(params)) {
+        return this;
+      }
+      dependencies = {};
+      this.callback.call(this, function(key) {
+        return dependencies[key] = params[key];
+      });
+      this.dependencies = dependencies;
+      return this;
+    };
+
+    Observer.prototype.dispose = function() {
+      this.is_disposed = true;
+      this.dependencies = null;
+      this.callback = null;
+      return this;
+    };
+
+    return Observer;
+
+  })();
 
   Finch.Operation = (function() {
     var VALID_ACTIONS;
@@ -841,25 +1184,8 @@
       });
     }
 
-    Operation.prototype.execute = function(callback) {
-      var continuation, method, params;
-      method = (function() {
-        switch (this.action) {
-          case Finch.Operation.SETUP:
-            return this.node.setup_callback;
-          case Finch.Operation.LOAD:
-            return this.node.load_callback;
-          case Finch.Operation.UNLOAD:
-            return this.node.unload_callback;
-          case Finch.Operation.TEARDOWN:
-            return this.node.teardown_callback;
-          default:
-            return function() {};
-        }
-      }).call(this);
-      if (!isFunction(method)) {
-        method = (function() {});
-      }
+    Operation.prototype.execute = function(callback, previous_operation) {
+      var continuation, method, params, previous_action, previous_node, _ref, _ref1;
       continuation = (function(_this) {
         return function() {
           _this.after_step(_this.action, _this.node);
@@ -873,10 +1199,13 @@
       if (!isObject(params)) {
         params = {};
       }
+      previous_node = (_ref = previous_operation != null ? previous_operation.node : void 0) != null ? _ref : null;
+      previous_action = (_ref1 = previous_operation != null ? previous_operation.action : void 0) != null ? _ref1 : null;
+      method = this.node.getCallback(this.action, previous_action, previous_node);
       if (method.length === 2) {
-        method.call(this.node, params, continuation);
+        method(params, continuation);
       } else {
-        method.call(this.node, params);
+        method(params);
         continuation();
       }
       return this;
@@ -887,11 +1216,13 @@
   })();
 
   Finch.OperationQueue = (function() {
-    OperationQueue.prototype.queue = [];
+    OperationQueue.prototype.queue = null;
 
     OperationQueue.prototype.before_start = null;
 
     OperationQueue.prototype.after_finish = null;
+
+    OperationQueue.prototype.is_executing = false;
 
     function OperationQueue(options) {
       var _ref, _ref1;
@@ -906,6 +1237,7 @@
       if (!isFunction(this.after_finish)) {
         this.after_finish = (function() {});
       }
+      this.queue = [];
     }
 
     OperationQueue.prototype.appendOperation = function(action, node, step_callback) {
@@ -916,16 +1248,23 @@
     };
 
     OperationQueue.prototype.execute = function() {
-      var recurse;
+      var operation, recurse;
+      if (this.is_executing) {
+        return this;
+      }
+      this.is_executing = true;
       this.before_start();
+      operation = null;
       (recurse = (function(_this) {
         return function() {
-          var operation;
+          var previous_operation;
+          previous_operation = operation;
           operation = _this.queue.shift();
           if (operation instanceof Finch.Operation) {
-            return operation.execute(recurse);
+            return operation.execute(recurse, previous_operation);
           } else {
-            return _this.after_finish(false);
+            _this.after_finish(false);
+            return _this.is_executing = false;
           }
         };
       })(this))();
@@ -937,6 +1276,7 @@
       this.after_finish(true);
       this.before_start = (function() {});
       this.after_finish = (function() {});
+      this.is_executing = false;
       return this;
     };
 
@@ -950,18 +1290,11 @@
     ParsedRouteString.prototype.parent_components = null;
 
     function ParsedRouteString(components, parent_components) {
-      var i, parent_component, _i, _len;
       if (!isArray(components)) {
         throw new Finch.Error("components must be an Array");
       }
       if (!isArray(parent_components)) {
         parent_components = [];
-      }
-      for (i = _i = 0, _len = parent_components.length; _i < _len; i = ++_i) {
-        parent_component = parent_components[i];
-        if (components[i] !== parent_component) {
-          throw new Finch.Error("Parent components does not match the components");
-        }
       }
       this.components = components;
       this.parent_components = parent_components;
@@ -974,14 +1307,11 @@
   Finch.Tree = (function() {
     Tree.prototype.root_node = null;
 
-    Tree.prototype.active_node = null;
-
-    Tree.prototype.active_operation_queue = null;
-
     Tree.prototype.load_path = null;
 
     function Tree() {
       this.root_node = new Finch.Node("!");
+      this.root_node.is_endpoint = true;
       this.load_path = new Finch.LoadPath();
     }
 
@@ -1013,27 +1343,19 @@
       } else {
         parent_route_string = "!";
       }
-      route_string = this.extractRouteString(route_string);
-      route_components = this.splitRouteString(route_string);
-      parent_route_string = this.extractRouteString(parent_route_string);
-      parent_route_components = this.splitRouteString(parent_route_string);
+      route_string = this.standardizeRouteString(route_string);
+      route_components = this.createRouteComponents(route_string);
+      parent_route_string = this.standardizeRouteString(parent_route_string);
+      parent_route_components = this.createRouteComponents(parent_route_string);
       return new Finch.ParsedRouteString(route_components, parent_route_components);
     };
 
     Tree.prototype.extractRouteString = function(route_string) {
-      if (route_string == null) {
-        return "!";
+      var _ref;
+      if (!isString(route_string)) {
+        return "";
       }
-      route_string = route_string.split("?")[0];
-      route_string = trim(route_string.toString());
-      route_string = trimSlashes(route_string);
-      if (route_string.length === 0) {
-        route_string = "";
-      }
-      if (!startsWith(route_string, "!")) {
-        route_string = "!/" + route_string;
-      }
-      return route_string;
+      return trim((_ref = route_string.split("?")[0]) != null ? _ref : "");
     };
 
     Tree.prototype.extractQueryParameters = function(route_string) {
@@ -1055,22 +1377,52 @@
       return query_params;
     };
 
-    Tree.prototype.splitRouteString = function(route_string) {
-      var piece, pieces;
+    Tree.prototype.standardizeRouteString = function(route_string) {
+      if (!isString(route_string)) {
+        throw new Finch.Error("route_string must be a String");
+      }
+      route_string = this.extractRouteString(route_string);
+      if (route_string === "!") {
+        return route_string;
+      }
+      if (startsWith(route_string, "/")) {
+        route_string = "!" + route_string;
+      }
+      if (!startsWith(route_string, "!")) {
+        route_string = "!/" + route_string;
+      }
+      if (!startsWith(route_string, "!/")) {
+        route_string = "!/" + route_string.slice(1);
+      }
+      if (route_string === "!/") {
+        return route_string;
+      }
+      if (!startsWith(route_string, "!//")) {
+        route_string = "!//" + route_string.slice(2);
+      }
+      if (new RegExp(/^\!\/+$/).test(route_string)) {
+        return route_string;
+      } else {
+        return trimSlashes(route_string);
+      }
+    };
+
+    Tree.prototype.createRouteComponents = function(route_string) {
+      var component, components;
       if (!isString(route_string)) {
         return [];
       }
-      pieces = route_string.split("/");
-      pieces = (function() {
+      components = route_string.split("/");
+      components = (function() {
         var _i, _len, _results;
         _results = [];
-        for (_i = 0, _len = pieces.length; _i < _len; _i++) {
-          piece = pieces[_i];
-          _results.push(trim(piece));
+        for (_i = 0, _len = components.length; _i < _len; _i++) {
+          component = components[_i];
+          _results.push(trim(component));
         }
         return _results;
       })();
-      return pieces;
+      return components;
     };
 
     Tree.prototype.addRoute = function(route_string) {
@@ -1103,6 +1455,7 @@
         current_index++;
       }
       current_node.setParentNode(parent_node);
+      current_node.is_endpoint = true;
       return current_node;
     };
 
@@ -1112,34 +1465,65 @@
         throw new Finch.Error("route_string must be a String");
       }
       params = this.extractQueryParameters(route_string);
-      route_string = this.extractRouteString(route_string);
-      route_components = this.splitRouteString(route_string);
+      route_string = this.standardizeRouteString(route_string);
+      route_components = this.createRouteComponents(route_string);
       target_load_path = this.createLoadPath(route_components, params);
       this.load_path.traverseTo(target_load_path);
       return this;
     };
 
     Tree.prototype.createLoadPath = function(route_components, params) {
-      var current_node, nodes, route_component, _i, _len;
+      var nodes, recurse;
       if (!isArray(route_components)) {
         throw new Finch.Error("route_components must be an Array");
       }
       if (route_components[0] !== "!") {
         throw new Finch.Error("Routes must start with the root '!' node");
       }
-      current_node = null;
-      nodes = [];
-      for (_i = 0, _len = route_components.length; _i < _len; _i++) {
-        route_component = route_components[_i];
-        if (!(current_node instanceof Finch.Node)) {
-          current_node = this.root_node;
-        } else {
-          current_node = current_node.findMatchingChildNode(route_component);
+      recurse = function(nodes) {
+        var child_node, child_route_component, current_node, node, _nodes;
+        if (nodes.length >= route_components.length) {
+          return (nodes[nodes.length - 1].is_endpoint ? nodes : null);
         }
-        if (!(current_node instanceof Finch.Node)) {
-          throw new Finch.NotFoundError("Could not resolve the route '" + (route_components.join('/')) + "' at '" + route_component + "'");
+        current_node = nodes[nodes.length - 1];
+        child_route_component = route_components[nodes.length];
+        child_node = current_node.findMatchingChildNode(child_route_component);
+        if (!(child_node instanceof Finch.Node)) {
+          return null;
         }
-        nodes.push(current_node);
+        _nodes = (function() {
+          var _i, _len, _results;
+          _results = [];
+          for (_i = 0, _len = nodes.length; _i < _len; _i++) {
+            node = nodes[_i];
+            _results.push(node);
+          }
+          return _results;
+        })();
+        _nodes.push(child_node);
+        _nodes = recurse(_nodes);
+        if (_nodes != null) {
+          return _nodes;
+        }
+        child_node = current_node.variable_child;
+        if (!(child_node instanceof Finch.Node)) {
+          return null;
+        }
+        _nodes = (function() {
+          var _i, _len, _results;
+          _results = [];
+          for (_i = 0, _len = nodes.length; _i < _len; _i++) {
+            node = nodes[_i];
+            _results.push(node);
+          }
+          return _results;
+        })();
+        _nodes.push(child_node);
+        return recurse(_nodes);
+      };
+      nodes = recurse([this.root_node]);
+      if (!isArray(nodes)) {
+        throw new Finch.NotFoundError("Could not resolve the route '" + (route_components.join('/')) + "'");
       }
       return new Finch.LoadPath(nodes, route_components, params);
     };
@@ -1147,5 +1531,193 @@
     return Tree;
 
   })();
+
+  Finch.UriManager = (function() {
+    function UriManager() {}
+
+    UriManager.is_listening = false;
+
+    UriManager.getHash = function() {
+      var hash;
+      hash = window.location.hash;
+      if (hash.charAt(0) === '#') {
+        hash = hash.slice(1);
+      }
+      return hash;
+    };
+
+    UriManager.setHash = function(hash) {
+      if (!isString(hash)) {
+        hash = "";
+      }
+      hash = trim(hash);
+      if (hash.charAt(0) === '#') {
+        hash = hash.slice(1);
+      }
+      window.location.hash = hash;
+      return this;
+    };
+
+    UriManager.parseQueryString = function(query_string) {
+      var key, param, params, value, _i, _len, _ref, _ref1;
+      if (!isString(query_string)) {
+        return {};
+      }
+      params = {};
+      _ref = query_string.split("&");
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        param = _ref[_i];
+        _ref1 = param.split("=", 2), key = _ref1[0], value = _ref1[1];
+        params[key] = value;
+      }
+      return params;
+    };
+
+    UriManager.navigate = function(uri, params, do_update) {
+      var built_uri, current_params, current_query_string, current_uri, key, piece, slash_index, uri_params, uri_query_string, value, _ref, _ref1, _ref2, _ref3;
+      if (isObject(uri)) {
+        _ref = [uri, params, null], params = _ref[0], do_update = _ref[1], uri = _ref[2];
+      }
+      if (isBoolean(params)) {
+        _ref1 = [params, null], do_update = _ref1[0], params = _ref1[1];
+      }
+      _ref2 = this.getHash().split("?", 2), current_uri = _ref2[0], current_query_string = _ref2[1];
+      current_params = this.parseQueryString(current_query_string);
+      if (!isString(uri)) {
+        uri = current_uri;
+      }
+      if (!isObject(params)) {
+        params = {};
+      }
+      if (!isBoolean(do_update)) {
+        do_update = false;
+      }
+      uri = trim(uri);
+      if (uri.charAt(0) === "#") {
+        uri = uri.slice(1);
+      }
+      if (startsWith(uri, "./") || startsWith(uri, "../")) {
+        built_uri = current_uri;
+        while (startsWith(uri, "./") || startsWith(uri, "../")) {
+          slash_index = uri.indexOf("/");
+          piece = uri.slice(0, slash_index);
+          uri = uri.slice(slash_index + 1);
+          if (piece === "..") {
+            built_uri = built_uri.slice(0, built_uri.lastIndexOf("/"));
+          }
+        }
+        uri = uri.length > 0 ? "" + built_uri + "/" + uri : built_uri;
+      }
+      _ref3 = uri.split("?", 2), uri = _ref3[0], uri_query_string = _ref3[1];
+      uri_params = this.parseQueryString(uri_query_string);
+      for (key in params) {
+        value = params[key];
+        uri_params[key] = value;
+      }
+      params = uri_params;
+      if (do_update) {
+        for (key in current_params) {
+          value = current_params[key];
+          if (!(key in params)) {
+            params[key] = value;
+          }
+        }
+      }
+      for (key in params) {
+        value = params[key];
+        if (value == null) {
+          delete params[key];
+        }
+      }
+      uri += "?" + ((function() {
+        var _results;
+        _results = [];
+        for (key in params) {
+          value = params[key];
+          _results.push("" + key + "=" + value);
+        }
+        return _results;
+      })()).join("&");
+      this.setHash(uri);
+      return this;
+    };
+
+    UriManager.listen_callback = null;
+
+    UriManager.listen_interval = null;
+
+    UriManager.listen = function() {
+      var _current_hash;
+      if (this.is_listening) {
+        return true;
+      }
+      _current_hash = null;
+      this.listen_callback = (function(_this) {
+        return function() {
+          var hash;
+          hash = _this.getHash();
+          if (hash === _current_hash) {
+            return;
+          }
+          return Finch.call(_current_hash);
+        };
+      })(this);
+      if ("onhashchange" in window) {
+        if (isFunction(window.addEventListener)) {
+          window.addEventListener("hashchange", this.listen_callback, true);
+          this.is_listening = true;
+        } else if (isFunction(window.attachEvent)) {
+          window.attachEvent("hashchange", this.listen_callback);
+          this.is_listening = true;
+        }
+      }
+      if (!this.is_listening) {
+        this.listen_interval = setInterval(this.listen_callback, 33);
+        this.is_listening = true;
+      }
+      this.listen_callback();
+      return this.is_listening;
+    };
+
+    UriManager.ignore = function() {
+      if (!this.is_listening) {
+        return true;
+      }
+      if (this.listen_interval !== null) {
+        clearInterval(this.listen_interval);
+        this.listen_interval = null;
+        this.is_listening = false;
+      } else if ("onhashchange" in window) {
+        if (isFunction(window.removeEventListener)) {
+          window.removeEventListener("hashchange", this.listen_callback, true);
+          this.is_listening = false;
+          this.listen_callback = null;
+        } else if (isFunction(window.detachEvent)) {
+          window.detachEvent("hashchange", this.listen_callback);
+          this.is_listening = false;
+          this.listen_callback = null;
+        }
+      }
+      return !this.is_listening;
+    };
+
+    return UriManager;
+
+  })();
+
+  finch_export = new Finch;
+
+  if (typeof jasmine !== "undefined" && jasmine !== null) {
+    finch_export.Tree = Finch.Tree;
+    finch_export.Node = Finch.Node;
+    finch_export.LoadPath = Finch.LoadPath;
+    finch_export.OperationQueue = Finch.OperationQueue;
+    finch_export.Operation = Finch.Operation;
+    finch_export.Error = Finch.Error;
+    finch_export.NotFoundError = Finch.NotFoundError;
+    finch_export.ParsedRouteString = Finch.ParsedRouteString;
+  }
+
+  (typeof exports !== "undefined" && exports !== null ? exports : this)['Finch'] = finch_export;
 
 }).call(this);

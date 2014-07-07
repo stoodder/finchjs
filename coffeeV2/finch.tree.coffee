@@ -1,11 +1,10 @@
 class Finch.Tree
 	root_node: null
-	active_node: null
-	active_operation_queue: null
 	load_path: null
 
 	constructor: ->
 		@root_node = new Finch.Node("!")
+		@root_node.is_endpoint = true
 		@load_path = new Finch.LoadPath()
 	#END constructor
 
@@ -44,25 +43,19 @@ class Finch.Tree
 			parent_route_string = "!"
 		#END if
 
-		route_string = @extractRouteString(route_string)
-		route_components = @splitRouteString(route_string)
+		route_string = @standardizeRouteString(route_string)
+		route_components = @createRouteComponents(route_string)
 
-		parent_route_string = @extractRouteString(parent_route_string)
-		parent_route_components = @splitRouteString(parent_route_string)
+		parent_route_string = @standardizeRouteString(parent_route_string)
+		parent_route_components = @createRouteComponents(parent_route_string)
 
 		return new Finch.ParsedRouteString(route_components, parent_route_components)
 	#END parseRouteString
 
+	#Add these to the uri manager
 	extractRouteString: (route_string) ->
-		return "!" unless route_string?
-
-		route_string = route_string.split("?")[0]
-		route_string = trim( route_string.toString() )
-		route_string = trimSlashes( route_string )
-		route_string = "" if route_string.length is 0
-		route_string = "!/#{route_string}" unless startsWith(route_string, "!")
-
-		return route_string
+		return "" unless isString(route_string)
+		return trim( route_string.split("?")[0] ? "" )
 	#END extractRouteString
 
 	extractQueryParameters: (route_string) ->
@@ -81,14 +74,31 @@ class Finch.Tree
 		return query_params
 	#END extractQueryParameters
 
-	splitRouteString: (route_string) ->
+	standardizeRouteString: (route_string) ->
+		unless isString(route_string)
+			throw new Finch.Error("route_string must be a String")
+		#END unless
+
+		route_string = @extractRouteString(route_string)
+		return route_string if route_string is "!"
+
+		route_string = "!#{route_string}" if startsWith(route_string, "/")
+		route_string = "!/#{route_string}" unless startsWith(route_string, "!")
+		route_string = "!/" + route_string.slice(1) unless startsWith(route_string, "!/")
+		return route_string if route_string is "!/"
+
+		route_string = "!//" + route_string.slice(2) unless startsWith(route_string, "!//")
+		return if new RegExp(/^\!\/+$/).test(route_string) then route_string else trimSlashes(route_string)
+	#END standardizeRouteString
+
+	createRouteComponents: (route_string) ->
 		return [] unless isString(route_string)
 
-		pieces = route_string.split("/")
-		pieces = (trim(piece) for piece in pieces)
+		components = route_string.split("/")
+		components = (trim(component) for component in components)
 
-		return pieces
-	#END splitRouteString
+		return components
+	#END createRouteComponents
 
 	addRoute: (route_string) ->
 		parsed_route_string = @parseRouteString(route_string)
@@ -114,7 +124,6 @@ class Finch.Tree
 			parent_node = current_node if current_index is parent_route_components.length
 			child_node = current_node.findChildNode(route_component)
 
-
 			if child_node instanceof Finch.Node
 				current_node = child_node
 			else
@@ -127,6 +136,7 @@ class Finch.Tree
 		#END while
 
 		current_node.setParentNode(parent_node)
+		current_node.is_endpoint = true
 
 		return current_node
 	#END addRoute
@@ -138,8 +148,8 @@ class Finch.Tree
 		#END unless
 
 		params = @extractQueryParameters(route_string)
-		route_string = @extractRouteString(route_string)
-		route_components = @splitRouteString(route_string)
+		route_string = @standardizeRouteString(route_string)
+		route_components = @createRouteComponents(route_string)
 
 		target_load_path = @createLoadPath(route_components, params)
 		@load_path.traverseTo(target_load_path)
@@ -156,22 +166,35 @@ class Finch.Tree
 			throw new Finch.Error("Routes must start with the root '!' node")
 		#END unless
 
-		current_node = null
-		nodes = []
-
-		for route_component in route_components
-			unless current_node instanceof Finch.Node
-				current_node = @root_node
-			else
-				current_node = current_node.findMatchingChildNode(route_component)
+		recurse = (nodes) ->
+			if nodes.length >= route_components.length
+				return (if nodes[nodes.length-1].is_endpoint then nodes else null)
 			#END if
 
-			unless current_node instanceof Finch.Node
-				throw new Finch.NotFoundError("Could not resolve the route '#{route_components.join('/')}' at '#{route_component}'")
-			#END unless
+			current_node = nodes[nodes.length-1]
+			child_route_component = route_components[nodes.length]
 
-			nodes.push(current_node)
-		#END while
+			child_node = current_node.findMatchingChildNode(child_route_component)
+			return null unless child_node instanceof Finch.Node
+
+			_nodes = (node for node in nodes)
+			_nodes.push(child_node)
+			_nodes = recurse( _nodes )
+			return _nodes if _nodes?
+
+			child_node = current_node.variable_child
+			return null unless child_node instanceof Finch.Node
+
+			_nodes = (node for node in nodes)
+			_nodes.push(child_node)
+			return recurse( _nodes )
+		#END recurse
+
+		nodes = recurse([@root_node])
+
+		unless isArray(nodes)
+			throw new Finch.NotFoundError("Could not resolve the route '#{route_components.join('/')}'")
+		#END unless
 
 		return new Finch.LoadPath(nodes, route_components, params)
 	#END createLoadPath

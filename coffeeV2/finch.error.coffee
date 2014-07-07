@@ -1,6 +1,6 @@
-class Finch.Error extends Error
+class Finch.Error
 	name: "Finch.Error"
 	message: null
-	stack: -> super(arguments...)
-	toString: -> "#{@name}: @{message}"
+	constructor: (@message) ->
+	toString: -> "#{@name}: #{@message}"
 #END FInch.Error

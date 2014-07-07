@@ -82,7 +82,9 @@
         expect(quux_id).toHaveBeenCalledOnce();
         expect(quux).toHaveBeenCalledBefore(quux_id);
         return expect(quux_id).toHaveBeenCalledWith({
-          id: "789"
+          id: "789",
+          band: "Sunn O)))",
+          genre: "Post-Progressive Fridgecore"
         });
       });
       it("Should do more hierarchical routing", function() {
@@ -333,8 +335,11 @@
         return expect(boo).not.toHaveBeenCalledOn(context);
       });
       it("Should handle parent context", function() {
+        Finch.route("!", function() {
+          return expect(this.parent).toBeNull();
+        });
         Finch.route("/", function() {
-          expect(this.parent).toBeNull();
+          expect(this.parent).not.toBeNull();
           return this.someData = "Free Bird";
         });
         Finch.route("[/]home", function() {
@@ -366,16 +371,20 @@
         });
         Finch.route("/foo", {
           setup: function() {
-            return expect(this.parent).toBeNull();
+            expect(this.parent).not.toBeNull();
+            return expect(this.parent.parent).toBeNull();
           },
           load: function() {
-            return expect(this.parent).toBeNull();
+            expect(this.parent).not.toBeNull();
+            return expect(this.parent.parent).toBeNull();
           },
           unload: function() {
-            return expect(this.parent).toBeNull();
+            expect(this.parent).not.toBeNull();
+            return expect(this.parent.parent).toBeNull();
           },
           teardown: function() {
-            return expect(this.parent).toBeNull();
+            expect(this.parent).not.toBeNull();
+            return expect(this.parent.parent).toBeNull();
           }
         });
         Finch.route("[/]bar", {
@@ -602,9 +611,10 @@
         return expect(call_context.did_teardown).not.toBeDefined();
       });
     });
-    describe("Formatting", function() {
-      return it("Should sanitize routes properly", function() {
+    describe("Route Call Variations", function() {
+      return it("Should call routes properly", function() {
         var foo, foo_bar, slash;
+        Finch.reset();
         Finch.route("/", slash = sinon.spy());
         Finch.route("/foo", foo = sinon.spy());
         Finch.route("/foo/bar", foo_bar = sinon.spy());
@@ -706,7 +716,7 @@
       it("Trivial observable test (accessor form)", function() {
         var fn;
         fn = sinon.spy();
-        Finch.route("foo", function(bindings) {
+        Finch.reset().route("foo", function(bindings) {
           return Finch.observe(function(params) {
             return fn(params("sort"), params("query"));
           });
@@ -716,7 +726,7 @@
       it("Trivial observable test (binding array form)", function() {
         var fn;
         fn = sinon.spy();
-        Finch.route("foo", function(bindings) {
+        Finch.reset().route("foo", function(bindings) {
           return Finch.observe(["sort", "query"], function(sort, query) {
             return fn(sort, query);
           });
@@ -726,7 +736,7 @@
       it("Trivial observable test (binding list form)", function() {
         var fn;
         fn = sinon.spy();
-        Finch.route("foo", function(bindings) {
+        Finch.reset().route("foo", function(bindings) {
           return Finch.observe("sort", "query", function(sort, query) {
             return fn(sort, query);
           });
@@ -982,7 +992,7 @@
         homeNewsRegex = /^#?\/home\/news/;
         homeAccountRegex = /^#?\/home\/account/;
         homeNewsArticleRegex = /^#?\/home\/news\/article/;
-        helloWorldRegex = /^#?\/hello%20world/;
+        helloWorldRegex = /^#?\/hello world/;
         Finch.navigate("/home");
         expect(homeRegex.test(hash())).toBe(true);
         Finch.navigate("/home/news");
@@ -1033,19 +1043,19 @@
           foo: "bar bar"
         });
         expect(helloWorldRegex.test(hash())).toBe(true);
-        expect(hash().indexOf("foo=bar%20bar") > -1).toBe(true);
+        expect(hash().indexOf("foo=bar bar") > -1).toBe(true);
         Finch.navigate({
           foo: "baz baz"
         });
         expect(helloWorldRegex.test(hash())).toBe(true);
-        expect(hash().indexOf("foo=bar%20bar") === -1).toBe(true);
-        expect(hash().indexOf("foo=baz%20baz") > -1).toBe(true);
+        expect(hash().indexOf("foo=bar bar") === -1).toBe(true);
+        expect(hash().indexOf("foo=baz baz") > -1).toBe(true);
         Finch.navigate({
           hello: 'world world'
         }, true);
         expect(helloWorldRegex.test(hash())).toBe(true);
-        expect(hash().indexOf("foo=baz%20baz") > -1).toBe(true);
-        expect(hash().indexOf("hello=world%20world") > -1).toBe(true);
+        expect(hash().indexOf("foo=baz baz") > -1).toBe(true);
+        expect(hash().indexOf("hello=world world") > -1).toBe(true);
         Finch.navigate("/home?foo=bar", {
           hello: "world"
         });
@@ -1202,8 +1212,7 @@
         expect(fooStub.callCount).toBe(0);
         homeStub.reset();
         fooStub.reset();
-        Finch.abort();
-        Finch.call("foo");
+        Finch.abort().call("foo");
         expect(homeStub.callCount).toBe(0);
         return expect(fooStub.callCount).toBe(1);
       });
@@ -1211,6 +1220,7 @@
     return describe("Miscellaneous Tests", function() {
       it("Route finding backtracking 1", function() {
         var bar, baz, foo, var1, var2, var3;
+        Finch.abort().reset();
         Finch.route("/foo", foo = sinon.spy());
         Finch.route("[/foo]/bar", bar = sinon.spy());
         Finch.route("[/foo/bar]/baz", baz = sinon.spy());

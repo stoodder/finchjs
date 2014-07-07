@@ -87,7 +87,11 @@ describe "Finch", ->
 			expect( quux ).toHaveBeenCalledOnce()
 			expect( quux_id ).toHaveBeenCalledOnce()
 			expect( quux ).toHaveBeenCalledBefore(quux_id)
-			expect( quux_id ).toHaveBeenCalledWith({ id: "789" })
+			expect( quux_id ).toHaveBeenCalledWith({
+				id: "789"
+				band: "Sunn O)))"
+				genre: "Post-Progressive Fridgecore"
+			})
 		#END it
 
 		it "Should do more hierarchical routing", ->
@@ -382,8 +386,11 @@ describe "Finch", ->
 		#END it
 
 		it "Should handle parent context", ->
-			Finch.route "/", ->
+			Finch.route "!", ->
 				expect(@parent).toBeNull()
+
+			Finch.route "/", ->
+				expect(@parent).not.toBeNull()
 
 				@someData = "Free Bird"
 
@@ -420,19 +427,23 @@ describe "Finch", ->
 
 			Finch.route "/foo",
 				setup: ->
-					expect(@parent).toBeNull()
+					expect(@parent).not.toBeNull()
+					expect(@parent.parent).toBeNull()
 				#END setup
 
 				load: ->
-					expect(@parent).toBeNull()
+					expect(@parent).not.toBeNull()
+					expect(@parent.parent).toBeNull()
 				#END load
 
 				unload: ->
-					expect(@parent).toBeNull()
+					expect(@parent).not.toBeNull()
+					expect(@parent.parent).toBeNull()
 				#END unload
 
 				teardown: ->
-					expect(@parent).toBeNull()
+					expect(@parent).not.toBeNull()
+					expect(@parent.parent).toBeNull()
 				#END teardown
 
 			Finch.route "[/]bar",
@@ -689,8 +700,9 @@ describe "Finch", ->
 		#END it
 	#END describe
 	
-	describe "Formatting", ->
-		it "Should sanitize routes properly", ->
+	describe "Route Call Variations", ->
+		it "Should call routes properly", ->
+			Finch.reset()
 			Finch.route "/", slash = sinon.spy()
 			Finch.route "/foo", foo = sinon.spy()
 			Finch.route "/foo/bar", foo_bar = sinon.spy()
@@ -813,7 +825,7 @@ describe "Finch", ->
 
 			fn = sinon.spy()
 
-			Finch.route "foo", (bindings) ->
+			Finch.reset().route "foo", (bindings) ->
 				Finch.observe (params) ->
 					fn(params("sort"), params("query"))
 
@@ -824,7 +836,7 @@ describe "Finch", ->
 
 			fn = sinon.spy()
 
-			Finch.route "foo", (bindings) ->
+			Finch.reset().route "foo", (bindings) ->
 				Finch.observe ["sort", "query"], (sort, query) ->
 					fn(sort, query)
 
@@ -835,7 +847,7 @@ describe "Finch", ->
 
 			fn = sinon.spy()
 
-			Finch.route "foo", (bindings) ->
+			Finch.reset().route "foo", (bindings) ->
 				Finch.observe "sort", "query", (sort, query) ->
 					fn(sort, query)
 
@@ -1103,7 +1115,8 @@ describe "Finch", ->
 			homeNewsRegex = /^#?\/home\/news/
 			homeAccountRegex = /^#?\/home\/account/
 			homeNewsArticleRegex = /^#?\/home\/news\/article/
-			helloWorldRegex = /^#?\/hello%20world/
+			#helloWorldRegex = /^#?\/hello%20world/
+			helloWorldRegex = /^#?\/hello world/
 
 			#Navigate to just a single route
 			Finch.navigate("/home")
@@ -1160,17 +1173,17 @@ describe "Finch", ->
 
 			Finch.navigate("/hello world", foo:"bar bar")
 			expect( helloWorldRegex.test(hash()) ).toBe( true )
-			expect( hash().indexOf("foo=bar%20bar") > -1 ).toBe(true)
+			expect( hash().indexOf("foo=bar bar") > -1 ).toBe(true)
 
 			Finch.navigate(foo:"baz baz")
 			expect( helloWorldRegex.test(hash()) ).toBe( true )
-			expect( hash().indexOf("foo=bar%20bar") is -1).toBe(true)
-			expect( hash().indexOf("foo=baz%20baz") > -1 ).toBe(true)
+			expect( hash().indexOf("foo=bar bar") is -1).toBe(true)
+			expect( hash().indexOf("foo=baz baz") > -1 ).toBe(true)
 
 			Finch.navigate(hello:'world world', true)
 			expect( helloWorldRegex.test(hash()) ).toBe( true )
-			expect( hash().indexOf("foo=baz%20baz") > -1 ).toBe(true)
-			expect( hash().indexOf("hello=world%20world") > -1 ).toBe(true)
+			expect( hash().indexOf("foo=baz baz") > -1 ).toBe(true)
+			expect( hash().indexOf("hello=world world") > -1 ).toBe(true)
 
 			#Make sure we don't add multiple '?'
 			Finch.navigate("/home?foo=bar",hello:"world")
@@ -1333,8 +1346,7 @@ describe "Finch", ->
 			fooStub.reset()
 
 			#abort first, then call foo
-			Finch.abort()
-			Finch.call("foo")
+			Finch.abort().call("foo")
 			expect( homeStub.callCount ).toBe( 0 )
 			expect( fooStub.callCount ).toBe( 1 )
 		#END it
@@ -1342,6 +1354,8 @@ describe "Finch", ->
 
 	describe "Miscellaneous Tests", ->
 		it "Route finding backtracking 1", ->
+			Finch.abort().reset()
+
 			Finch.route "/foo",          	foo = sinon.spy()
 			Finch.route "[/foo]/bar",    	bar = sinon.spy()
 			Finch.route "[/foo/bar]/baz",	baz = sinon.spy()
@@ -1445,6 +1459,7 @@ describe "Finch", ->
 
 			expect( cb.page_setup ).toHaveBeenCalledWith({page: "users"})
 			expect( cb.page_load ).toHaveBeenCalledWith({page: "users"})
+		#END it
 
 		it "Test double deep variable basic routes up and down", ->
 			cb = callbackGroup()

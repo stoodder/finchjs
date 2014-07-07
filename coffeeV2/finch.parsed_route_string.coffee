@@ -9,12 +9,6 @@ class Finch.ParsedRouteString
 
 		parent_components = [] unless isArray(parent_components)
 
-		for parent_component, i in parent_components
-			unless components[i] is parent_component
-				throw new Finch.Error("Parent components does not match the components")
-			#END unless
-		#END for
-
 		@components = components
 		@parent_components = parent_components
 	#END constructor

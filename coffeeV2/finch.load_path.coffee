@@ -5,7 +5,9 @@ class Finch.LoadPath
 	is_traversing: false
 	current_operation_queue: null
 	bindings: null
+	observers: null
 	params: null
+	coerce_types: false
 
 	constructor: (nodes, route_components, params) ->
 		nodes ?= []
@@ -31,10 +33,21 @@ class Finch.LoadPath
 		@route_components = route_components
 		@length = @nodes.length
 		@bindings = {}
+		@observers = []
+
 		params = {} unless isObject(params)
 		@params = {}
 		@params[key] = value for key, value of params
 	#END constructor
+
+	abort: ->
+		if @current_operation_queue instanceof Finch.OperationQueue
+			@current_operation_queue.abort()
+			@current_operation_queue = null
+		#END if
+
+		return @
+	#END abort
 
 	push: (node, route_component) ->
 		unless node instanceof Finch.Node
@@ -47,6 +60,7 @@ class Finch.LoadPath
 
 		@nodes.push(node)
 		@route_components.push(route_component)
+		@observers.push([])
 		@length++
 
 		if node.type is Finch.Node.VARIABLE
@@ -86,6 +100,7 @@ class Finch.LoadPath
 
 		node = @nodes.pop()
 		route_component = @route_components.pop()
+		@observers.pop()
 		@length--
 
 		if @length <= 0
@@ -131,25 +146,37 @@ class Finch.LoadPath
 		output_params = {}
 		output_params[key] = value for key, value of @params
 		output_params[key] = value for key, value of @bindings
-		return output_params
+		return @coerceObject(output_params)
 	#END prepareParams
-			
-	traverseTo: (target_load_path) ->
-		unless target_load_path instanceof Finch.LoadPath
-			throw new Finch.Error("target_load_path must be an instanceof Finch.LoadPath")
-		#END unless
 
-		if @current_operation_queue instanceof Finch.OperationQueue
-			@current_operation_queue.abort()
-		#END if
+	#TODO: Move this to the UriManager
+	coerceObject: (obj) ->
+		return obj unless @coerce_types
 
-		return @ if @isEqual(target_load_path)
+		output_obj = {}
 
-		ancestor_node = @findCommonAncestor(target_load_path)
-		start_node = @nodeAt(@length-1)
-		end_node = target_load_path.nodeAt(target_load_path.length-1)
+		for key, value of obj
+			#Is this a boolean
+			if value is "true"
+				output_obj[key] = true
+			else if value is "false"
+				output_obj[key] = false
+			#Is this an int
+			else if /^[0-9]+$/.test(value)
+				output_obj[key] = parseInt(value)
+			#Is this a float
+			else if /^[0-9]+\.[0-9]*$/.test(value)
+				output_obj[key] = parseFloat(value)
+			else
+				output_obj[key] = value
+			#END if
+		#END for
 
-		@current_operation_queue = new Finch.OperationQueue({
+		return output_obj
+	#END coerceObject
+
+	createOperationQueue: ->
+		return new Finch.OperationQueue({
 			before_start: =>
 				@is_traversing = true
 			#END before_started
@@ -157,11 +184,52 @@ class Finch.LoadPath
 			after_finish: (did_abort) =>
 				@is_traversing = false
 				@current_operation_queue = null
+				@notifyObservers() unless did_abort
 			#END after_finish
 		})
+	#END createOperationQueue
+
+	reload: ->
+		return @ if @length <= 0
+		
+		node = @nodeAt(@length-1)
+
+		@current_operation_queue ?= @createOperationQueue()
+		
+		@current_operation_queue.appendOperation(Finch.Operation.UNLOAD, node, {
+			setup_params: (action, node) => @prepareParams()
+		})
+
+		@current_operation_queue.appendOperation(Finch.Operation.LOAD, node, {
+			setup_params: (action, node) => @prepareParams()
+		})
+
+		@current_operation_queue.execute()
+
+		return @
+	#END reload
+			
+	traverseTo: (target_load_path) ->
+		unless target_load_path instanceof Finch.LoadPath
+			throw new Finch.Error("target_load_path must be an instanceof Finch.LoadPath")
+		#END unless
+
+		if @routesAreEqual(target_load_path)
+			return @ if @paramsAreEqual(target_load_path)
+			@params = target_load_path.params
+			return @ if @current_operation_queue?
+			@notifyObservers()
+			return @
+		#END if
+
+		ancestor_node = @findCommonAncestor(target_load_path)
+		start_node = @nodeAt(@length-1)
+		end_node = target_load_path.nodeAt(target_load_path.length-1)
+
+		@current_operation_queue ?= @createOperationQueue()
 
 		if start_node instanceof Finch.Node and end_node instanceof Finch.Node
-			if start_node.parent is end_node.parent
+			if start_node is end_node
 				@current_operation_queue.appendOperation(Finch.Operation.UNLOAD, start_node, {
 					setup_params: (action, node) => @prepareParams()
 					after_step: (action, node) => @popUntil(ancestor_node)
@@ -281,7 +349,7 @@ class Finch.LoadPath
 		return ancestor_node
 	#END findCommonAncestor
 
-	isEqual: (target_load_path) ->
+	routesAreEqual: (target_load_path) ->
 		unless target_load_path instanceof Finch.LoadPath
 			throw new Finch.Error("target_load_path must be an instanceof Finch.LoadPath")
 		#END unless
@@ -294,7 +362,48 @@ class Finch.LoadPath
 		#END for
 
 		return true
-	#END isEqual
+	#END routesAreEqual
+
+	paramsAreEqual: (target_load_path) ->
+		unless target_load_path instanceof Finch.LoadPath
+			throw new Finch.Error("target_load_path must be an instanceof Finch.LoadPath")
+		#END unless
+
+		params_length = 0
+		params_length++ for key, value of @params
+		
+		target_params_length = 0
+		target_params_length++ for key, value of target_load_path.params
+
+		return false unless params_length is target_params_length
+
+		for key, value of @params
+			return false if (v = target_load_path.params[key]) is undefined
+			return false unless v is value
+		#END for
+
+		return true
+	#END paramsAreEqual
+
+	addObserver: (observer) ->
+		return observer unless @length > 0
+		return observer unless @nodes[@length-1].should_observe
+		@observers[@length-1].push(observer)
+		return observer
+	#END addObserver
+
+	notifyObservers: ->
+		for observer_list, i in @observers
+			new_observer_list = []
+			for observer in observer_list when not observer.is_disposed
+				observer.notify(@coerceObject(@params))
+				new_observer_list.push(observer)
+			#END for
+			@observers[i] = new_observer_list
+		#END for
+
+		return @
+	#END notifyObservers
 
 	toString: ->
 		url = @route_components.join("/")

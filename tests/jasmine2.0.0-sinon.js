@@ -41,7 +41,7 @@
       if (passed) {
         message += "not ";
       }
-      message += "toHaveBeenCalledOnce";
+      message += "to have been called once";
       return message.trim();
     },
     'toHaveBeenCalledTwice': function(passed, spy, other_args) {
@@ -50,7 +50,7 @@
       if (passed) {
         message += "not ";
       }
-      message += "toHaveBeenCalledTwice";
+      message += "to have been called twice";
       return message.trim();
     },
     'toHaveBeenCalledThrice': function(passed, spy, other_args) {
@@ -59,7 +59,7 @@
       if (passed) {
         message += "not ";
       }
-      message += "toHaveBeenCalledThrice";
+      message += "to have been called thrice";
       return message.trim();
     },
     'toHaveBeenCalledBefore': function(passed, spy, other_args) {
@@ -68,7 +68,7 @@
       if (passed) {
         message += "not ";
       }
-      message += "toHaveBeenCalledBefore ";
+      message += "to have been called before ";
       if ((other_args != null ? other_args.length : void 0) > 0) {
         message += jasmine.pp(other_args) + (" but was CalledBefore " + (jasmine.pp(spy.lastCall.args)));
       }
@@ -80,7 +80,7 @@
       if (passed) {
         message += "not ";
       }
-      message += "toHaveBeenCalledAfter ";
+      message += "to have been calld after ";
       if ((other_args != null ? other_args.length : void 0) > 0) {
         message += jasmine.pp(other_args) + (" but was CalledAfter " + (jasmine.pp(spy.lastCall.args)));
       }
@@ -92,7 +92,7 @@
       if (passed) {
         message += "not ";
       }
-      message += "toHaveBeenCalledOn ";
+      message += "to have been called on ";
       if ((other_args != null ? other_args.length : void 0) > 0) {
         message += jasmine.pp(other_args) + (" but was CalledOn " + (jasmine.pp(spy.lastCall.args)));
       }
@@ -104,21 +104,24 @@
       if (passed) {
         message += "not ";
       }
-      message += "toHaveBeenAlwaysCalledOn ";
+      message += "to have always been called on ";
       if ((other_args != null ? other_args.length : void 0) > 0) {
-        message += jasmine.pp(other_args) + (" but was AlwaysCalledOn " + (jasmine.pp(spy.lastCall.args)));
+        message += jasmine.pp(other_args) + (" but was always called on " + (jasmine.pp(spy.lastCall.args)));
       }
       return message.trim();
     },
     'toHaveBeenCalledWith': function(passed, spy, other_args) {
-      var message;
+      var message, _ref;
       message = "Expected spy '" + spy + "' ";
       if (passed) {
         message += "not ";
       }
-      message += "toHaveBeenCalledWith ";
+      message += "to have been called with ";
       if ((other_args != null ? other_args.length : void 0) > 0) {
-        message += jasmine.pp(other_args) + (" but was CalledWith " + (jasmine.pp(spy.lastCall.args)));
+        message += jasmine.pp(other_args);
+      }
+      if ((spy != null ? (_ref = spy.lastCall) != null ? _ref.args : void 0 : void 0) != null) {
+        message += " but was called with " + (jasmine.pp(spy.lastCall.args));
       }
       return message.trim();
     },
