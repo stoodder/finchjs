@@ -1718,6 +1718,10 @@
     finch_export.ParsedRouteString = Finch.ParsedRouteString;
   }
 
-  (typeof exports !== "undefined" && exports !== null ? exports : this)['Finch'] = finch_export;
+  if ((typeof module !== "undefined" && module !== null ? module.exports : void 0) != null) {
+    module.exports = finch_export;
+  } else {
+    this.Finch = finch_export;
+  }
 
 }).call(this);

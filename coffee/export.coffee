@@ -9,4 +9,9 @@ if jasmine?
 	finch_export.NotFoundError = Finch.NotFoundError
 	finch_export.ParsedRouteString = Finch.ParsedRouteString
 #END if
-(if exports? then exports else @)['Finch'] = finch_export
+
+if module?.exports?
+	module.exports = finch_export
+else
+	@Finch = finch_export
+#END if

@@ -9,9 +9,7 @@ Install Ruby
 Install Node.js (http://nodejs.org/)
 npm install -g grunt-cli
 npm install coffee-script
-npm install grunt --save-dev
-npm install grunt-contrib-coffee --save-dev
-npm install grunt-contrib-jasmine --save-dev
+npm install
 
 ###
 module.exports = (grunt) ->
@@ -26,9 +24,9 @@ module.exports = (grunt) ->
 		'coffee':
 			'test':
 				files:
-					"tests/jasmine2.0.0-sinon.js": "tests/jasmine2.0.0-sinon.coffee"
-					"tests/tests.js": "tests/tests.coffee"
-					"testsV2/tests.js": "testsV2/*.coffee"
+					"tests/tests.js": [
+						"tests/*.test.coffee"
+					]
 				#END files
 			#END coffee:test
 		#END coffee
@@ -38,8 +36,8 @@ module.exports = (grunt) ->
 				src: 'finch.js'
 				options:
 					vendor: [
-						'tests/sinon-1.7.3.js'
-						'tests/jasmine2.0.0-sinon.js'
+						'tests/sinon.js'
+						'tests/jasmine-sinon.js'
 					]
 					specs: ['tests/tests.js']
 				#END options

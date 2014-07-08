@@ -32,9 +32,9 @@ describe "Finch.Tree", ->
 
 	describe "standardizeRouteString", ->
 		it "Should throw properly", ->
-			expect( => @tree.standardizeRouteString() ).toThrow(jasmine.any(Error))
-			expect( => @tree.standardizeRouteString(null) ).toThrow(jasmine.any(Error))
-			expect( => @tree.standardizeRouteString(123) ).toThrow(jasmine.any(Error))
+			expect( => @tree.standardizeRouteString() ).toThrow(jasmine.any(Finch.Error))
+			expect( => @tree.standardizeRouteString(null) ).toThrow(jasmine.any(Finch.Error))
+			expect( => @tree.standardizeRouteString(123) ).toThrow(jasmine.any(Finch.Error))
 		#END it
 
 		it "Should parse '!' properly", ->

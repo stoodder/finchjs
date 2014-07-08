@@ -40,7 +40,6 @@ describe "Finch", ->
 			Finch.route "[quux]/:id",   	quux_id = sinon.spy()
 
 			# Test routes
-
 			Finch.call "/foo/bar"
 
 			expect( foo ).toHaveBeenCalledOnce()
