@@ -1359,22 +1359,7 @@
     };
 
     Tree.prototype.extractQueryParameters = function(route_string) {
-      var key, piece, query_params, query_params_string, value, _i, _len, _ref, _ref1;
-      if (!isString(route_string)) {
-        return {};
-      }
-      query_params_string = route_string.split("?", 2)[1];
-      if (!isString(query_params_string)) {
-        return {};
-      }
-      query_params = {};
-      _ref = query_params_string.split("&");
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        piece = _ref[_i];
-        _ref1 = piece.split("=", 2), key = _ref1[0], value = _ref1[1];
-        query_params[key] = value;
-      }
-      return query_params;
+      return Finch.UriManager.parseQueryString(route_string.split("?", 2)[1]);
     };
 
     Tree.prototype.standardizeRouteString = function(route_string) {

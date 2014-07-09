@@ -52,26 +52,13 @@ class Finch.Tree
 		return new Finch.ParsedRouteString(route_components, parent_route_components)
 	#END parseRouteString
 
-	#Add these to the uri manager
 	extractRouteString: (route_string) ->
 		return "" unless isString(route_string)
 		return trim( route_string.split("?")[0] ? "" )
 	#END extractRouteString
 
 	extractQueryParameters: (route_string) ->
-		return {} unless isString(route_string)
-
-		query_params_string = route_string.split("?", 2)[1]
-
-		return {} unless isString(query_params_string)
-
-		query_params = {}
-		for piece in query_params_string.split("&")
-			[key, value] = piece.split("=", 2)
-			query_params[key] = value
-		#END for
-
-		return query_params
+		return Finch.UriManager.parseQueryString(route_string.split("?", 2)[1])
 	#END extractQueryParameters
 
 	standardizeRouteString: (route_string) ->
