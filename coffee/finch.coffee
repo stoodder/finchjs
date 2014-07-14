@@ -779,7 +779,7 @@ Finch = {
 		newPath = findPath(RootNode, uri)
 		unless newPath?
 			console.warn "[FINCH] Could not find route for: #{uri}"
-			return false 
+			return false
 		#END unless
 
 		queryParameters = parseQueryString(queryString)
@@ -812,7 +812,13 @@ Finch = {
 		return this unless LoadCompleted
 		return this unless CurrentPath? and CurrentPath.node?
 
-		CurrentTargetPath = CurrentPath
+		saveCurrentPath = CurrentPath
+
+		CurrentTargetPath = NullPath
+		step()
+
+		LoadCompleted = false
+		CurrentTargetPath = CurrentPath = saveCurrentPath
 		step()
 
 		return this
