@@ -1094,5 +1094,9 @@ Finch = {
 	#END Finch.options()
 }
 
-#Expose Finch to the window
-@Finch = Finch
+if module?.exports?
+  module.exports = Finch
+else if define? and define.amd?
+  define(['Finch'], Finch)
+else
+  @Finch = Finch
