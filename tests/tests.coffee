@@ -1721,3 +1721,8 @@ test "Test double deep variable basic routes up and down", sinon.test ->
 	cb.reset()
 #END test
 
+test "Test Finch.route chaining", sinon.test ->
+  newFinch = Finch.route("foo", -> true)
+  result   = QUnit.equiv(Finch, newFinch)
+  QUnit.push(result, newFinch, Finch, 'Finch.route returned this for chaining')
+#END test

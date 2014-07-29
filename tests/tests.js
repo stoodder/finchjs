@@ -1696,4 +1696,13 @@
     return cb.reset();
   }));
 
+  test("Test Finch.route chaining", sinon.test(function() {
+    var newFinch, result;
+    newFinch = Finch.route("foo", function() {
+      return true;
+    });
+    result = QUnit.equiv(Finch, newFinch);
+    return QUnit.push(result, newFinch, Finch, 'Finch.route returned this for chaining');
+  }));
+
 }).call(this);

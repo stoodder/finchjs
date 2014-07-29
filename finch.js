@@ -817,7 +817,7 @@
         return false;
       }
       addRoute(RootNode, parsedRouteString, settings);
-      return true;
+      return this;
     },
     call: function(uri) {
       var bindings, newPath, previousTargetPath, queryParameters, queryString, _ref1;
