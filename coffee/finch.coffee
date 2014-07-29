@@ -757,7 +757,7 @@ Finch = {
 		# Add the new route to the route tree
 		addRoute(RootNode, parsedRouteString, settings)
 
-		return true
+		return this
 
 	#END Finch.route()
 
