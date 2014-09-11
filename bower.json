@@ -7,8 +7,7 @@
   ],
   "description": "Simple Hierarchical Javascript Routing",
   "main": [
-    "finch.js",
-    "finch.min.js"
+    "finch.js"
   ],
   "keywords": [
     "Javascript",
