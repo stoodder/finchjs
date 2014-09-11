@@ -363,6 +363,43 @@ test "Hierarchical routing with setup, load, and teardown", sinon.test ->
 	neverCalled cb.setup_foo_baz_id,   	"/foo/baz/abc?term=World: no foo/baz/id setup"
 	neverCalled cb.load_foo_baz_id,    	"/foo/baz/abc?term=World: no foo/baz/id load"
 
+test "Skipped levels hierarchical routing with setup, load, and teardown", sinon.test ->
+
+	cb = callbackGroup()
+
+	Finch.route "/foo",
+		setup:   	cb.setup_foo = @stub()
+		load:    	cb.load_foo = @stub()
+		unload:  	cb.unload_foo = @stub()
+		teardown:	cb.teardown_foo = @stub()
+	Finch.route "[/foo]/bar",
+		setup:   	cb.setup_foo_bar = @stub()
+		load:    	cb.load_foo_bar = @stub()
+		unload:  	cb.unload_foo_bar = @stub()
+		teardown:	cb.teardown_foo_bar = @stub()
+	Finch.route "[foo/bar]/:id/baz",
+		setup:   	cb.setup_foo_bar_id_baz = @stub()
+		load:    	cb.load_foo_bar_id_baz = @stub()
+		unload:  	cb.unload_foo_bar_id_baz = @stub()
+		teardown:	cb.teardown_foo_bar_id_baz = @stub()
+
+	Finch.call "/foo/bar"
+
+	calledOnce cb.setup_foo, "/foo setup"
+	neverCalled cb.load_foo, "/foo load (skipped)"
+	calledOnce cb.setup_foo_bar, "/foo/bar setup"
+	calledOnce cb.load_foo_bar, "/foo/bar load"
+	cb.reset()
+
+	Finch.call "/foo/bar/12345/baz"
+
+	neverCalled cb.setup_foo, "/foo setup (should be cached)"
+	neverCalled cb.load_foo, "/foo load (skipped)"
+	neverCalled cb.setup_foo_bar, "/foo/bar setup (should be cached)"
+	neverCalled cb.load_foo_bar, "/foo/bar load (skipped)"
+	calledOnce cb.setup_foo_bar_id_baz, "/foo/bar/:id/baz setup"
+	calledOnce cb.load_foo_bar_id_baz, "/foo/bar/:id/baz load"
+
 test "Calling with context", sinon.test ->
 
 	Finch.route "foo",
