@@ -710,6 +710,15 @@ hashChangeListener = (event) ->
 #---------------------------------------------------
 Finch = {
 	#---------------------------------------------------
+	# Method: Finch.getCurrentHash
+	#	Obtain the hash of the current route
+	#---------------------------------------------------
+	getCurrentHash: () ->
+		return CurrentHash
+
+	#END Finch.getCurrentHash
+
+	#---------------------------------------------------
 	# Method: Finch.route
 	#	Used to setup a new route
 	#
