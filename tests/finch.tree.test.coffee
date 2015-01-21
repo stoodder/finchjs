@@ -6,30 +6,6 @@ describe "Finch.Tree", ->
 	describe "parseRouteString", ->
 	#END describe
 
-	describe "extractRouteString", ->
-		it "Should return empty string on invalid inputs", ->
-			expect( @tree.extractRouteString() ).toBe("")
-			expect( @tree.extractRouteString(null) ).toBe("")
-			expect( @tree.extractRouteString(123) ).toBe("")
-		#END it
-
-		it "Should extract properly without query paramsters", ->
-			expect( @tree.extractRouteString("foo/bar") ).toBe("foo/bar")
-		#END it
-
-		it "Should extract properly with query paramsters", ->
-			expect( @tree.extractRouteString("foo/bar?hello=world") ).toBe("foo/bar")
-		#END it
-
-		it "Should extract with only query parameters", ->
-			expect( @tree.extractRouteString("?hello=world") ).toBe("")
-		#END it
-
-		it "Should trim the string", ->
-			expect( @tree.extractRouteString("   foo/bar    ?hello=world") ).toBe("foo/bar")
-		#END it
-	#END describe
-
 	describe "standardizeRouteString", ->
 		it "Should throw properly", ->
 			expect( => @tree.standardizeRouteString() ).toThrow(jasmine.any(Finch.Error))

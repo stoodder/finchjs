@@ -52,21 +52,12 @@ class Finch.Tree
 		return new Finch.ParsedRouteString(route_components, parent_route_components)
 	#END parseRouteString
 
-	extractRouteString: (route_string) ->
-		return "" unless isString(route_string)
-		return trim( route_string.split("?")[0] ? "" )
-	#END extractRouteString
-
-	extractQueryParameters: (route_string) ->
-		return Finch.UriManager.parseQueryString(route_string.split("?", 2)[1])
-	#END extractQueryParameters
-
 	standardizeRouteString: (route_string) ->
 		unless isString(route_string)
 			throw new Finch.Error("route_string must be a String")
 		#END unless
 
-		route_string = @extractRouteString(route_string)
+		route_string = Finch.UriManager.extractRouteString(route_string)
 		return route_string if route_string is "!"
 
 		route_string = "!#{route_string}" if startsWith(route_string, "/")
@@ -134,7 +125,7 @@ class Finch.Tree
 			throw new Finch.Error("route_string must be a String")
 		#END unless
 
-		params = @extractQueryParameters(route_string)
+		params = Finch.UriManager.extractQueryParameters(route_string)
 		route_string = @standardizeRouteString(route_string)
 		route_components = @createRouteComponents(route_string)
 

@@ -9,7 +9,7 @@
 	MIT License, https://github.com/stoodder/finchjs/blob/master/LICENSE.md
 */
 (function() {
-  var Finch, arrayRemove, arrayUnique, countSubstrings, endsWith, finch_export, isArray, isBoolean, isEmpty, isFunction, isNaN, isNumber, isObject, isString, startsWith, trim, trimSlashes,
+  var Finch, arrayRemove, arrayUnique, countSubstrings, endsWith, isArray, isBoolean, isEmpty, isFunction, isNaN, isNumber, isObject, isString, startsWith, trim, trimSlashes,
     __slice = [].slice,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
@@ -130,62 +130,65 @@
     return str.split(substr).length - 1;
   };
 
-  Finch = (function() {
-    Finch.prototype.tree = null;
+  Finch = new ((function() {
+    function _Class() {}
 
-    function Finch() {
-      this.tree = new Finch.Tree();
-    }
+    _Class.prototype.tree = null;
 
-    Finch.prototype.__run__ = function(default_return, routine) {
-      var ex;
+    _Class.prototype.__run__ = function(default_return, routine) {
+      var exception;
       try {
         return routine.call(this);
       } catch (_error) {
-        ex = _error;
-        if (ex instanceof Finch.Error) {
-          if (ex instanceof Finch.NotFoundError) {
-            this.trigger("not_found", ex);
-          } else {
-            this.trigger("error", ex);
-          }
+        exception = _error;
+        if (exception instanceof Finch.Error) {
+          this.trigger(exception.event_name, exception);
         } else {
-          throw ex;
+          throw exception;
         }
       }
       return default_return;
     };
 
-    Finch.prototype.route = function(route_string, callbacks) {
+    _Class.prototype.route = function(route_string, callbacks) {
       return this.__run__(this, function() {
         var node;
+        if (this.tree == null) {
+          this.tree = new Finch.Tree;
+        }
         node = this.tree.addRoute(route_string);
         node.setCallbacks(callbacks);
         return this;
       });
     };
 
-    Finch.prototype.call = function(route_string) {
+    _Class.prototype.call = function(route_string) {
       return this.__run__(this, function() {
+        if (this.tree == null) {
+          this.tree = new Finch.Tree;
+        }
         this.tree.callRoute(route_string);
         return this;
       });
     };
 
-    Finch.prototype.reload = function() {
+    _Class.prototype.reload = function() {
       return this.__run__(this, function() {
+        if (this.tree == null) {
+          this.tree = new Finch.Tree;
+        }
         this.tree.load_path.reload();
         return this;
       });
     };
 
-    Finch.prototype.peek = function() {
+    _Class.prototype.peek = function() {
       return this.__run__(null, function() {
         return "";
       });
     };
 
-    Finch.prototype.observe = function() {
+    _Class.prototype.observe = function() {
       var args;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
       return this.__run__(null, function() {
@@ -195,46 +198,55 @@
           var child = new ctor, result = func.apply(child, args);
           return Object(result) === result ? result : child;
         })(Finch.Observer.create, args, function(){});
+        if (this.tree == null) {
+          this.tree = new Finch.Tree;
+        }
         this.tree.load_path.addObserver(observer);
         return observer;
       });
     };
 
-    Finch.prototype.abort = function() {
+    _Class.prototype.abort = function() {
       return this.__run__(this, function() {
+        if (this.tree == null) {
+          this.tree = new Finch.Tree;
+        }
         this.tree.load_path.abort();
         return this;
       });
     };
 
-    Finch.prototype.listen = function() {
+    _Class.prototype.listen = function() {
       return this.__run__(false, function() {
         return Finch.UriManager.listen();
       });
     };
 
-    Finch.prototype.ignore = function() {
+    _Class.prototype.ignore = function() {
       return this.__run__(false, function() {
         return Finch.UriManager.ignore();
       });
     };
 
-    Finch.prototype.navigate = function(uri, params, do_update) {
+    _Class.prototype.navigate = function(uri, params, do_update) {
       return this.__run__(this, function() {
         Finch.UriManager.navigate(uri, params, do_update);
         return this;
       });
     };
 
-    Finch.prototype.reset = function() {
+    _Class.prototype.reset = function() {
       return this.__run__(this, function() {
+        if (this.tree == null) {
+          this.tree = new Finch.Tree;
+        }
         this.tree.load_path.abort();
         this.tree = new Finch.Tree();
         return this;
       });
     };
 
-    Finch.prototype.options = function(key, value) {
+    _Class.prototype.options = function(key, value) {
       return this.__run__(this, function() {
         var k, v;
         if (isObject(key)) {
@@ -247,24 +259,29 @@
         switch (key) {
           case 'coerce_types':
           case 'CoerceParameterTypes':
+            if (this.tree == null) {
+              this.tree = new Finch.Tree;
+            }
             this.tree.load_path.coerce_types = value;
         }
         return this;
       });
     };
 
-    Finch.prototype.on = function() {};
+    _Class.prototype.on = function() {};
 
-    Finch.prototype.off = function() {};
+    _Class.prototype.off = function() {};
 
-    Finch.prototype.trigger = function() {};
+    _Class.prototype.trigger = function() {};
 
-    return Finch;
+    return _Class;
 
-  })();
+  })());
 
   Finch.Error = (function() {
     Error.prototype.name = "Finch.Error";
+
+    Error.prototype.event_name = "error";
 
     Error.prototype.message = null;
 
@@ -279,19 +296,6 @@
     return Error;
 
   })();
-
-  Finch.Console = new ((function() {
-    function _Class() {}
-
-    _Class.prototype.log = function() {};
-
-    _Class.prototype.error = function() {};
-
-    _Class.prototype.warn = function() {};
-
-    return _Class;
-
-  })());
 
   Finch.LoadPath = (function() {
     LoadPath.prototype.nodes = null;
@@ -1042,6 +1046,8 @@
 
     NotFoundError.prototype.name = "Finch.NotFoundError";
 
+    NotFoundError.prototype.event_name = "not_found";
+
     return NotFoundError;
 
   })(Finch.Error);
@@ -1350,23 +1356,11 @@
       return new Finch.ParsedRouteString(route_components, parent_route_components);
     };
 
-    Tree.prototype.extractRouteString = function(route_string) {
-      var _ref;
-      if (!isString(route_string)) {
-        return "";
-      }
-      return trim((_ref = route_string.split("?")[0]) != null ? _ref : "");
-    };
-
-    Tree.prototype.extractQueryParameters = function(route_string) {
-      return Finch.UriManager.parseQueryString(route_string.split("?", 2)[1]);
-    };
-
     Tree.prototype.standardizeRouteString = function(route_string) {
       if (!isString(route_string)) {
         throw new Finch.Error("route_string must be a String");
       }
-      route_string = this.extractRouteString(route_string);
+      route_string = Finch.UriManager.extractRouteString(route_string);
       if (route_string === "!") {
         return route_string;
       }
@@ -1449,7 +1443,7 @@
       if (!isString(route_string)) {
         throw new Finch.Error("route_string must be a String");
       }
-      params = this.extractQueryParameters(route_string);
+      params = Finch.UriManager.extractQueryParameters(route_string);
       route_string = this.standardizeRouteString(route_string);
       route_components = this.createRouteComponents(route_string);
       target_load_path = this.createLoadPath(route_components, params);
@@ -1558,6 +1552,18 @@
       return params;
     };
 
+    UriManager.extractRouteString = function(route_string) {
+      var _ref;
+      if (!isString(route_string)) {
+        return "";
+      }
+      return trim((_ref = route_string.split("?")[0]) != null ? _ref : "");
+    };
+
+    UriManager.extractQueryParameters = function(route_string) {
+      return this.parseQueryString(route_string.split("?", 2)[1]);
+    };
+
     UriManager.navigate = function(uri, params, do_update) {
       var built_uri, current_params, current_query_string, current_uri, key, piece, slash_index, uri_params, uri_query_string, value, _ref, _ref1, _ref2, _ref3;
       if (isObject(uri)) {
@@ -1644,7 +1650,7 @@
           if (hash === _current_hash) {
             return;
           }
-          return Finch.call(_current_hash);
+          return Finch.call(_current_hash = hash);
         };
       })(this);
       if ("onhashchange" in window) {
@@ -1690,23 +1696,12 @@
 
   })();
 
-  finch_export = new Finch;
-
-  if (typeof jasmine !== "undefined" && jasmine !== null) {
-    finch_export.Tree = Finch.Tree;
-    finch_export.Node = Finch.Node;
-    finch_export.LoadPath = Finch.LoadPath;
-    finch_export.OperationQueue = Finch.OperationQueue;
-    finch_export.Operation = Finch.Operation;
-    finch_export.Error = Finch.Error;
-    finch_export.NotFoundError = Finch.NotFoundError;
-    finch_export.ParsedRouteString = Finch.ParsedRouteString;
-  }
-
   if ((typeof module !== "undefined" && module !== null ? module.exports : void 0) != null) {
-    module.exports = finch_export;
+    module.exports = Finch;
+  } else if (((typeof define !== "undefined" && define !== null ? define.amd : void 0) != null) && isFunction(define)) {
+    define(['Finch'], Finch);
   } else {
-    this.Finch = finch_export;
+    this.Finch = Finch;
   }
 
 }).call(this);

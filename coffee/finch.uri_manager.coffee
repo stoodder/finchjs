@@ -27,6 +27,15 @@ class Finch.UriManager
 		return params
 	#END parseQueryString
 
+	@extractRouteString = (route_string) ->
+		return "" unless isString(route_string)
+		return trim( route_string.split("?")[0] ? "" )
+	#END extractRouteString
+
+	@extractQueryParameters = (route_string) ->
+		return @parseQueryString(route_string.split("?", 2)[1])
+	#END extractQueryParameters
+
 	@navigate = (uri, params, do_update) ->
 		#Setup the input arguments properly
 		[params, do_update, uri] = [uri, params, null] if isObject(uri)
@@ -69,7 +78,7 @@ class Finch.UriManager
 		if do_update
 			for key, value of current_params when not (key of params)
 				params[key] = value
-			#ND for
+			#END for
 		#END if
 
 		#Remove any null values
@@ -93,7 +102,7 @@ class Finch.UriManager
 		@listen_callback = =>
 			hash = @getHash()
 			return if hash is _current_hash
-			Finch.call(_current_hash)
+			Finch.call(_current_hash = hash)
 		#END listen_callback
 
 		#Check if the window has an onhashcnage event

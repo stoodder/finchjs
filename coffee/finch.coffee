@@ -1,22 +1,14 @@
-class Finch
+Finch = new class
 	tree: null
-
-	constructor: ->
-		@tree = new Finch.Tree()
-	#END constructor
 
 	__run__: (default_return, routine) ->
 		try
 			return routine.call(@)
-		catch ex
-			if ex instanceof Finch.Error
-				if ex instanceof Finch.NotFoundError
-					@trigger("not_found", ex)
-				else
-					@trigger("error", ex)
-				#END if
+		catch exception
+			if exception instanceof Finch.Error
+				@trigger(exception.event_name, exception)
 			else
-				throw ex
+				throw exception
 			#END if
 		#END try
 
@@ -24,18 +16,20 @@ class Finch
 	#END __run__
 
 	route: (route_string, callbacks) -> @__run__ @, ->
+		@tree ?= new Finch.Tree
 		node = @tree.addRoute(route_string)
 		node.setCallbacks(callbacks)
 		return @
 	#END route
 
-
 	call: (route_string) -> @__run__ @, ->
+		@tree ?= new Finch.Tree
 		@tree.callRoute(route_string)
 		return @
 	#END call
 
 	reload: -> @__run__ @, ->
+		@tree ?= new Finch.Tree
 		@tree.load_path.reload()
 		return @
 	#END reload
@@ -47,11 +41,13 @@ class Finch
 	# Has dispose method
 	observe: (args...) -> @__run__ null, ->
 		observer = new Finch.Observer.create(args...)
+		@tree ?= new Finch.Tree
 		@tree.load_path.addObserver(observer)
 		return observer
 	#END observe
 
 	abort: -> @__run__ @, ->
+		@tree ?= new Finch.Tree
 		@tree.load_path.abort()
 		return @
 	#END abort
@@ -65,6 +61,7 @@ class Finch
 	#END navigate
 
 	reset: -> @__run__ @, ->
+		@tree ?= new Finch.Tree
 		@tree.load_path.abort()
 		@tree = new Finch.Tree()
 		return @
@@ -78,6 +75,7 @@ class Finch
 
 		switch key
 			when 'coerce_types', 'CoerceParameterTypes'
+				@tree ?= new Finch.Tree
 				@tree.load_path.coerce_types = value
 			#END when
 		#END switch

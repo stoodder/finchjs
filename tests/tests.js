@@ -1460,25 +1460,6 @@
       return this.tree = new Finch.Tree();
     });
     describe("parseRouteString", function() {});
-    describe("extractRouteString", function() {
-      it("Should return empty string on invalid inputs", function() {
-        expect(this.tree.extractRouteString()).toBe("");
-        expect(this.tree.extractRouteString(null)).toBe("");
-        return expect(this.tree.extractRouteString(123)).toBe("");
-      });
-      it("Should extract properly without query paramsters", function() {
-        return expect(this.tree.extractRouteString("foo/bar")).toBe("foo/bar");
-      });
-      it("Should extract properly with query paramsters", function() {
-        return expect(this.tree.extractRouteString("foo/bar?hello=world")).toBe("foo/bar");
-      });
-      it("Should extract with only query parameters", function() {
-        return expect(this.tree.extractRouteString("?hello=world")).toBe("");
-      });
-      return it("Should trim the string", function() {
-        return expect(this.tree.extractRouteString("   foo/bar    ?hello=world")).toBe("foo/bar");
-      });
-    });
     return describe("standardizeRouteString", function() {
       it("Should throw properly", function() {
         expect((function(_this) {
@@ -1559,6 +1540,31 @@
       });
       return it("Should parse '!//foo/bar/' properly", function() {
         return expect(this.tree.standardizeRouteString("!//foo/bar/")).toBe("!//foo/bar");
+      });
+    });
+  });
+
+}).call(this);
+
+(function() {
+  describe("Finch.UriManager", function() {
+    return describe("extractRouteString", function() {
+      it("Should return empty string on invalid inputs", function() {
+        expect(Finch.UriManager.extractRouteString()).toBe("");
+        expect(Finch.UriManager.extractRouteString(null)).toBe("");
+        return expect(Finch.UriManager.extractRouteString(123)).toBe("");
+      });
+      it("Should extract properly without query paramsters", function() {
+        return expect(Finch.UriManager.extractRouteString("foo/bar")).toBe("foo/bar");
+      });
+      it("Should extract properly with query paramsters", function() {
+        return expect(Finch.UriManager.extractRouteString("foo/bar?hello=world")).toBe("foo/bar");
+      });
+      it("Should extract with only query parameters", function() {
+        return expect(Finch.UriManager.extractRouteString("?hello=world")).toBe("");
+      });
+      return it("Should trim the string", function() {
+        return expect(Finch.UriManager.extractRouteString("   foo/bar    ?hello=world")).toBe("foo/bar");
       });
     });
   });

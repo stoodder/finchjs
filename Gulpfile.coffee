@@ -61,15 +61,6 @@ gulp.task 'coffee', ->
 	#END gulp
 #END coffee
 
-gulp.task 'jasmine_coffee', ->
-	gulp.src(paths.jasmine_coffee)
-	    .pipe(concat('tests.coffee'))
-	    .pipe(coffee()).on('error', handleError)
-	    .pipe(rename('tests.js'))
-	    .pipe(gulp.dest('./tests/'))
-	#END gulp
-#END test_coffee
-
 gulp.task 'jasmine', ->
 	gulp.src(paths.jasmine_coffee)
 	    .pipe(concat('tests.coffee'))
