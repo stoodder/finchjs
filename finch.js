@@ -1565,7 +1565,7 @@
     };
 
     UriManager.navigate = function(uri, params, do_update) {
-      var built_uri, current_params, current_query_string, current_uri, key, piece, slash_index, uri_params, uri_query_string, value, _ref, _ref1, _ref2, _ref3;
+      var built_uri, current_params, current_query_string, current_uri, key, piece, query_string, slash_index, uri_params, uri_query_string, value, _ref, _ref1, _ref2, _ref3;
       if (isObject(uri)) {
         _ref = [uri, params, null], params = _ref[0], do_update = _ref[1], uri = _ref[2];
       }
@@ -1620,7 +1620,7 @@
           delete params[key];
         }
       }
-      uri += "?" + ((function() {
+      query_string = ((function() {
         var _results;
         _results = [];
         for (key in params) {
@@ -1629,6 +1629,9 @@
         }
         return _results;
       })()).join("&");
+      if (!isEmpty(query_string)) {
+        uri += "?" + query_string;
+      }
       this.setHash(uri);
       return this;
     };

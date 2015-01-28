@@ -87,7 +87,9 @@ class Finch.UriManager
 		#END for
 
 		#Update the uri
-		uri += "?" + ("#{key}=#{value}" for key, value of params).join("&")
+		query_string = ("#{key}=#{value}" for key, value of params).join("&")
+		uri += "?#{query_string}" unless isEmpty(query_string)
+		
 		@setHash(uri)
 
 		return @
