@@ -135,137 +135,99 @@
 
     _Class.prototype.tree = null;
 
-    _Class.prototype.__run__ = function(default_return, routine) {
-      var exception;
-      try {
-        return routine.call(this);
-      } catch (_error) {
-        exception = _error;
-        if (exception instanceof Finch.Error) {
-          this.trigger(exception.event_name, exception);
-        } else {
-          throw exception;
-        }
-      }
-      return default_return;
-    };
-
     _Class.prototype.route = function(route_string, callbacks) {
-      return this.__run__(this, function() {
-        var node;
-        if (this.tree == null) {
-          this.tree = new Finch.Tree;
-        }
-        node = this.tree.addRoute(route_string);
-        node.setCallbacks(callbacks);
-        return this;
-      });
+      var node;
+      if (this.tree == null) {
+        this.tree = new Finch.Tree;
+      }
+      node = this.tree.addRoute(route_string);
+      node.setCallbacks(callbacks);
+      return this;
     };
 
     _Class.prototype.call = function(route_string) {
-      return this.__run__(this, function() {
-        if (this.tree == null) {
-          this.tree = new Finch.Tree;
-        }
-        this.tree.callRoute(route_string);
-        return this;
-      });
+      if (this.tree == null) {
+        this.tree = new Finch.Tree;
+      }
+      this.tree.callRoute(route_string);
+      return this;
     };
 
     _Class.prototype.reload = function() {
-      return this.__run__(this, function() {
-        if (this.tree == null) {
-          this.tree = new Finch.Tree;
-        }
-        this.tree.load_path.reload();
-        return this;
-      });
+      if (this.tree == null) {
+        this.tree = new Finch.Tree;
+      }
+      this.tree.load_path.reload();
+      return this;
     };
 
     _Class.prototype.peek = function() {
-      return this.__run__(null, function() {
-        return "";
-      });
+      return "";
     };
 
     _Class.prototype.observe = function() {
-      var args;
+      var args, observer;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      return this.__run__(null, function() {
-        var observer;
-        observer = (function(func, args, ctor) {
-          ctor.prototype = func.prototype;
-          var child = new ctor, result = func.apply(child, args);
-          return Object(result) === result ? result : child;
-        })(Finch.Observer.create, args, function(){});
-        if (this.tree == null) {
-          this.tree = new Finch.Tree;
-        }
-        this.tree.load_path.addObserver(observer);
-        return observer;
-      });
+      observer = (function(func, args, ctor) {
+        ctor.prototype = func.prototype;
+        var child = new ctor, result = func.apply(child, args);
+        return Object(result) === result ? result : child;
+      })(Finch.Observer.create, args, function(){});
+      if (this.tree == null) {
+        this.tree = new Finch.Tree;
+      }
+      this.tree.load_path.addObserver(observer);
+      return observer;
     };
 
     _Class.prototype.abort = function() {
-      return this.__run__(this, function() {
-        if (this.tree == null) {
-          this.tree = new Finch.Tree;
-        }
-        this.tree.load_path.abort();
-        return this;
-      });
+      if (this.tree == null) {
+        this.tree = new Finch.Tree;
+      }
+      this.tree.load_path.abort();
+      return this;
     };
 
     _Class.prototype.listen = function() {
-      return this.__run__(false, function() {
-        return Finch.UriManager.listen();
-      });
+      return Finch.UriManager.listen();
     };
 
     _Class.prototype.ignore = function() {
-      return this.__run__(false, function() {
-        return Finch.UriManager.ignore();
-      });
+      return Finch.UriManager.ignore();
     };
 
     _Class.prototype.navigate = function(uri, params, do_update) {
-      return this.__run__(this, function() {
-        Finch.UriManager.navigate(uri, params, do_update);
-        return this;
-      });
+      Finch.UriManager.navigate(uri, params, do_update);
+      return this;
     };
 
     _Class.prototype.reset = function() {
-      return this.__run__(this, function() {
-        if (this.tree == null) {
-          this.tree = new Finch.Tree;
-        }
-        this.tree.load_path.abort();
-        this.tree = new Finch.Tree();
-        return this;
-      });
+      if (this.tree == null) {
+        this.tree = new Finch.Tree;
+      }
+      this.tree.load_path.abort();
+      this.tree = new Finch.Tree();
+      return this;
     };
 
     _Class.prototype.options = function(key, value) {
-      return this.__run__(this, function() {
-        var k, v;
-        if (isObject(key)) {
-          for (k in key) {
-            v = key[k];
-            this.options(k, v);
-          }
-          return this;
-        }
-        switch (key) {
-          case 'coerce_types':
-          case 'CoerceParameterTypes':
-            if (this.tree == null) {
-              this.tree = new Finch.Tree;
-            }
-            this.tree.load_path.coerce_types = value;
+      var k, v;
+      if (isObject(key)) {
+        for (k in key) {
+          v = key[k];
+          this.options(k, v);
         }
         return this;
-      });
+      }
+      switch (key) {
+        case 'coerce_types':
+        case 'CoerceParameterTypes':
+          if (this.tree == null) {
+            this.tree = new Finch.Tree;
+          }
+          this.tree.load_path.coerce_types = value;
+      }
+      return this;
     };
 
     _Class.prototype.on = function() {};
@@ -570,6 +532,13 @@
               return function(action, node) {
                 return _this.prepareParams();
               };
+            })(this)
+          });
+          this.current_operation_queue.appendOperation(Finch.Operation.TEARDOWN, start_node, {
+            setup_params: (function(_this) {
+              return function(action, node) {
+                return _this.prepareParams();
+              };
             })(this),
             after_step: (function(_this) {
               return function(action, node) {
@@ -577,12 +546,19 @@
               };
             })(this)
           });
-          this.current_operation_queue.appendOperation(Finch.Operation.LOAD, end_node, {
+          this.current_operation_queue.appendOperation(Finch.Operation.SETUP, end_node, {
             before_step: (function(_this) {
               return function(action, node) {
                 return _this.pushUntil(target_load_path, end_node);
               };
             })(this),
+            setup_params: (function(_this) {
+              return function(action, node) {
+                return _this.prepareParams(target_load_path.params);
+              };
+            })(this)
+          });
+          this.current_operation_queue.appendOperation(Finch.Operation.LOAD, end_node, {
             setup_params: (function(_this) {
               return function(action, node) {
                 return _this.prepareParams(target_load_path.params);

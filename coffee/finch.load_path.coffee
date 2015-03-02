@@ -232,11 +232,19 @@ class Finch.LoadPath
 			if start_node is end_node
 				@current_operation_queue.appendOperation(Finch.Operation.UNLOAD, start_node, {
 					setup_params: (action, node) => @prepareParams()
+				})
+
+				@current_operation_queue.appendOperation(Finch.Operation.TEARDOWN, start_node, {
+					setup_params: (action, node) => @prepareParams()
 					after_step: (action, node) => @popUntil(ancestor_node)
+				})
+				
+				@current_operation_queue.appendOperation(Finch.Operation.SETUP, end_node, {
+					before_step: (action, node) => @pushUntil(target_load_path, end_node)
+					setup_params: (action, node) => @prepareParams(target_load_path.params)
 				})
 
 				@current_operation_queue.appendOperation(Finch.Operation.LOAD, end_node, {
-					before_step: (action, node) => @pushUntil(target_load_path, end_node)
 					setup_params: (action, node) => @prepareParams(target_load_path.params)
 				})
 			else

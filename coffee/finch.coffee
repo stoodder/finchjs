@@ -1,73 +1,59 @@
 Finch = new class
 	tree: null
 
-	__run__: (default_return, routine) ->
-		try
-			return routine.call(@)
-		catch exception
-			if exception instanceof Finch.Error
-				@trigger(exception.event_name, exception)
-			else
-				throw exception
-			#END if
-		#END try
-
-		return default_return
-	#END __run__
-
-	route: (route_string, callbacks) -> @__run__ @, ->
+	route: (route_string, callbacks) ->
 		@tree ?= new Finch.Tree
 		node = @tree.addRoute(route_string)
 		node.setCallbacks(callbacks)
 		return @
 	#END route
 
-	call: (route_string) -> @__run__ @, ->
+	call: (route_string) ->
 		@tree ?= new Finch.Tree
 		@tree.callRoute(route_string)
 		return @
 	#END call
 
-	reload: -> @__run__ @, ->
+	reload: ->
 		@tree ?= new Finch.Tree
 		@tree.load_path.reload()
 		return @
 	#END reload
 
-	peek: -> @__run__ null, ->
+	peek: ->
 		return ""
 	#END peek
 
 	# Has dispose method
-	observe: (args...) -> @__run__ null, ->
+	observe: (args...) ->
 		observer = new Finch.Observer.create(args...)
 		@tree ?= new Finch.Tree
 		@tree.load_path.addObserver(observer)
 		return observer
 	#END observe
 
-	abort: -> @__run__ @, ->
+	abort: ->
 		@tree ?= new Finch.Tree
 		@tree.load_path.abort()
 		return @
 	#END abort
 
-	listen: -> @__run__ false, -> Finch.UriManager.listen()
-	ignore: -> @__run__ false, -> Finch.UriManager.ignore()
+	listen: -> Finch.UriManager.listen()
+	ignore: -> Finch.UriManager.ignore()
 
-	navigate: (uri, params, do_update) -> @__run__ @, ->
+	navigate: (uri, params, do_update) ->
 		Finch.UriManager.navigate(uri, params, do_update)
 		return @
 	#END navigate
 
-	reset: -> @__run__ @, ->
+	reset: ->
 		@tree ?= new Finch.Tree
 		@tree.load_path.abort()
 		@tree = new Finch.Tree()
 		return @
 	#END reset
 
-	options: (key, value) -> @__run__ @, ->
+	options: (key, value) ->
 		if isObject(key)
 			@options(k, v) for k, v of key
 			return @

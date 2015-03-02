@@ -243,7 +243,6 @@ describe "Finch", ->
 			cb.reset()
 		#END it
 
-
 		it 'Should test synchronous and asynchronous unload method and context', ->
 			cb = callbackGroup()
 			cb.home_setup = sinon.spy()
@@ -706,47 +705,47 @@ describe "Finch", ->
 			Finch.route "/foo", foo = sinon.spy()
 			Finch.route "/foo/bar", foo_bar = sinon.spy()
 
-			Finch.call ""
+			expect( -> Finch.call "" ).not.toThrow()
 			expect(slash).toHaveBeenCalledOnce()
 			slash.reset()
 
-			Finch.call "/"
+			expect( -> Finch.call "/" ).not.toThrow()
 			expect(slash).not.toHaveBeenCalled()
 			slash.reset()
 
-			Finch.call ""
+			expect( -> Finch.call "" ).not.toThrow()
 			expect(slash).not.toHaveBeenCalled()
 			slash.reset()
 
-			Finch.call "//"
+			expect( -> Finch.call "//" ).toThrow()
 			expect(slash).not.toHaveBeenCalled()
 			slash.reset()
 
-			Finch.call "foo"
+			expect( -> Finch.call "foo" ).not.toThrow()
 			expect(slash).not.toHaveBeenCalled()
 			expect(foo).toHaveBeenCalledOnce()
 			slash.reset()
 			foo.reset()
 
-			Finch.call "/foo"
+			expect( -> Finch.call "/foo" ).not.toThrow()
 			expect(slash).not.toHaveBeenCalled()
 			expect(foo).not.toHaveBeenCalled()
 			slash.reset()
 			foo.reset()
 
-			Finch.call "/foo/"
+			expect( -> Finch.call "/foo/" ).not.toThrow()
 			expect(slash).not.toHaveBeenCalled()
 			expect(foo).not.toHaveBeenCalled()
 			slash.reset()
 			foo.reset()
 
-			Finch.call "foo/"
+			expect( -> Finch.call "foo/" ).not.toThrow()
 			expect(slash).not.toHaveBeenCalled()
 			expect(foo).not.toHaveBeenCalled()
 			slash.reset()
 			foo.reset()
 
-			Finch.call "foo/bar"
+			expect( -> Finch.call "foo/bar" ).not.toThrow()
 			expect(slash).not.toHaveBeenCalled()
 			expect(foo).not.toHaveBeenCalled()
 			expect(foo_bar).toHaveBeenCalledOnce()
@@ -754,7 +753,7 @@ describe "Finch", ->
 			foo.reset()
 			foo_bar.reset()
 
-			Finch.call "/foo/bar"
+			expect( -> Finch.call "/foo/bar" ).not.toThrow()
 			expect(slash).not.toHaveBeenCalled()
 			expect(foo).not.toHaveBeenCalled()
 			expect(foo_bar).not.toHaveBeenCalled()
@@ -762,7 +761,7 @@ describe "Finch", ->
 			foo.reset()
 			foo_bar.reset()
 
-			Finch.call "/foo/bar/"
+			expect( -> Finch.call "/foo/bar/" ).not.toThrow()
 			expect(slash).not.toHaveBeenCalled()
 			expect(foo).not.toHaveBeenCalled()
 			expect(foo_bar).not.toHaveBeenCalled()
@@ -770,13 +769,62 @@ describe "Finch", ->
 			foo.reset()
 			foo_bar.reset()
 
-			Finch.call "foo/bar/"
+			expect( -> Finch.call "foo/bar/" ).not.toThrow()
 			expect(slash).not.toHaveBeenCalled()
 			expect(foo).not.toHaveBeenCalled()
 			expect(foo_bar).not.toHaveBeenCalled()
 			slash.reset()
 			foo.reset()
 			foo_bar.reset()
+		#END it
+
+		it "Should teardown and setup to the same matched but different route", ->
+			Finch.reset()
+			cb = callbackGroup()
+
+			Finch.route "/", 
+				setup: (cb.slash_setup = sinon.spy())
+				load: (cb.slash_load = sinon.spy())
+
+			cb.foo_setup = sinon.spy()
+			cb.foo_load = sinon.spy()
+			cb.foo_unload = sinon.spy()
+			cb.foo_teardown = sinon.spy()
+			
+			Finch.route "[/]foo/:id", 
+				setup: ({id}) -> cb.foo_setup(id)
+				load: ({id}) -> cb.foo_load(id)
+				unload: ({id}) -> cb.foo_unload(id)
+				teardown: ({id}) -> cb.foo_teardown(id)
+
+			expect( -> Finch.call "/foo/1" ).not.toThrow()
+			expect(cb.slash_setup).toHaveBeenCalled()
+			expect(cb.slash_load).not.toHaveBeenCalled()
+			expect(cb.foo_setup).toHaveBeenCalledOnce()
+			expect(cb.foo_load).toHaveBeenCalledOnce()
+			expect(cb.foo_unload).not.toHaveBeenCalled()
+			expect(cb.foo_teardown).not.toHaveBeenCalled()
+
+			expect(cb.foo_setup).toHaveBeenCalledWith("1")
+			expect(cb.foo_load).toHaveBeenCalledWith("1")
+
+			cb.reset()
+
+			expect( -> Finch.call "/foo/2" ).not.toThrow()
+			expect(cb.slash_setup).not.toHaveBeenCalled()
+			expect(cb.slash_load).not.toHaveBeenCalled()
+
+			expect(cb.foo_setup).toHaveBeenCalledOnce()
+			expect(cb.foo_load).toHaveBeenCalledOnce()
+			expect(cb.foo_unload).toHaveBeenCalledOnce()
+			expect(cb.foo_teardown).toHaveBeenCalledOnce()
+
+			expect(cb.foo_unload).toHaveBeenCalledWith("1")
+			expect(cb.foo_teardown).toHaveBeenCalledWith("1")
+			expect(cb.foo_setup).toHaveBeenCalledWith("2")
+			expect(cb.foo_load).toHaveBeenCalledWith("2")
+			
+			cb.reset()
 		#END it
 	#END describe
 
@@ -1252,6 +1300,7 @@ describe "Finch", ->
 
 		it "Finch.listen and Finch.ignore", ->
 			#Default the necessary window methods, if they don't exist
+			Finch.navigate("!")
 			window.hasOwnProperty ?= (prop) -> (prop of @)
 
 			cb = callbackGroup()

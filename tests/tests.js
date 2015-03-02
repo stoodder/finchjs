@@ -612,72 +612,157 @@
       });
     });
     describe("Route Call Variations", function() {
-      return it("Should call routes properly", function() {
+      it("Should call routes properly", function() {
         var foo, foo_bar, slash;
         Finch.reset();
         Finch.route("/", slash = sinon.spy());
         Finch.route("/foo", foo = sinon.spy());
         Finch.route("/foo/bar", foo_bar = sinon.spy());
-        Finch.call("");
+        expect(function() {
+          return Finch.call("");
+        }).not.toThrow();
         expect(slash).toHaveBeenCalledOnce();
         slash.reset();
-        Finch.call("/");
+        expect(function() {
+          return Finch.call("/");
+        }).not.toThrow();
         expect(slash).not.toHaveBeenCalled();
         slash.reset();
-        Finch.call("");
+        expect(function() {
+          return Finch.call("");
+        }).not.toThrow();
         expect(slash).not.toHaveBeenCalled();
         slash.reset();
-        Finch.call("//");
+        expect(function() {
+          return Finch.call("//");
+        }).toThrow();
         expect(slash).not.toHaveBeenCalled();
         slash.reset();
-        Finch.call("foo");
+        expect(function() {
+          return Finch.call("foo");
+        }).not.toThrow();
         expect(slash).not.toHaveBeenCalled();
         expect(foo).toHaveBeenCalledOnce();
         slash.reset();
         foo.reset();
-        Finch.call("/foo");
+        expect(function() {
+          return Finch.call("/foo");
+        }).not.toThrow();
         expect(slash).not.toHaveBeenCalled();
         expect(foo).not.toHaveBeenCalled();
         slash.reset();
         foo.reset();
-        Finch.call("/foo/");
+        expect(function() {
+          return Finch.call("/foo/");
+        }).not.toThrow();
         expect(slash).not.toHaveBeenCalled();
         expect(foo).not.toHaveBeenCalled();
         slash.reset();
         foo.reset();
-        Finch.call("foo/");
+        expect(function() {
+          return Finch.call("foo/");
+        }).not.toThrow();
         expect(slash).not.toHaveBeenCalled();
         expect(foo).not.toHaveBeenCalled();
         slash.reset();
         foo.reset();
-        Finch.call("foo/bar");
+        expect(function() {
+          return Finch.call("foo/bar");
+        }).not.toThrow();
         expect(slash).not.toHaveBeenCalled();
         expect(foo).not.toHaveBeenCalled();
         expect(foo_bar).toHaveBeenCalledOnce();
         slash.reset();
         foo.reset();
         foo_bar.reset();
-        Finch.call("/foo/bar");
+        expect(function() {
+          return Finch.call("/foo/bar");
+        }).not.toThrow();
         expect(slash).not.toHaveBeenCalled();
         expect(foo).not.toHaveBeenCalled();
         expect(foo_bar).not.toHaveBeenCalled();
         slash.reset();
         foo.reset();
         foo_bar.reset();
-        Finch.call("/foo/bar/");
+        expect(function() {
+          return Finch.call("/foo/bar/");
+        }).not.toThrow();
         expect(slash).not.toHaveBeenCalled();
         expect(foo).not.toHaveBeenCalled();
         expect(foo_bar).not.toHaveBeenCalled();
         slash.reset();
         foo.reset();
         foo_bar.reset();
-        Finch.call("foo/bar/");
+        expect(function() {
+          return Finch.call("foo/bar/");
+        }).not.toThrow();
         expect(slash).not.toHaveBeenCalled();
         expect(foo).not.toHaveBeenCalled();
         expect(foo_bar).not.toHaveBeenCalled();
         slash.reset();
         foo.reset();
         return foo_bar.reset();
+      });
+      return it("Should teardown and setup to the same matched but different route", function() {
+        var cb;
+        Finch.reset();
+        cb = callbackGroup();
+        Finch.route("/", {
+          setup: (cb.slash_setup = sinon.spy()),
+          load: (cb.slash_load = sinon.spy())
+        });
+        cb.foo_setup = sinon.spy();
+        cb.foo_load = sinon.spy();
+        cb.foo_unload = sinon.spy();
+        cb.foo_teardown = sinon.spy();
+        Finch.route("[/]foo/:id", {
+          setup: function(_arg) {
+            var id;
+            id = _arg.id;
+            return cb.foo_setup(id);
+          },
+          load: function(_arg) {
+            var id;
+            id = _arg.id;
+            return cb.foo_load(id);
+          },
+          unload: function(_arg) {
+            var id;
+            id = _arg.id;
+            return cb.foo_unload(id);
+          },
+          teardown: function(_arg) {
+            var id;
+            id = _arg.id;
+            return cb.foo_teardown(id);
+          }
+        });
+        expect(function() {
+          return Finch.call("/foo/1");
+        }).not.toThrow();
+        expect(cb.slash_setup).toHaveBeenCalled();
+        expect(cb.slash_load).not.toHaveBeenCalled();
+        expect(cb.foo_setup).toHaveBeenCalledOnce();
+        expect(cb.foo_load).toHaveBeenCalledOnce();
+        expect(cb.foo_unload).not.toHaveBeenCalled();
+        expect(cb.foo_teardown).not.toHaveBeenCalled();
+        expect(cb.foo_setup).toHaveBeenCalledWith("1");
+        expect(cb.foo_load).toHaveBeenCalledWith("1");
+        cb.reset();
+        expect(function() {
+          return Finch.call("/foo/2");
+        }).not.toThrow();
+        expect(cb.slash_setup).not.toHaveBeenCalled();
+        expect(cb.slash_load).not.toHaveBeenCalled();
+        expect(cb.foo_setup).toHaveBeenCalledOnce();
+        expect(cb.foo_load).toHaveBeenCalledOnce();
+        expect(cb.foo_unload).toHaveBeenCalledOnce();
+        expect(cb.foo_teardown).toHaveBeenCalledOnce();
+        expect(cb.foo_unload).toHaveBeenCalledWith("1");
+        expect(cb.foo_teardown).toHaveBeenCalledWith("1");
+        expect(cb.foo_setup).toHaveBeenCalledWith("2");
+        expect(cb.foo_load).toHaveBeenCalledWith("2");
+        return cb.reset();
       });
     });
     describe("Observable Tests", function() {
@@ -1121,6 +1206,7 @@
       });
       it("Finch.listen and Finch.ignore", function() {
         var cb, clearWindowMethods;
+        Finch.navigate("!");
         if (window.hasOwnProperty == null) {
           window.hasOwnProperty = function(prop) {
             return prop in this;
