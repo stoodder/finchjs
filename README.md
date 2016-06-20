@@ -18,7 +18,7 @@ Once you've gotten the files, simply include the javascript in your html &lt;hea
 		</body>
 	</html>
 
-Since Finch is a standalone library, this is all you'll need.  From here, take a look at our [website](http://stoodder.github.com/finchjs) for more info on how to implement Finch.
+Since Finch is a standalone library, this is all you'll need.  From here, take a look at our [website](http://rickallen.me/finchjs) for more info on how to implement Finch.
 
 ## Documentation
 Take a look at our [website](http://stoodder.github.com/finchjs) for the most up-to-date documention.
