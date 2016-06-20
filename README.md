@@ -4,7 +4,7 @@
 Finch.js is a whole new take on handling routes in javascript web apps. It utilizes the natural hierarchy of routes, simplified pattern matching, and powerful parameter dependencies in order to speed up and organize web apps that rely highly on interecting with the browser's url.
 
 ## Installation
-First, [Download](http://stoodder.github.com/finchjs#download) Finch.js
+First, [Download](http://rickallen.me/finchjs#download) Finch.js
 
 Once you've gotten the files, simply include the javascript in your html &lt;head/&gt;> tags.
 
@@ -21,7 +21,7 @@ Once you've gotten the files, simply include the javascript in your html &lt;hea
 Since Finch is a standalone library, this is all you'll need.  From here, take a look at our [website](http://rickallen.me/finchjs) for more info on how to implement Finch.
 
 ## Documentation
-Take a look at our [website](http://stoodder.github.com/finchjs) for the most up-to-date documention.
+Take a look at our [website](http://rickallen.me/finchjs) for the most up-to-date documention.
 
 ## Licenese
 Finch is available for use under the [MIT License](https://github.com/stoodder/finchjs/blob/master/LICENSE.md)
