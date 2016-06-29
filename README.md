@@ -23,7 +23,7 @@ Since Finch is a standalone library, this is all you'll need.  From here, take a
 ## Documentation
 Take a look at our [website](http://rickallen.me/finchjs) for the most up-to-date documention.
 
-## Licenese
+## License
 Finch is available for use under the [MIT License](https://github.com/stoodder/finchjs/blob/master/LICENSE.md)
 
 ## TODO List
