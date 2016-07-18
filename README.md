@@ -1,12 +1,12 @@
 # Finch.js
 
-## Powerfully Simple Javascript Routing
+## Powerfully Simple JavaScript Routing
 Finch.js is a whole new take on handling routes in javascript web apps. It utilizes the natural hierarchy of routes, simplified pattern matching, and powerful parameter dependencies in order to speed up and organize web apps that rely highly on interecting with the browser's url.
 
 ## Installation
 First, [Download](http://rickallen.me/finchjs#download) Finch.js
 
-Once you've gotten the files, simply include the javascript in your html &lt;head/&gt;> tags.
+Once you've gotten the files, simply include the JavaScript in your html &lt;head/&gt;> tags.
 
 	<!doctype html>
 	<html>
