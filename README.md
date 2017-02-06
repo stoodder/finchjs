@@ -1,3 +1,5 @@
+# DEPRECATED notice: This library is not maintained anymore
+
 # Finch.js
 
 ## Powerfully Simple Javascript Routing
